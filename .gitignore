@@ -1,0 +1,9 @@
+# your usage history and the robot browser profile
+data/
+# build output: run ./build-app.sh to make Burnbot.app
+Burnbot.app/
+build/
+# local editor and tool settings
+.claude/
+node_modules/
+.DS_Store

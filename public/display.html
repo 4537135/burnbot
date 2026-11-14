@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Burnbot</title>
+<link rel="icon" id="favicon" href="data:,">
+<style>
+  @property --bg-a { syntax: "<color>"; inherits: true; initial-value: #150d0a; }
+  @property --bg-b { syntax: "<color>"; inherits: true; initial-value: #070504; }
+  :root {
+    /* One unit is 1% of the largest 16:9 box that fits the screen, so the
+       layout scales to any monitor. */
+    --u: min(1vw, 1.7778vh);
+    --state: #8493b8;
+    --glow: #8493b8;
+    --ink: #f6ece3;
+    --ink-2: #cdbfb3;
+    --ink-3: #8f8177;
+    --bg-a: #150d0a;
+    --bg-b: #070504;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body {
+    background: radial-gradient(120% 90% at 26% 62%, var(--bg-a), var(--bg-b) 70%);
+    color: var(--ink);
+    font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+    transition: --bg-a 2.5s, --bg-b 2.5s;
+    user-select: none;
+  }
+  body.s-asleep { --bg-a: #0c1120; --bg-b: #04050a; }
+  body.s-idle { --bg-a: #12100f; --bg-b: #060505; }
+  body.s-locked { --bg-a: #24140a; }
+  body.s-overdrive { --bg-a: #33100a; --bg-b: #0d0403; }
+  body.s-autopilot { --bg-a: #0c1622; --bg-b: #05070b; }
+  body.quiet { cursor: none; }
+
+  #scene { position: fixed; inset: 0; width: 100vw; height: 100vh; image-rendering: pixelated; }
+  canvas.px { image-rendering: pixelated; display: block; width: auto; }
+  p { margin: 0; }
+
+  .top {
+    position: fixed; top: calc(3.2 * var(--u)); left: calc(4 * var(--u)); right: calc(4 * var(--u));
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: calc(1.2 * var(--u)); }
+  #logo { height: calc(4.2 * var(--u)); image-rendering: pixelated; }
+  #brandText { height: calc(1.5 * var(--u)); opacity: .82; }
+  #cal { font-size: calc(1.25 * var(--u)); font-weight: 600; letter-spacing: .06em; color: var(--ink-3); padding-left: calc(1.4 * var(--u)); border-left: 1px solid rgba(255, 255, 255, .14); }
+  #cal b { color: var(--state); font-weight: 700; transition: color 1s; }
+  #clock { font-size: calc(2 * var(--u)); font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+
+  .hud {
+    position: fixed; left: 50vw; right: calc(4 * var(--u)); top: calc(8 * var(--u)); bottom: calc(9 * var(--u));
+    display: flex; flex-direction: column; justify-content: center;
+    text-shadow: 0 0 calc(1.2 * var(--u)) rgba(0, 0, 0, .9);
+  }
+  .cap { display: block; font-size: calc(1.2 * var(--u)); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+  #levelCap { color: var(--state); margin-bottom: calc(1 * var(--u)); transition: color 1s; }
+  #stateText { height: calc(5 * var(--u)); max-width: 100%; align-self: flex-start; filter: drop-shadow(0 0 calc(1.4 * var(--u)) color-mix(in srgb, var(--glow) 60%, transparent)); }
+  #sub { margin-top: calc(1.2 * var(--u)); font-size: calc(1.8 * var(--u)); font-weight: 500; color: var(--ink-2); min-height: 1.3em; }
+
+  .cols { display: grid; grid-template-columns: 1fr calc(20 * var(--u)); gap: calc(2 * var(--u)); margin-top: calc(2.8 * var(--u)); align-items: start; }
+
+  /* ---- the numbers: tokens, never money ---- */
+  #rateText { height: calc(5.6 * var(--u)); }
+  .unit { display: block; margin-top: calc(.9 * var(--u)); font-size: calc(1.7 * var(--u)); font-weight: 600; color: var(--ink-2); }
+  #rateSub { margin-top: calc(.3 * var(--u)); font-size: calc(1.5 * var(--u)); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .cap.today { margin-top: calc(2.6 * var(--u)); margin-bottom: calc(.9 * var(--u)); }
+  #todayText { height: calc(3.5 * var(--u)); }
+  #pace { margin-top: calc(.9 * var(--u)); font-size: calc(1.5 * var(--u)); color: var(--ink-2); }
+
+  /* ---- the level ladder ---- */
+  .ladder { display: flex; flex-direction: column; gap: calc(.35 * var(--u)); }
+  .rung {
+    display: flex; align-items: center; gap: calc(.9 * var(--u)); height: calc(2.6 * var(--u)); padding: 0 calc(.9 * var(--u));
+    border-radius: calc(.5 * var(--u)); font-size: calc(1.5 * var(--u)); font-weight: 700; letter-spacing: .1em;
+    color: var(--ink-2); opacity: .5; transition: opacity .8s, background .8s, color .8s;
+  }
+  .rung i { width: calc(.9 * var(--u)); height: calc(.9 * var(--u)); background: #3a302a; flex: none; transition: background .8s, box-shadow .8s; }
+  .rung b { width: 1ch; font-weight: 700; text-align: center; }
+  .rung span { flex: 1; white-space: nowrap; }
+  .rung em { white-space: nowrap; font-style: normal; font-size: calc(1 * var(--u)); letter-spacing: .08em; color: var(--ink-2); border: 1px solid currentColor; border-radius: 99px; padding: 0 calc(.6 * var(--u)); line-height: 1.5; display: none; text-shadow: none; }
+  .rung.usual em { display: block; }
+  .rung.lit { opacity: .9; }
+  .rung.lit i { background: var(--c); }
+  .rung.now { opacity: 1; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); }
+  .rung.now i { box-shadow: 0 0 calc(1 * var(--u)) var(--c); }
+  .rung.off { display: none; margin-top: calc(.5 * var(--u)); }
+  .rung.off.now { display: flex; }
+  .next { margin-top: calc(1 * var(--u)); padding: 0 calc(.8 * var(--u)); }
+  .track { position: relative; height: calc(.7 * var(--u)); margin: calc(.6 * var(--u)) 0; background: color-mix(in srgb, var(--state) 18%, #1b1512); border-radius: 99px; overflow: hidden; }
+  .track i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--state); border-radius: 99px; transition: width 1.2s cubic-bezier(.2, .8, .2, 1), background 1s; }
+  #nextNote { font-size: calc(1.3 * var(--u)); color: var(--ink-2); line-height: 1.35; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: calc(4 * var(--u)); transform: translateX(-50%);
+    padding: .5em 1em; border-radius: 99px; background: rgba(0, 0, 0, .6); color: var(--ink-2);
+    font-size: calc(1.5 * var(--u)); opacity: 0; transition: opacity .6s; pointer-events: none;
+  }
+  #toast.on { opacity: 1; }
+
+  /* Tall or square screens: robot below, level and numbers above. */
+  @media (max-aspect-ratio: 5/4) {
+    :root { --u: min(1.9vw, 1.05vh); }
+    body { background: radial-gradient(120% 70% at 50% 78%, var(--bg-a), var(--bg-b) 70%); }
+    .hud { left: calc(4 * var(--u)); right: calc(4 * var(--u)); top: calc(11 * var(--u)); bottom: auto; display: block; }
+    .cols { grid-template-columns: 1fr calc(18.5 * var(--u)); gap: calc(1.2 * var(--u)); }
+    #rateText { height: calc(5 * var(--u)); }
+    #todayText { height: calc(3.2 * var(--u)); }
+  }
+  /* A small window, such as the robot floating in a corner of your only screen:
+     just the robot, the level, and the burn. Make it bigger for the full view. */
+  @media (max-width: 760px) and (min-aspect-ratio: 5/4) {
+    :root { --u: min(1.55vw, 2.75vh); }
+    #cal, #clock, #brandText, #sub, #rateSub, .cap.today, #todayText, #pace, .cols > div:last-child { display: none; }
+    .top { top: calc(3.4 * var(--u)); left: calc(3 * var(--u)); }
+    #logo { height: calc(3.4 * var(--u)); }
+    .hud { left: 47vw; right: calc(3 * var(--u)); top: calc(4 * var(--u)); bottom: calc(7 * var(--u)); }
+    #stateText { height: calc(3.6 * var(--u)); }
+    .cols { display: block; margin-top: calc(2.2 * var(--u)); }
+    #rateText { height: calc(4.6 * var(--u)); }
+  }
+  @media (prefers-reduced-motion: reduce) { .track i, .rung { transition: none; } }
+</style>
+</head>
+<body class="s-asleep">
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <header class="top">
+    <span class="brand"><canvas id="logo" class="px"></canvas><canvas id="brandText" class="px"></canvas><span id="cal"></span></span>
+    <span id="clock"></span>
+  </header>
+
+  <main class="hud">
+    <span class="cap" id="levelCap">Level</span>
+    <canvas id="stateText" class="px" role="img"></canvas>
+    <p id="sub">Reading your Claude history…</p>
+
+    <div class="cols">
+      <div class="nums">
+        <canvas id="rateText" class="px" role="img"></canvas>
+        <span class="unit">tokens per hour</span>
+        <p id="rateSub"></p>
+
+        <span class="cap today">Burned today</span>
+        <canvas id="todayText" class="px" role="img"></canvas>
+        <p id="pace"></p>
+      </div>
+
+      <div>
+        <div class="ladder" id="ladder" role="list" aria-label="Levels"></div>
+        <div class="next">
+          <span class="cap" id="nextCap">Next level</span>
+          <div class="track"><i id="nextBar"></i></div>
+          <p id="nextNote"></p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <script type="module" src="/display.js"></script>
+</body>
+</html>

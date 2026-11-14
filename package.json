@@ -1,0 +1,13 @@
+{
+  "name": "burnbot",
+  "version": "1.0.0",
+  "description": "Tracks Claude Code token burn, calibrates it to your own pace, and shows a robot on a second screen.",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20.11" },
+  "scripts": {
+    "start": "node server.mjs",
+    "open": "node server.mjs --open",
+    "display": "node server.mjs --open --display"
+  }
+}
