@@ -5,25 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Burnbot</title>
 <link rel="icon" id="favicon" href="data:,">
+<link rel="stylesheet" href="/pixel.css">
 <style>
   @property --bg-a { syntax: "<color>"; inherits: true; initial-value: #141922; }
   :root {
     /* One unit is 1% of the largest 16:9 box that fits the window, so the
-       layout scales to any size. */
+       layout scales to any size. Text sizes are then rounded to a multiple of
+       5px, which keeps the pixel letters sharp (one of their pixels is a tenth
+       of the font size). */
     --u: min(1vw, 1.7778vh);
     --state: #6f83ad;
     --ink: #eef1f6;
     --ink-2: #aab3c1;
-    --ink-3: #6c7686;
+    --ink-3: #7c8799;
     --bg-a: #141922;
     --bg-b: #07090d;
+    --block: max(4px, round(calc(.6 * var(--u)), 2px));     /* one block of the intensity bar */
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; border-radius: 0; }
   html, body { height: 100%; margin: 0; overflow: hidden; }
   body {
     background: radial-gradient(120% 90% at 26% 62%, var(--bg-a), var(--bg-b) 70%);
     color: var(--ink);
-    font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family: "Burnbot Pixel", ui-monospace, Menlo, monospace;
+    -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed;
     transition: --bg-a 2.5s;
     user-select: none;
   }
@@ -33,57 +38,62 @@
   body.s-autopilot { --bg-a: #171427; }
   body.quiet { cursor: none; }
   p, h1 { margin: 0; }
+  h1, b { font-weight: 400; }
 
   #scene { position: fixed; inset: 0; width: 100vw; height: 100vh; image-rendering: pixelated; }
 
   .top {
     position: fixed; top: calc(3 * var(--u)); left: calc(4 * var(--u)); right: calc(4 * var(--u));
     display: flex; align-items: center; justify-content: space-between;
-    font-size: calc(1.7 * var(--u)); font-weight: 650; color: var(--ink-3);
+    font-size: max(10px, round(calc(1.7 * var(--u)), 5px)); color: var(--ink-3);
   }
-  .brand { display: flex; align-items: center; gap: calc(1 * var(--u)); color: var(--ink-2); }
+  .brand { display: flex; align-items: center; gap: calc(1 * var(--u)); color: var(--ink-2); text-transform: uppercase; letter-spacing: .1em; }
   #logo { height: calc(3.6 * var(--u)); image-rendering: pixelated; }
-  #clock { font-variant-numeric: tabular-nums; }
 
   .hud {
     position: fixed; left: 50vw; right: calc(4 * var(--u)); top: calc(8 * var(--u)); bottom: calc(9 * var(--u));
     display: flex; flex-direction: column; justify-content: center;
-    text-shadow: 0 0 calc(1.2 * var(--u)) rgba(0, 0, 0, .85);
+    text-shadow: .1em .1em 0 rgba(0, 0, 0, .6);        /* a hard shadow, one letter-pixel down and across */
   }
-  .eyebrow { font-size: calc(1.25 * var(--u)); font-weight: 750; letter-spacing: .16em; text-transform: uppercase; color: var(--state); transition: color 1s; }
-  #levelName { margin-top: calc(.5 * var(--u)); font-size: calc(6.8 * var(--u)); line-height: 1; font-weight: 800; letter-spacing: -.02em; color: var(--state); transition: color 1s; }
-  #sub { margin-top: calc(1.1 * var(--u)); font-size: calc(1.8 * var(--u)); font-weight: 500; color: var(--ink-2); min-height: 1.3em; }
+  .eyebrow { font-size: max(10px, round(calc(1.4 * var(--u)), 5px)); letter-spacing: .2em; text-transform: uppercase; color: var(--state); transition: color 1s steps(4); }
+  #levelName { margin-top: calc(.6 * var(--u)); font-size: max(20px, round(calc(6.8 * var(--u)), 10px)); line-height: 1; white-space: nowrap; color: var(--state); transition: color 1s steps(4); }
+  #sub { margin-top: calc(1.2 * var(--u)); font-size: max(10px, round(calc(1.8 * var(--u)), 5px)); color: var(--ink-2); min-height: 1.3em; }
 
-  /* intensity, with a notch where each level begins */
-  .track { position: relative; height: calc(.7 * var(--u)); margin-top: calc(2 * var(--u)); max-width: calc(40 * var(--u)); background: color-mix(in srgb, var(--state) 18%, #171c25); border-radius: 99px; }
-  .track i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--state); border-radius: 99px; transition: width 1.2s cubic-bezier(.2, .8, .2, 1), background 1s; }
-  .track u { position: absolute; top: -30%; bottom: -30%; width: max(2px, calc(.18 * var(--u))); background: var(--bg-b); }
-  #note { margin-top: calc(.9 * var(--u)); font-size: calc(1.35 * var(--u)); color: var(--ink-3); }
+  /* intensity as a bar of blocks; the ticks above it mark where a level begins */
+  .track { position: relative; height: calc(var(--block) * 1.5); margin-top: calc(2.6 * var(--u)); max-width: calc(40 * var(--u)); }
+  .track::before, .track i {
+    content: ""; position: absolute; inset: 0 auto 0 0; width: 100%;
+    -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 var(--block), transparent var(--block) calc(var(--block) + 2px));
+    mask-image: repeating-linear-gradient(90deg, #000 0 var(--block), transparent var(--block) calc(var(--block) + 2px));
+    -webkit-mask-size: 100vw 100%; mask-size: 100vw 100%;
+  }
+  .track::before { background: color-mix(in srgb, var(--state) 22%, #171c25); }
+  .track i { width: 0; background: var(--state); transition: width 1.2s steps(14), background 1s steps(4); }
+  .track u { position: absolute; bottom: calc(100% + 2px); width: 2px; height: calc(var(--block) * .75); background: var(--ink-3); }
+  #note { margin-top: calc(1 * var(--u)); font-size: max(10px, round(calc(1.4 * var(--u)), 5px)); color: var(--ink-3); }
 
   .cols { display: grid; grid-template-columns: 1fr calc(17 * var(--u)); gap: calc(2 * var(--u)); margin-top: calc(3 * var(--u)); align-items: start; }
-  .stat b { display: block; font-size: calc(5 * var(--u)); line-height: 1; font-weight: 750; letter-spacing: -.02em; }
-  .stat span { display: block; margin-top: calc(.6 * var(--u)); font-size: calc(1.4 * var(--u)); color: var(--ink-3); }
+  .stat b { display: block; font-size: max(20px, round(calc(5 * var(--u)), 10px)); line-height: 1; white-space: nowrap; }
+  .stat span { display: block; margin-top: calc(.7 * var(--u)); font-size: max(10px, round(calc(1.4 * var(--u)), 5px)); color: var(--ink-3); }
   .stat + .stat { margin-top: calc(2.4 * var(--u)); }
-  #today { font-variant-numeric: tabular-nums; }
 
   /* the ladder: every level, top to bottom */
   .ladder { display: flex; flex-direction: column; gap: calc(.2 * var(--u)); }
-  .rung { display: flex; align-items: center; gap: calc(.9 * var(--u)); height: calc(2.5 * var(--u)); padding: 0 calc(.9 * var(--u)); border-radius: calc(.7 * var(--u)); font-size: calc(1.45 * var(--u)); font-weight: 600; color: var(--ink-3); transition: color .8s, background .8s; }
-  .rung i { width: calc(.8 * var(--u)); height: calc(.8 * var(--u)); border-radius: 50%; background: #2a313d; flex: none; transition: background .8s, box-shadow .8s; }
+  .rung { display: flex; align-items: center; gap: calc(.9 * var(--u)); height: calc(2.5 * var(--u)); padding: 0 calc(.9 * var(--u)); font-size: max(10px, round(calc(1.45 * var(--u)), 5px)); color: var(--ink-3); }
+  .rung i { width: max(4px, round(calc(.8 * var(--u)), 2px)); height: max(4px, round(calc(.8 * var(--u)), 2px)); background: #2a313d; flex: none; }
   .rung span { flex: 1; white-space: nowrap; }
-  .rung em { display: none; font-style: normal; font-size: calc(1.05 * var(--u)); font-weight: 600; color: var(--ink-3); text-shadow: none; }
+  .rung em { display: none; font-style: normal; font-size: max(10px, round(calc(1 * var(--u)), 5px)); text-transform: uppercase; color: var(--ink-3); text-shadow: none; }
   .rung.usual em { display: block; }
   .rung.lit { color: var(--ink-2); }
   .rung.lit i { background: var(--c); }
-  .rung.now { color: var(--ink); background: color-mix(in srgb, var(--c) 16%, transparent); }
-  .rung.now i { box-shadow: 0 0 calc(.9 * var(--u)) var(--c); }
+  .rung.now { color: var(--ink); background: color-mix(in srgb, var(--c) 18%, transparent); box-shadow: 0 -2px 0 0 var(--c), 0 2px 0 0 var(--c), -2px 0 0 0 var(--c), 2px 0 0 0 var(--c); }
   .rung.off { display: none; }
   .rung.off.now { display: flex; }
 
   #toast {
     position: fixed; left: 50%; bottom: calc(4 * var(--u)); transform: translateX(-50%);
-    padding: .5em 1em; border-radius: 99px; background: rgba(0, 0, 0, .6); color: var(--ink-2);
-    font-size: calc(1.5 * var(--u)); opacity: 0; transition: opacity .6s; pointer-events: none;
+    padding: .4em 1em; background: #12161d; color: var(--ink-2); box-shadow: 0 -2px 0 0 #3d4759, 0 2px 0 0 #3d4759, -2px 0 0 0 #3d4759, 2px 0 0 0 #3d4759;
+    font-size: max(10px, round(calc(1.5 * var(--u)), 5px)); opacity: 0; transition: opacity .6s steps(4); pointer-events: none;
   }
   #toast.on { opacity: 1; }
 
@@ -100,9 +110,11 @@
     .brand b, #clock, #sub, .track, #note, .stat + .stat, .cols > .ladder { display: none; }
     .top { top: calc(3.2 * var(--u)); left: calc(3 * var(--u)); }
     .hud { left: 47vw; right: calc(3 * var(--u)); top: calc(4 * var(--u)); bottom: calc(7 * var(--u)); }
-    #levelName { font-size: calc(5.6 * var(--u)); }
+    #levelName { font-size: max(20px, round(calc(5.6 * var(--u)), 10px)); }
     .cols { display: block; margin-top: calc(2.4 * var(--u)); }
   }
+  /* On a screen that is not Retina half pixels cannot be drawn: let them soften instead of wobble. */
+  @media (-webkit-max-device-pixel-ratio: 1.5), (max-resolution: 1.5dppx) { body { -webkit-font-smoothing: auto; font-smooth: auto; } }
   @media (prefers-reduced-motion: reduce) { .track i, .rung, .rung i { transition: none; } }
 </style>
 </head>

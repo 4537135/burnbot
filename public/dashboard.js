@@ -1,5 +1,7 @@
-// The dashboard: the level you are on, four numbers, today and the last 30
-// days. Everything else is folded away. Burn is shown in tokens, never money.
+// The dashboard, in two pages.
+//   Today:   the level you are on first, then how today is going.
+//   History: the last week, the last month, or everything on record.
+// Burn is shown in tokens, never money.
 
 import { STATE_META, STATE_ORDER, LADDER, drawLogo, Scene } from './robot.js';
 import { compact, duration, clock, subline, levelLine, nextLine } from './format.js';
@@ -9,32 +11,52 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const pad = (n) => String(n).padStart(2, '0');
 const lower = (s) => STATE_META[s].label.toLowerCase();
+const colorOf = (i) => STATE_META[STATE_ORDER[i]].color;
+const labelOf = (i) => STATE_META[STATE_ORDER[i]].label;
+const hhmm = (minutes) => {
+  const m = Math.round(minutes);
+  return `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
+};
+const dateOf = (d, opts = { month: 'short', day: 'numeric' }) => new Date(d.t).toLocaleDateString([], opts);
+const longDate = (d) => dateOf(d, { weekday: 'short', month: 'short', day: 'numeric' });
 
-let data = null;
-let dayMetric = 'tokens';
+let data = null;                              // what the tracker says now, refreshed every couple of seconds
+let older = { days: [], projects: [] };       // the days before the last 30, and tokens by project over all time
+let page = 'today';
+let range = '7';
 let state = 'asleep';
+
+// Positions in STATE_ORDER. Asleep is never drawn: it is the empty space.
+const AWAKE = [1, 2, 3, 4, 5, 6];             // chilling up to on fire, then autopilot
+const WORKING = [2, 3, 4, 5, 6];              // warming up to on fire, then autopilot
 
 // One hue, dark to bright, for "how much".
 const HEAT = ['#1c2533', '#27364d', '#34507a', '#4470ad', '#5c93dd', '#8fbcff'];
 
 const SIGNALS = [
-  { key: 'burn', name: 'Burn', what: 'tokens, last 15 min' },
-  { key: 'typing', name: 'Typing', what: 'characters you typed, last 30 min' },
-  { key: 'actions', name: 'Actions', what: 'prompts + tool calls, last 15 min' },
+  { key: 'burn', name: 'Burn', what: 'Tokens', span: 'last 15 min' },
+  { key: 'typing', name: 'Typing', what: 'Characters you typed', span: 'last 30 min' },
+  { key: 'actions', name: 'Actions', what: 'Prompts and tool calls', span: 'last 15 min' },
 ];
 
-const DAY_METRICS = {
-  tokens: { title: 'tokens per day', scale: 1, axis: compact },
-  engagedMin: { title: 'hands-on time per day', scale: 1 / 60, axis: hours, nice: niceHours },
-  lockedMin: { title: 'time locked in or higher, per day', scale: 1 / 60, axis: hours, nice: niceHours },
-};
 function hours(v) {
   if (!v) return '0';
   return v < 1 ? `${Math.round(v * 60)}m` : `${+v.toFixed(1)}h`;
 }
 // Axis tops for hours, chosen so the halfway gridline is a round time too.
 function niceHours(v) {
-  return [0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24].find((m) => v <= m) ?? 24;
+  return [0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 48, 72, 96, 120, 168].find((m) => v <= m) ?? Math.ceil(v / 24) * 24;
+}
+function niceMax(v) {
+  if (!(v > 0)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 2, 2.5, 4, 5, 8, 10]) if (v <= m * p) return m * p;
+  return 10 * p;
+}
+function share(value, total) {
+  if (!(total > 0) || !(value > 0)) return '';
+  const pct = Math.round((value / total) * 100);
+  return pct < 1 ? '<1%' : `${pct}%`;
 }
 
 // ---------------------------------------------------------------- tooltip
@@ -52,61 +74,66 @@ function showTip(html, x, y) {
   tip.style.top = `${top}px`;
 }
 const hideTip = () => (tip.hidden = true);
+const typed = (chars, prompts) => `${compact(chars)} chars in ${prompts} ${prompts === 1 ? 'prompt' : 'prompts'}`;
 const row = (k, v) => `<div><span class="k">${esc(k)}</span> ${esc(v)}</div>`;
+const swatchRow = (color, k, v) => `<div><i style="background:${color}"></i><span class="k">${esc(k)}</span> ${esc(v)}</div>`;
 
-// ---------------------------------------------------------------- bar chart
+// ---------------------------------------------------------------- charts
 
-function niceMax(v) {
-  if (!(v > 0)) return 1;
-  const p = Math.pow(10, Math.floor(Math.log10(v)));
-  for (const m of [1, 2, 2.5, 4, 5, 8, 10]) if (v <= m * p) return m * p;
-  return 10 * p;
-}
+const nothing = (el, text = 'Nothing here yet') => {
+  el.innerHTML = `<p class="nothing">${esc(text)}</p>`;
+  el._geom = null;
+};
 
-/** Thin single-series bars with a hairline grid, an optional level strip, and a hover readout. */
+/**
+ * Thin square bars on a hairline grid with a hover readout, everything on whole
+ * pixels. Each bar is a list of [value, colour] parts stacked from the
+ * baseline, a gap of surface between them.
+ */
 function barChart(el, cfg) {
-  const W = Math.max(320, Math.floor(el.clientWidth));
-  const H = cfg.height;
+  const W = Math.floor(el.clientWidth);
+  if (!W) return; // not on screen
   el._cfg = cfg;
-  const key = JSON.stringify([W, cfg.values, cfg.strip, cfg.xTicks, cfg.label]);
+  const key = JSON.stringify([W, cfg.bars, cfg.xTicks, cfg.label]);
   if (el._key === key) return;
   el._key = key;
+  const totals = cfg.bars.map((parts) => parts.reduce((a, p) => a + Math.max(0, p[0]), 0));
+  if (!totals.some((v) => v > 0)) return nothing(el, cfg.empty);
 
-  const m = { l: 46, r: 4, t: 8, b: cfg.strip ? 36 : 24 };
+  const H = cfg.height;
+  const m = { l: 58, r: 6, t: 8, b: 28 };
   const pw = W - m.l - m.r;
   const ph = H - m.t - m.b;
-  const n = cfg.values.length;
+  const n = cfg.bars.length;
   const band = pw / n;
-  const bw = Math.min(24, Math.max(1, band - (band >= 8 ? 2 : band >= 4 ? 1 : 0.5)));
-  const max = (cfg.nice || niceMax)(Math.max(0, ...cfg.values));
+  const bw = Math.max(1, Math.min(24, Math.floor(band - (band >= 8 ? 2 : band >= 4 ? 1 : 0))));
+  const max = (cfg.nice || niceMax)(Math.max(...totals));
   const base = m.t + ph;
-  const y = (v) => base - (v / max) * ph;
+  const y = (v) => Math.round(base - (v / max) * ph);
 
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.label)}">`;
   for (const v of [max, max / 2, 0]) {
-    if (v) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/>`;
-    s += `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${esc(cfg.axis(v))}</text>`;
+    if (v) s += `<rect x="${m.l}" y="${y(v)}" width="${pw}" height="1" fill="var(--line)"/>`;
+    s += `<text x="${m.l - 10}" y="${y(v) + 5}" text-anchor="end">${esc(cfg.axis(v))}</text>`;
   }
   s += `<rect class="hl" y="${m.t}" width="${band}" height="${ph}" fill="rgba(255,255,255,.07)" visibility="hidden"/>`;
   for (let i = 0; i < n; i++) {
-    const v = cfg.values[i];
-    if (!(v > 0)) continue;
-    const h = Math.max(1.5, (v / max) * ph);
-    const x = m.l + i * band + (band - bw) / 2;
-    const top = base - h;
-    const r = Math.min(4, bw / 2, h);
-    s += `<path d="M${x},${base}V${top + r}Q${x},${top} ${x + r},${top}H${x + bw - r}Q${x + bw},${top} ${x + bw},${top + r}V${base}Z" fill="var(--series)"/>`;
+    const parts = cfg.bars[i].filter((p) => p[0] > 0);
+    if (!parts.length) continue;
+    const x = Math.round(m.l + i * band + (band - bw) / 2);
+    const tall = Math.max(2, Math.round((totals[i] / max) * ph)); // a sliver still shows
+    let y0 = base;
+    parts.forEach(([v, color], k) => {
+      const last = k === parts.length - 1;
+      const top = last ? base - tall : Math.round(y0 - (v / totals[i]) * tall);
+      const gap = !last && y0 - top > 3 ? 2 : 0;
+      if (y0 - top - gap > 0) s += `<rect x="${x}" y="${top + gap}" width="${bw}" height="${y0 - top - gap}" fill="${color}"/>`;
+      y0 = top;
+    });
   }
-  s += `<line x1="${m.l}" x2="${W - m.r}" y1="${base}" y2="${base}" stroke="var(--line)"/>`;
-  if (cfg.strip) {
-    for (let i = 0; i < n; i++) {
-      const st = cfg.strip[i];
-      if (!st) continue; // asleep leaves the strip empty
-      s += `<rect x="${m.l + i * band}" y="${base + 5}" width="${band + 0.4}" height="6" fill="${STATE_META[STATE_ORDER[st]].color}"/>`;
-    }
-  }
+  s += `<rect x="${m.l}" y="${base}" width="${pw}" height="2" fill="var(--line)"/>`;
   for (const t of cfg.xTicks) {
-    s += `<text x="${m.l + t.at * band}" y="${H - 6}" text-anchor="${t.anchor || 'middle'}">${esc(t.text)}</text>`;
+    s += `<text x="${Math.round(m.l + t.at * band)}" y="${H - 6}" text-anchor="${t.anchor || 'middle'}">${esc(t.text)}</text>`;
   }
   el.innerHTML = s + '</svg>';
   el._geom = { m, band, n };
@@ -115,6 +142,7 @@ function barChart(el, cfg) {
   el._wired = true;
   el.addEventListener('mousemove', (e) => {
     const g = el._geom;
+    if (!g) return;
     const box = el.getBoundingClientRect();
     const i = Math.floor((e.clientX - box.left - g.m.l) / g.band);
     const hl = el.querySelector('.hl');
@@ -132,7 +160,244 @@ function barChart(el, cfg) {
   });
 }
 
-// ---------------------------------------------------------------- the level
+/** The value of a line (points sorted by x) at x, or null outside it. */
+function valueAt(points, x) {
+  if (!points.length || x < points[0][0] || x > points[points.length - 1][0]) return null;
+  for (let i = 1; i < points.length; i++) {
+    const [x0, y0] = points[i - 1];
+    const [x1, y1] = points[i];
+    if (x <= x1) return x1 === x0 ? y1 : y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+  }
+  return points[points.length - 1][1];
+}
+
+/**
+ * Lines over time on one axis, with a crosshair. Points are [x, y] with x
+ * running from cfg.from to cfg.to. A line is drawn as steps on a 3-pixel grid,
+ * so it reads as pixels rather than as a smooth curve.
+ */
+function lineChart(el, cfg) {
+  const W = Math.floor(el.clientWidth);
+  if (!W) return;
+  el._cfg = cfg;
+  const key = JSON.stringify([W, cfg.lines.map((l) => l.points), cfg.from, cfg.to, cfg.max]);
+  if (el._key === key) return;
+  el._key = key;
+
+  const H = cfg.height;
+  const m = { l: 58, r: 12, t: 10, b: 28 };
+  const pw = W - m.l - m.r;
+  const ph = H - m.t - m.b;
+  const base = m.t + ph;
+  const STEP = 3;
+  const snap = (v) => Math.round(v / STEP) * STEP;
+  const X = (x) => m.l + snap(((x - cfg.from) / (cfg.to - cfg.from)) * pw);
+  const Y = (v) => base - snap((v / cfg.max) * ph);
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.label)}">`;
+  for (const v of [cfg.max, cfg.max / 2, 0]) {
+    s += `<rect x="${m.l}" y="${Y(v)}" width="${pw}" height="${v ? 1 : 2}" fill="var(--line)"/>`;
+    s += `<text x="${m.l - 10}" y="${Y(v) + 5}" text-anchor="end">${esc(cfg.axis(v))}</text>`;
+  }
+  s += `<rect class="cross" y="${m.t}" width="1" height="${ph}" fill="#4a5568" visibility="hidden"/>`;
+  for (const line of cfg.lines) {
+    if (line.points.length < 2) continue;
+    // along, then up: the value holds until the next reading
+    const d = line.points.map(([x, v], i) => (i ? `H${X(x)}V${Y(v)}` : `M${X(x)},${Y(v)}`)).join('');
+    const end = line.points[line.points.length - 1];
+    if (line.area) s += `<path d="${d}V${base}H${X(line.points[0][0])}Z" fill="${line.color}" opacity=".1"/>`;
+    s += `<path d="${d}" fill="none" stroke="${line.color}" stroke-width="${line.area ? 3 : 2}" stroke-linejoin="miter"/>`;
+    if (line.dot) s += `<rect x="${X(end[0]) - 5}" y="${Y(end[1]) - 5}" width="10" height="10" fill="${line.color}" stroke="var(--surface)" stroke-width="2"/>`;
+  }
+  for (const line of cfg.lines) s += `<rect class="mark" width="10" height="10" fill="${line.color}" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
+  for (const t of cfg.xTicks) {
+    s += `<text x="${X(t.x)}" y="${H - 6}" text-anchor="${t.anchor || 'middle'}">${esc(t.text)}</text>`;
+  }
+  el.innerHTML = s + '</svg>';
+  el._geom = { m, pw, X, Y };
+
+  if (el._wired) return;
+  el._wired = true;
+  el.addEventListener('mousemove', (e) => {
+    const g = el._geom;
+    const c = el._cfg;
+    const box = el.getBoundingClientRect();
+    const f = (e.clientX - box.left - g.m.l) / g.pw;
+    const cross = el.querySelector('.cross');
+    const marks = el.querySelectorAll('.mark');
+    if (f < 0 || f > 1) {
+      cross.setAttribute('visibility', 'hidden');
+      marks.forEach((mk) => mk.setAttribute('visibility', 'hidden'));
+      return hideTip();
+    }
+    const x = c.from + f * (c.to - c.from);
+    cross.setAttribute('x', g.X(x));
+    cross.setAttribute('visibility', 'visible');
+    c.lines.forEach((line, i) => {
+      const v = valueAt(line.points, x);
+      marks[i].setAttribute('visibility', v === null ? 'hidden' : 'visible');
+      if (v !== null) {
+        marks[i].setAttribute('x', g.X(x) - 5);
+        marks[i].setAttribute('y', g.Y(v) - 5);
+      }
+    });
+    showTip(c.tip(x), e.clientX, e.clientY);
+  });
+  el.addEventListener('mouseleave', () => {
+    el.querySelector('.cross')?.setAttribute('visibility', 'hidden');
+    el.querySelectorAll('.mark').forEach((mk) => mk.setAttribute('visibility', 'hidden'));
+    hideTip();
+  });
+}
+
+/** One whole split into parts: a thin bar, and each part listed under it with its amount and share. */
+function splitList(el, parts, label) {
+  const key = JSON.stringify(parts);
+  if (el._key === key) return;
+  el._key = key;
+  const total = parts.reduce((a, p) => a + p.value, 0);
+  if (!total) return nothing(el);
+  el.innerHTML =
+    `<div class="split" role="img" aria-label="${esc(label)}">` +
+    parts
+      .filter((p) => p.value > 0)
+      .map((p) => `<i style="flex:${p.value} 1 0;background:${p.color}" title="${esc(p.name)}: ${esc(duration(p.value))}, ${share(p.value, total)}"></i>`)
+      .join('') +
+    '</div><div class="parts">' +
+    parts
+      .map((p) => {
+        const off = p.value ? '' : ' off';
+        return (
+          `<i class="${off}" style="background:${p.color}"></i><span class="name${off}">${esc(p.name)}</span>` +
+          `<span class="val${off}">${p.value ? esc(duration(p.value)) : '–'}</span><span class="pct${off}">${share(p.value, total)}</span>`
+        );
+      })
+      .join('') +
+    '</div>';
+}
+
+/** One row per day, midnight to midnight, coloured by the level of each quarter hour. */
+function timeline(el, days) {
+  const W = Math.floor(el.clientWidth);
+  if (!W) return;
+  const key = JSON.stringify([W, days.map((d) => [d.t, d.strip])]);
+  if (el._key === key) return;
+  el._key = key;
+  el._days = days;
+
+  const n = days.length;
+  const rh = n <= 7 ? 20 : n <= 14 ? 14 : 8;
+  const gap = n <= 14 ? 4 : 2;
+  const m = { l: 96, r: 6, t: 2, b: 28 };
+  const pw = W - m.l - m.r;
+  const cw = pw / 96;
+  const H = m.t + n * (rh + gap) - gap + m.b;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Your level through each day">`;
+  days.forEach((d, r) => {
+    const y = m.t + r * (rh + gap);
+    const monday = new Date(d.t).getDay() === 1;
+    if (n <= 14 || monday || r === 0) {
+      s += `<text x="0" y="${y + rh / 2 + 5}"${r === 0 ? ' class="strong"' : ''}>${esc(r === 0 ? 'Today' : longDate(d).replace(',', ''))}</text>`;
+    }
+    s += `<rect x="${m.l}" y="${y}" width="${Math.round(pw)}" height="${rh}" fill="var(--series-track)"/>`;
+    const strip = d.strip || '';
+    for (let q = 0; q < strip.length; ) {
+      let e = q + 1;
+      while (e < strip.length && strip[e] === strip[q]) e++;
+      if (strip[q] !== '0') {
+        const x0 = Math.round(m.l + q * cw);
+        s += `<rect x="${x0}" y="${y}" width="${Math.max(1, Math.round(m.l + e * cw) - x0 - (cw > 4 ? 2 : 0))}" height="${rh}" fill="${colorOf(Number(strip[q]))}"/>`;
+      }
+      q = e;
+    }
+  });
+  for (let h = 0; h <= 24; h += 3) {
+    s += `<text x="${Math.round(m.l + h * 4 * cw)}" y="${H - 6}" text-anchor="${h === 0 ? 'start' : h === 24 ? 'end' : 'middle'}">${pad(h)}:00</text>`;
+  }
+  el.innerHTML = s + '</svg>';
+  el._geom = { m, cw, rh, gap };
+
+  if (el._wired) return;
+  el._wired = true;
+  el.addEventListener('mousemove', (e) => {
+    const g = el._geom;
+    const box = el.getBoundingClientRect();
+    const q = Math.floor((e.clientX - box.left - g.m.l) / g.cw);
+    const r = Math.floor((e.clientY - box.top - g.m.t) / (g.rh + g.gap));
+    const d = el._days[r];
+    if (!d || q < 0 || q > 95) return hideTip();
+    const level = d.strip?.[q];
+    showTip(
+      `<b>${esc(r === 0 ? 'Today' : longDate(d))} · ${hhmm(q * 15)} to ${hhmm(q * 15 + 15)}</b>` +
+        (level === undefined ? '<div class="k">not yet</div>' : swatchRow(colorOf(Number(level)), 'Level', labelOf(Number(level)))),
+      e.clientX,
+      e.clientY,
+    );
+  });
+  el.addEventListener('mouseleave', hideTip);
+}
+
+function levelLegend(el, which) {
+  if (el.childElementCount) return;
+  el.innerHTML = which.map((i) => `<span title="${esc(STATE_META[STATE_ORDER[i]].blurb)}"><i style="background:${colorOf(i)}"></i>${esc(labelOf(i))}</span>`).join('');
+}
+
+function rankList(el, rows, emptyText) {
+  if (rows.length > 6) {
+    const rest = rows.slice(5).reduce((a, p) => a + p.tokens, 0);
+    rows = [...rows.slice(0, 5), { name: `${rows.length - 5} others`, tokens: rest }];
+  }
+  const max = Math.max(1, ...rows.map((p) => p.tokens));
+  el.innerHTML = rows.length
+    ? rows.map((p) => `<span class="name" title="${esc(p.name)}">${esc(p.name)}</span><span class="row"><i style="width:${(p.tokens / max) * 72}%"></i><span>${compact(p.tokens)}</span></span>`).join('')
+    : `<span class="hint">${esc(emptyText)}</span>`;
+}
+
+const statTiles = (el, tiles) =>
+  (el.innerHTML = tiles.map(([value, label, sub, cls]) => `<div><b>${esc(value)}</b><span>${esc(label)}</span><small${cls ? ` class="${cls}"` : ''}>${esc(sub)}</small></div>`).join(''));
+
+// ---------------------------------------------------------------- always on screen
+
+function renderChrome() {
+  const { live, scan, meta } = data;
+  const info = STATE_META[live.state];
+  state = live.state;
+  document.documentElement.style.setProperty('--state', info.color);
+  document.title = `${info.label} · ${compact(live.tokensPerHour)} tokens/h · Burnbot`;
+
+  const scanning = scan.phase !== 'live';
+  $('scan').hidden = !scanning;
+  if (scanning) $('scan').firstElementChild.style.width = `${scan.total ? (scan.done / scan.total) * 100 : 5}%`;
+  // Nothing to show yet: say why, instead of a page of zeros.
+  $('empty').hidden = scanning || meta.foundLogs !== false;
+
+  if (renderChrome.icon !== live.state) {
+    renderChrome.icon = live.state;
+    drawLogo($('logo'), live.state);
+    const icon = document.createElement('canvas');
+    icon.width = icon.height = 64;
+    const c = icon.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    c.drawImage($('logo'), 0, 4, 64, 55);
+    $('favicon').href = icon.toDataURL();
+  }
+
+  // The desk screen (a USB board with the robot on it), when one is plugged in.
+  const desk = meta.desk;
+  $('desk').hidden = !desk || desk.state === 'absent';
+  if (desk && desk.state !== 'absent') {
+    $('desk').classList.toggle('on', desk.state === 'connected' && desk.answering);
+    $('deskFlip').hidden = desk.state !== 'connected';
+    $('deskText').textContent =
+      desk.state === 'connected'
+        ? desk.answering ? 'Desk screen on' : 'Desk screen not answering'
+        : desk.state === 'other'
+          ? `Desk screen runs ${desk.program}, not Burnbot's program`
+          : 'A board is plugged in but does not answer';
+  }
+}
+
+// ---------------------------------------------------------------- Today: the level
 
 // The robot lives on the dashboard too.
 const mini = new Scene($('mini'), { centered: true });
@@ -144,29 +409,24 @@ function fitMini() {
   miniSize = size;
   mini.resize(box.width, box.height);
 }
-window.burnbot = { mini, fit: fitMini }; // handle for poking at the scene from the console
 function animate(now) {
-  fitMini();
-  mini.frame(now);
+  if (page === 'today') {
+    fitMini();
+    mini.frame(now);
+  }
   requestAnimationFrame(animate);
 }
 requestAnimationFrame(animate);
 
 function renderLevel() {
-  const { live, scan, baseline, meta } = data;
+  const { live, scan, baseline } = data;
   const info = STATE_META[live.state];
-  state = live.state;
-  document.documentElement.style.setProperty('--state', info.color);
-  document.title = `${info.label} · ${compact(live.tokensPerHour)} tokens/h · Burnbot`;
-
   $('levelCap').textContent = levelLine(live);
   $('levelName').textContent = info.label;
-  const scanning = scan.phase !== 'live';
-  $('sub').textContent = scanning ? `Reading your history: ${scan.done} of ${scan.total} sessions` : `${info.blurb} · ${subline(live)}`;
-  $('scan').hidden = !scanning;
-  if (scanning) $('scan').firstElementChild.style.width = `${scan.total ? (scan.done / scan.total) * 100 : 5}%`;
-  // Nothing to show yet: say why, instead of a page of zeros.
-  $('empty').hidden = scanning || meta.foundLogs !== false;
+  // While you work, say how the pace compares; at rest the one line is enough.
+  const working = ['warming', 'cruising', 'locked', 'overdrive'].includes(live.state);
+  $('sub').textContent =
+    scan.phase !== 'live' ? `Reading your history: ${scan.done} of ${scan.total} sessions` : working ? `${info.blurb} · ${subline(live)}` : subline(live);
 
   // how far up the scale, with a notch where each level begins
   const track = $('intTrack');
@@ -196,48 +456,22 @@ function renderLevel() {
   }
 
   mini.setLive({ state: live.state, flame: live.flame, dropRate: live.flame > 0.1 ? 0.2 + 2.5 * live.flame ** 2 : 0 });
-
-  if (renderLevel.icon !== live.state) {
-    renderLevel.icon = live.state;
-    drawLogo($('logo'), live.state);
-    const icon = document.createElement('canvas');
-    icon.width = icon.height = 64;
-    const c = icon.getContext('2d');
-    c.imageSmoothingEnabled = false;
-    c.drawImage($('logo'), 0, 4, 64, 55);
-    $('favicon').href = icon.toDataURL();
-  }
-
-  // The desk screen (a USB board with the robot on it), when one is plugged in.
-  const desk = meta.desk;
-  $('desk').hidden = !desk || desk.state === 'absent';
-  if (desk && desk.state !== 'absent') {
-    $('desk').classList.toggle('on', desk.state === 'connected' && desk.answering);
-    $('deskFlip').hidden = desk.state !== 'connected';
-    $('deskText').textContent =
-      desk.state === 'connected'
-        ? desk.answering ? 'Desk screen on' : 'Desk screen not answering'
-        : desk.state === 'other'
-          ? `Desk screen runs ${desk.program}, not Burnbot's program`
-          : 'A board is plugged in but does not answer';
-  }
 }
 
 function renderStats() {
   const { live, today: t } = data;
   const pace = t.usualByNow > 1000 ? `${Math.round((t.tokens / t.usualByNow) * 100)}% of your usual by ${clock(data.now)}` : 'no usual day to compare yet';
-  const stats = [
+  statTiles($('stats'), [
     [compact(live.tokensPerHour), 'tokens per hour', 'right now'],
     [compact(t.tokens), 'burned today', pace],
     [duration(t.engagedMin), 'hands-on today', t.typicalEngaged ? `usually ${duration(t.typicalEngaged)} a day` : 'you prompting, the AI working'],
     [duration(t.lockedMin), 'locked in or higher', t.engagedMin ? `${Math.round((t.lockedMin / t.engagedMin) * 100)}% of hands-on time` : 'not yet today'],
-  ];
-  $('stats').innerHTML = stats.map(([value, label, sub]) => `<div><b>${esc(value)}</b><span>${esc(label)}</span><small>${esc(sub)}</small></div>`).join('');
+  ]);
 }
 
-// ---------------------------------------------------------------- charts
+// ---------------------------------------------------------------- Today: the graphs
 
-function renderToday() {
+function renderBurn() {
   const b = data.today.bins;
   const perHour = 60 / b.step;
   const last = b.tokens.length - 1;
@@ -249,75 +483,111 @@ function renderToday() {
   if (to - from < 6 * perHour) to = Math.min(24 * perHour, from + 6 * perHour);
   if (to - from < 6 * perHour) from = Math.max(0, to - 6 * perHour);
 
-  const slice = (a) => Array.from({ length: to - from }, (_, k) => a[from + k] ?? 0);
   const spanH = (to - from) / perHour;
   const every = spanH <= 8 ? 1 : spanH <= 16 ? 2 : 3;
   const xTicks = [];
   for (let h = from / perHour; h <= to / perHour; h += every) {
     xTicks.push({ at: h * perHour - from, text: `${pad(h)}:00`, anchor: h * perHour === to ? 'end' : h * perHour === from ? 'start' : 'middle' });
   }
-  const time = (i) => {
-    const mins = (from + i) * b.step;
-    return `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
-  };
-  barChart($('todayChart'), {
-    height: 200,
-    label: 'Tokens per five minutes today',
-    values: slice(b.tokens),
-    strip: slice(b.state),
+  barChart($('burnChart'), {
+    height: 210,
+    label: 'Tokens per five minutes today, coloured by level',
+    empty: 'Nothing burned yet today',
+    bars: Array.from({ length: to - from }, (_, i) => [[b.tokens[from + i] ?? 0, colorOf(b.state[from + i] || 1)]]),
     axis: compact,
     xTicks,
     tip: (i) => {
       const k = from + i;
-      if (k > last) return `<b>${time(i)}</b><div class="k">not yet</div>`;
+      const span = `${hhmm(k * b.step)} to ${hhmm((k + 1) * b.step)}`;
+      if (k > last) return `<b>${span}</b><div class="k">not yet</div>`;
       return (
-        `<b>${time(i)} to ${time(i + 1)}</b>` +
-        row('Level', lower(STATE_ORDER[b.state[k]])) +
+        `<b>${span}</b>` +
+        swatchRow(colorOf(b.state[k]), 'Level', labelOf(b.state[k])) +
         row('Tokens', compact(b.tokens[k])) +
-        row('You typed', `${b.chars[k]} chars in ${b.prompts[k]} prompts`) +
+        row('You typed', typed(b.chars[k], b.prompts[k])) +
         row('Tool calls', b.tools[k])
       );
     },
   });
-
-  if (!$('stateLegend').childElementCount) {
-    $('stateLegend').innerHTML = STATE_ORDER.slice(1)
-      .map((s) => `<span title="${esc(STATE_META[s].blurb)}"><i style="background:${STATE_META[s].color}"></i>${lower(s)}</span>`)
-      .join('');
-  }
+  levelLegend($('burnLegend'), AWAKE);
 }
 
-function renderDays() {
-  const days = data.history.days;
-  const metric = DAY_METRICS[dayMetric];
-  const date = (d, opts = { month: 'short', day: 'numeric' }) => new Date(d.t).toLocaleDateString([], opts);
-  $('daysTitle').textContent = `Last ${days.length} days`;
-  const xTicks = days
-    .map((d, i) => ({ d, i }))
-    .filter(({ i }) => (days.length - 1 - i) % 5 === 0)
-    .map(({ d, i }) => (i === days.length - 1 ? { at: i + 1, text: date(d), anchor: 'end' } : { at: i + 0.5, text: date(d) }));
-  barChart($('daysChart'), {
-    height: 190,
-    label: `${metric.title}, last ${days.length} days`,
-    values: days.map((d) => d[dayMetric] * metric.scale),
-    axis: metric.axis,
-    nice: metric.nice,
+function renderPace() {
+  const t = data.today;
+  const b = t.bins;
+  const usual = t.usualCurve ?? [];
+  const usualEnd = usual[95] ?? 0;
+  const hasUsual = (t.usualDays ?? 0) >= 1 && usualEnd > 0;
+  const nowMin = Math.min(1440, (data.now - b.start) / 60000);
+
+  // Tokens burned by each moment of the day: today up to now, and a usual day in full.
+  const mine = [[0, 0]];
+  let sum = 0;
+  b.tokens.forEach((v, k) => mine.push([Math.min(nowMin, (k + 1) * b.step), (sum += v)]));
+  const theirs = hasUsual ? [[0, 0], ...usual.map((v, q) => [(q + 1) * 15, v])] : [];
+
+  // The hours worth showing: from where either starts to where both are done.
+  const firstBin = b.tokens.findIndex((v) => v > 0);
+  const startMine = firstBin < 0 ? nowMin : firstBin * b.step;
+  const startUsual = hasUsual ? usual.findIndex((v) => v > usualEnd * 0.005) * 15 : 1440;
+  const stopUsual = hasUsual ? (usual.findIndex((v) => v >= usualEnd * 0.995) + 1) * 15 : 0;
+  let from = Math.floor(Math.min(startMine, startUsual) / 60) * 60;
+  let to = Math.min(1440, Math.ceil(Math.max(nowMin, stopUsual) / 60) * 60);
+  if (to - from < 360) to = Math.min(1440, from + 360);
+  if (to - from < 360) from = Math.max(0, to - 360);
+  const clip = (points) => {
+    const inside = points.filter(([x]) => x > from && x <= to);
+    const start = valueAt(points, from);
+    return start === null ? inside : [[from, start], ...inside];
+  };
+
+  const usualNow = hasUsual ? valueAt(theirs, nowMin) : 0;
+  $('paceLegend').innerHTML =
+    `<span><i class="key" style="background:var(--ink)"></i>Today <b>${compact(sum)}</b></span>` +
+    (hasUsual ? `<span><i class="key" style="background:var(--muted)"></i>Usual day <b>${compact(usualNow)}</b> by now, ${compact(usualEnd)} by the end</span>` : '');
+  const ratio = usualNow > 1000 ? sum / usualNow : null;
+  $('paceHint').textContent =
+    ratio === null
+      ? 'No usual day to compare with yet'
+      : Math.abs(ratio - 1) < 0.03
+        ? 'Right on your usual'
+        : ratio > 1
+          ? ratio >= 3 ? `${ratio.toFixed(1)} times your usual` : `${Math.round((ratio - 1) * 100)}% ahead of your usual`
+          : `${Math.round((1 - ratio) * 100)}% behind your usual`;
+
+  const spanH = (to - from) / 60;
+  const every = spanH <= 8 ? 1 : spanH <= 16 ? 2 : 3;
+  const xTicks = [];
+  for (let h = from / 60; h <= to / 60; h += every) xTicks.push({ x: h * 60, text: `${pad(h)}:00`, anchor: h * 60 === to ? 'end' : h * 60 === from ? 'start' : 'middle' });
+
+  lineChart($('paceChart'), {
+    height: 220,
+    label: 'Tokens burned so far today against a usual day',
+    from,
+    to,
+    max: niceMax(Math.max(sum, hasUsual ? valueAt(theirs, to) : 0, 1)),
+    axis: compact,
     xTicks,
-    tip: (i) => {
-      const d = days[i];
-      return (
-        `<b>${date(d, { weekday: 'short', month: 'short', day: 'numeric' })}</b>` +
-        row('Tokens', compact(d.tokens)) +
-        row('Hands-on', duration(d.engagedMin)) +
-        row('Locked in or higher', duration(d.lockedMin)) +
-        row('On autopilot', duration(d.autopilotMin)) +
-        row('You typed', `${compact(d.chars)} chars in ${d.prompts} prompts`)
-      );
+    lines: [
+      { points: clip(theirs), color: 'var(--muted)' },
+      { points: clip(mine), color: 'var(--ink)', area: true, dot: true },
+    ],
+    tip: (x) => {
+      const m = valueAt(mine, x);
+      const u = hasUsual ? valueAt(theirs, x) : null;
+      return `<b>By ${hhmm(x)}</b>` + (m === null ? '' : row('Today', compact(m))) + (u === null ? '' : row('Usual day', compact(u)));
     },
   });
 }
 
-// ---------------------------------------------------------------- folded away
+const levelParts = (levelMin) => AWAKE.map((i) => ({ name: labelOf(i), color: colorOf(i), value: levelMin?.[i] ?? 0 }));
+
+function renderLevelsToday() {
+  const parts = levelParts(data.today.levelMin);
+  const total = parts.reduce((a, p) => a + p.value, 0);
+  $('levelsTodayHint').textContent = total ? `${duration(total)} today` : '';
+  splitList($('levelsToday'), parts, 'Time on each level today');
+}
 
 function renderWhy() {
   const { live, baseline } = data;
@@ -325,9 +595,9 @@ function renderWhy() {
   if (!box.childElementCount) {
     box.innerHTML = SIGNALS.map(
       (s) => `<div class="meter" data-k="${s.key}">
-        <div class="top"><span><b>${s.name}</b><small>${s.what}</small></span><span><b class="v"></b><small class="p"></small></span></div>
+        <div class="top"><b>${s.name}</b><span class="v"></span></div>
         <div class="track"><i></i><u style="left:50%"></u><u style="left:75%"></u><u style="left:90%"></u></div>
-        <div class="marks"><span style="left:50%"></span><span style="left:75%"></span><span style="left:90%"></span></div>
+        <small class="p"></small><small class="w"></small>
       </div>`,
     ).join('');
   }
@@ -336,110 +606,240 @@ function renderWhy() {
     const sig = live.signals[s.key];
     el.querySelector('.track i').style.width = `${Math.max(1, sig.pct)}%`;
     el.querySelector('.v').textContent = `${compact(sig.perHour)}/h`;
-    el.querySelector('.p').textContent = `above ${sig.pct}% of your time`;
-    // The ticks are your own median, 75th and 90th percentile, in real units.
-    const marks = el.querySelectorAll('.marks span');
-    const names = ['your median ', '', ''];
-    baseline[s.key].forEach((v, i) => (marks[i].textContent = baseline.calibrated ? names[i] + compact(v) : ''));
+    el.querySelector('.p').textContent = `Above ${sig.pct}% of your working time`;
+    el.querySelector('.w').textContent = `${s.what}, ${s.span}` + (baseline.calibrated ? ` · your median ${compact(baseline[s.key][0])}/h` : '');
   }
   const t = baseline.thresholds;
   $('calNote').textContent = baseline.calibrated
-    ? `Calibrated to you: ${duration(baseline.activeMinutes)} of your hands-on time over the last ${baseline.windowDays} days, updated as you work.`
-    : `Still calibrating to you: ${baseline.activeMinutes} of ${baseline.needMinutes} hands-on minutes seen so far. Until then the levels use starter values.`;
+    ? `Calibrated to you on ${duration(baseline.activeMinutes)} of your work`
+    : `Still calibrating: ${baseline.activeMinutes} of ${baseline.needMinutes} minutes seen`;
   $('intNote').textContent =
-    `These three are blended into one intensity (now ${live.intensity} of 100) and ranked against your own time again. ` +
+    `Each bar is ranked against your own last ${baseline.windowDays} days; the notches are your median, top 25% and top 10%. ` +
+    `The three are blended into one intensity (now ${live.intensity} of 100) and ranked against you again. ` +
     `${STATE_META.cruising.label} is anything above your quietest ${t.cruise}%, ${lower('locked')} is your top ${100 - t.lock}%, ` +
     `${lower('overdrive')} your top ${100 - t.overdrive}%. Locking in also takes ${baseline.lockMinStreak} minutes of unbroken work. ` +
     `Autopilot starts after ${baseline.autopilotAfter} minutes without a prompt` +
-    (baseline.autopilotLearned ? ', learned from the gaps you usually leave.' : '.');
+    (baseline.autopilotLearned ? ', learned from the gaps you usually leave.' : '.') +
+    (baseline.calibrated ? '' : ' Until Burnbot has seen two hours of your work it uses starter values.');
+}
+
+function renderAlso() {
+  const { today: t } = data;
+  $('facts').innerHTML = [
+    ['You typed', `${compact(t.chars)} characters`],
+    ['Prompts sent', compact(t.prompts)],
+    ['Code written', `${compact(t.lines)} lines`],
+    ['Tool calls', compact(t.tools)],
+    ['Output tokens', compact(t.split.output)],
+    ['You pasted', `${compact(t.pasted)} characters`],
+  ]
+    .map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`)
+    .join('');
+  rankList($('projectsToday'), t.projects, 'Nothing yet today');
+}
+
+// ---------------------------------------------------------------- History
+
+const SUMMED = ['tokens', 'output', 'prompts', 'chars', 'pasted', 'tools', 'lines', 'activeMin', 'engagedMin', 'lockedMin', 'autopilotMin'];
+
+/** Several days as one: every count added up. */
+function sumDays(days) {
+  const total = { t: days[0]?.t ?? 0, days, levelMin: [0, 0, 0, 0, 0, 0, 0] };
+  for (const k of SUMMED) total[k] = 0;
+  for (const d of days) {
+    for (const k of SUMMED) total[k] += d[k] || 0;
+    (d.levelMin || []).forEach((v, i) => (total.levelMin[i] += v));
+  }
+  return total;
+}
+
+const allDays = () => [...older.days, ...data.history.days];
+
+function rangeDays() {
+  const all = allDays();
+  if (range !== 'all') return all.slice(-Number(range));
+  const first = all.findIndex((d) => d.activeMin > 0 || d.tokens > 0);
+  return first < 0 || all.length - first < 7 ? all.slice(-7) : all.slice(first);
+}
+
+/** A bar per day, or per week once there are too many days to tell apart. */
+function buckets(days) {
+  if (days.length <= 92) return { weekly: false, list: days.map((d) => sumDays([d])) };
+  const weeks = new Map();
+  for (const d of days) {
+    const at = new Date(d.t);
+    const monday = new Date(at.getFullYear(), at.getMonth(), at.getDate() - ((at.getDay() + 6) % 7)).getTime();
+    if (!weeks.has(monday)) weeks.set(monday, []);
+    weeks.get(monday).push(d);
+  }
+  return { weekly: true, list: [...weeks.entries()].map(([t, list]) => ({ ...sumDays(list), t })) };
+}
+
+function bucketTicks(list, weekly) {
+  const n = list.length;
+  if (n <= 7 && !weekly) return list.map((d, i) => ({ at: i + 0.5, text: i === n - 1 ? 'Today' : dateOf(d, { weekday: 'short' }) }));
+  const step = n <= 16 ? 2 : n <= 31 ? 5 : Math.ceil(n / 8);
+  return list
+    .map((d, i) => ({ d, i }))
+    .filter(({ i }) => (n - 1 - i) % step === 0)
+    .map(({ d, i }) => (i === n - 1 ? { at: i + 1, text: weekly ? dateOf(d) : 'Today', anchor: 'end' } : { at: i + 0.5, text: dateOf(d) }));
+}
+
+function topLevel(d) {
+  for (let i = 5; i >= 1; i--) if (d.levelMin?.[i] > 0) return labelOf(i);
+  return '–';
+}
+
+function renderHistory() {
+  const days = rangeDays();
+  const n = days.length;
+  const total = sumDays(days);
+  const all = allDays();
+  const before = range !== 'all' && all.length >= 2 * n ? sumDays(all.slice(-2 * n, -n)) : null;
+  const { weekly, list } = buckets(days);
+  const per = weekly ? 'week' : 'day';
+  const when = (d) => (weekly ? `Week of ${dateOf(d)}` : longDate(d));
+
+  $('histSpan').textContent = `${dateOf(days[0], { month: 'short', day: 'numeric', year: 'numeric' })} to today · ${n} days`;
+
+  // ---- the headline numbers for this stretch
+  const worked = days.filter((d) => d.activeMin > 0);
+  const best = days.reduce((a, d) => (d.tokens > a.tokens ? d : a), days[0]);
+  let versus = range === 'all' ? 'everything on record' : `no ${n} days before these to compare`;
+  let dir = '';
+  if (before && before.tokens > 0) {
+    const change = total.tokens / before.tokens - 1;
+    dir = change >= 0 ? 'up' : 'down';
+    versus = `${Math.abs(change) >= 2 ? `${(change + 1).toFixed(1)} times` : `${Math.round(Math.abs(change) * 100)}% ${change >= 0 ? 'more than' : 'less than'}`} the ${n} days before`;
+  }
+  statTiles($('histStats'), [
+    [compact(total.tokens), 'tokens burned', versus, dir],
+    [duration(total.engagedMin), 'hands-on time', worked.length ? `${duration(total.engagedMin / worked.length)} a day when you worked` : 'you prompting, the AI working'],
+    [duration(total.lockedMin), 'locked in or higher', total.engagedMin ? `${Math.round((total.lockedMin / total.engagedMin) * 100)}% of hands-on time` : 'none yet'],
+    [`${worked.length} of ${n}`, 'days worked', best.tokens > 0 ? `biggest: ${longDate(best)}, ${compact(best.tokens)}` : 'no work on record'],
+  ]);
+
+  // ---- tokens, one bar a day
+  const xTicks = bucketTicks(list, weekly);
+  $('histTokensTitle').textContent = `Tokens per ${per}`;
+  $('histTokensHint').textContent = worked.length ? `${compact(total.tokens / worked.length)} on an average working day` : '';
+  barChart($('histTokens'), {
+    height: 200,
+    label: `Tokens per ${per}`,
+    bars: list.map((d) => [[d.tokens, 'var(--series)']]),
+    axis: compact,
+    xTicks,
+    tip: (i) => {
+      const d = list[i];
+      return (
+        `<b>${esc(when(d))}</b>` +
+        row('Tokens', compact(d.tokens)) +
+        row('Hands-on', duration(d.engagedMin)) +
+        row('Locked in or higher', duration(d.lockedMin)) +
+        row('You typed', typed(d.chars, d.prompts)) +
+        row('Code written', `${compact(d.lines)} lines`)
+      );
+    },
+  });
+
+  // ---- hours on each level, stacked
+  $('histLevelsTitle').textContent = `Time on each level, per ${per}`;
+  barChart($('histLevels'), {
+    height: 200,
+    label: `Hours on each level per ${per}`,
+    bars: list.map((d) => WORKING.map((i) => [d.levelMin[i] / 60, colorOf(i)])),
+    axis: hours,
+    nice: niceHours,
+    xTicks,
+    tip: (i) => {
+      const d = list[i];
+      const rows = WORKING.filter((k) => d.levelMin[k] > 0)
+        .reverse()
+        .map((k) => swatchRow(colorOf(k), labelOf(k), duration(d.levelMin[k])));
+      return `<b>${esc(when(d))}</b>` + (rows.length ? rows.join('') : '<div class="k">no work</div>');
+    },
+  });
+  levelLegend($('histLevelsLegend'), WORKING);
+
+  // ---- the whole stretch split by level, and by project
+  const parts = levelParts(total.levelMin);
+  const awake = parts.reduce((a, p) => a + p.value, 0);
+  $('levelsRangeHint').textContent = awake ? `${duration(awake)} in all` : '';
+  splitList($('levelsRange'), parts, 'Time on each level');
+  const projects = range === '7' ? data.history.projects : range === '30' ? data.history.projectsMonth ?? [] : older.projects.length ? older.projects : data.history.projectsMonth ?? [];
+  rankList($('projects'), projects, 'Nothing in this stretch');
+
+  // ---- each day, hour by hour (the last 30 days keep this much detail)
+  const detailed = data.history.days.slice(-Math.min(30, n)).reverse();
+  $('timelineHint').textContent = n > 30 ? 'The last 30 days. Each row is a day, midnight to midnight' : 'Each row is a day, midnight to midnight';
+  timeline($('timeline'), detailed);
+  levelLegend($('timelineLegend'), AWAKE);
+
+  if ($('foldWeek').open) renderHeat();
+  if ($('foldDays').open) renderTable(days);
 }
 
 const WEEK = [1, 2, 3, 4, 5, 6, 0]; // Monday first
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function renderMore() {
-  const { live, today: t, history } = data;
-  $('facts').innerHTML = [
-    ['You typed', `${compact(t.chars)} chars in ${t.prompts} prompts`],
-    ['You pasted', `${compact(t.pasted)} chars`],
-    ['Output tokens', compact(t.split.output)],
-    ['Code written', `${compact(t.lines)} lines`],
-    ['Tool calls', compact(t.tools)],
-    ['Sessions / agents now', `${live.sessions} / ${live.agents}`],
-  ]
-    .map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`)
-    .join('');
-
-  // weekday x hour
+function renderHeat() {
   const el = $('heat');
-  const heat = history.heat;
-  const W = Math.max(320, Math.floor(el.clientWidth));
+  const heat = data.history.heat;
+  const W = Math.floor(el.clientWidth);
+  if (!W) return;
   const key = JSON.stringify([W, heat]);
-  if (W > 320 || el.clientWidth) {
-    if (el._key !== key) {
-      el._key = key;
-      const m = { l: 36, t: 2, b: 20 };
-      const cw = (W - m.l) / 24;
-      const ch = Math.max(12, Math.min(20, cw * 0.6));
-      const H = m.t + 7 * (ch + 2) + m.b;
-      const max = Math.max(...heat.flat());
-      const level = (v) => (v > 0 && max > 0 ? Math.min(HEAT.length - 1, Math.floor((v / max) * HEAT.length)) : -1);
-      let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Average tokens by weekday and hour">`;
-      WEEK.forEach((wd, r) => {
-        const y = m.t + r * (ch + 2);
-        s += `<text x="0" y="${y + ch / 2 + 4}">${WEEKDAY[wd]}</text>`;
-        for (let h = 0; h < 24; h++) {
-          const l = level(heat[wd][h]);
-          s += `<rect x="${m.l + h * cw + 1}" y="${y}" width="${cw - 2}" height="${ch}" rx="3" fill="${l < 0 ? 'var(--surface-2)' : HEAT[l]}"/>`;
-        }
-      });
-      for (const h of [0, 6, 12, 18]) s += `<text x="${m.l + h * cw + 1}" y="${H - 5}">${pad(h)}:00</text>`;
-      el.innerHTML = s + '</svg>';
-      el._geom = { m, cw, ch };
-      $('heatLegend').innerHTML = `<span>less</span><span>${HEAT.map((c) => `<i style="background:${c}"></i>`).join('')}</span><span>more · busiest hour averages ${compact(max)} tokens</span>`;
-    }
-    if (!el._wired) {
-      el._wired = true;
-      el.addEventListener('mousemove', (e) => {
-        const g = el._geom;
-        const box = el.getBoundingClientRect();
-        const h = Math.floor((e.clientX - box.left - g.m.l) / g.cw);
-        const r = Math.floor((e.clientY - box.top - g.m.t) / (g.ch + 2));
-        if (h < 0 || h > 23 || r < 0 || r > 6) return hideTip();
-        const wd = WEEK[r];
-        showTip(`<b>${WEEKDAY[wd]} ${pad(h)}:00 to ${pad((h + 1) % 24)}:00</b>` + row('Average', `${compact(data.history.heat[wd][h])} tokens`), e.clientX, e.clientY);
-      });
-      el.addEventListener('mouseleave', hideTip);
-    }
+  if (el._key !== key) {
+    el._key = key;
+    const m = { l: 44, t: 2, b: 26 };
+    const cw = Math.floor((W - m.l) / 24);
+    const ch = Math.max(14, Math.min(22, Math.round(cw * 0.6)));
+    const H = m.t + 7 * (ch + 2) + m.b;
+    const max = Math.max(...heat.flat());
+    const level = (v) => (v > 0 && max > 0 ? Math.min(HEAT.length - 1, Math.floor((v / max) * HEAT.length)) : -1);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Average tokens by weekday and hour">`;
+    WEEK.forEach((wd, r) => {
+      const y = m.t + r * (ch + 2);
+      s += `<text x="0" y="${y + ch / 2 + 5}">${WEEKDAY[wd]}</text>`;
+      for (let h = 0; h < 24; h++) {
+        const l = level(heat[wd][h]);
+        s += `<rect x="${m.l + h * cw}" y="${y}" width="${cw - 2}" height="${ch}" fill="${l < 0 ? 'var(--surface-2)' : HEAT[l]}"/>`;
+      }
+    });
+    for (const h of [0, 6, 12, 18]) s += `<text x="${m.l + h * cw}" y="${H - 6}">${pad(h)}:00</text>`;
+    el.innerHTML = s + '</svg>';
+    el._geom = { m, cw, ch };
+    $('heatLegend').innerHTML = `<span>less</span><span>${HEAT.map((c) => `<i style="background:${c}"></i>`).join('')}</span><span>more · the busiest hour averages ${compact(max)} tokens</span>`;
   }
+  if (el._wired) return;
+  el._wired = true;
+  el.addEventListener('mousemove', (e) => {
+    const g = el._geom;
+    const box = el.getBoundingClientRect();
+    const h = Math.floor((e.clientX - box.left - g.m.l) / g.cw);
+    const r = Math.floor((e.clientY - box.top - g.m.t) / (g.ch + 2));
+    if (h < 0 || h > 23 || r < 0 || r > 6) return hideTip();
+    const wd = WEEK[r];
+    showTip(`<b>${WEEKDAY[wd]} ${pad(h)}:00 to ${pad((h + 1) % 24)}:00</b>` + row('Average', `${compact(data.history.heat[wd][h])} tokens`), e.clientX, e.clientY);
+  });
+  el.addEventListener('mouseleave', hideTip);
+}
 
-  let rows = history.projects;
-  if (rows.length > 6) {
-    const rest = rows.slice(5).reduce((a, p) => a + p.tokens, 0);
-    rows = [...rows.slice(0, 5), { name: `${rows.length - 5} others`, tokens: rest }];
-  }
-  const max = Math.max(1, ...rows.map((p) => p.tokens));
-  $('projects').innerHTML = rows.length
-    ? rows.map((p) => `<span class="name" title="${esc(p.name)}">${esc(p.name)}</span><span class="row"><i style="width:${(p.tokens / max) * 78}%"></i><span>${compact(p.tokens)}</span></span>`).join('')
-    : '<span class="hint">Nothing in the last 7 days</span>';
-
-  const days = history.days;
-  const dayKey = JSON.stringify(days);
-  if (renderMore.days !== dayKey) {
-    renderMore.days = dayKey;
-    const date = (d) => new Date(d.t).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-    $('daysTable').innerHTML =
-      '<thead><tr><th>Day</th><th>Tokens</th><th>Output</th><th>Prompts</th><th>Chars typed</th><th>Lines of code</th><th>Hands-on</th><th>Locked in+</th><th>Autopilot</th></tr></thead><tbody>' +
-      [...days]
-        .reverse()
-        .map(
-          (d) =>
-            `<tr><td>${esc(date(d))}</td><td>${compact(d.tokens)}</td><td>${compact(d.output)}</td><td>${d.prompts}</td><td>${compact(d.chars)}</td>` +
-            `<td>${compact(d.lines)}</td><td>${duration(d.engagedMin)}</td><td>${duration(d.lockedMin)}</td><td>${duration(d.autopilotMin)}</td></tr>`,
-        )
-        .join('') +
-      '</tbody>';
-  }
+function renderTable(days) {
+  const time = (minutes) => (minutes > 0 ? duration(minutes) : '–');
+  const key = JSON.stringify(days.map((d) => [d.t, d.tokens, d.engagedMin, d.chars]));
+  if (renderTable.key === key) return;
+  renderTable.key = key;
+  $('daysTable').innerHTML =
+    '<thead><tr><th>Day</th><th>Tokens</th><th>Hands-on</th><th>Locked in+</th><th>Autopilot</th><th>Top level</th><th>Prompts</th><th>Chars typed</th><th>Lines of code</th></tr></thead><tbody>' +
+    [...days]
+      .reverse()
+      .map(
+        (d) =>
+          `<tr><td>${esc(longDate(d))}</td><td>${compact(d.tokens)}</td><td>${time(d.engagedMin)}</td><td>${time(d.lockedMin)}</td><td>${time(d.autopilotMin)}</td>` +
+          `<td>${esc(topLevel(d))}</td><td>${d.prompts}</td><td>${compact(d.chars)}</td><td>${compact(d.lines)}</td></tr>`,
+      )
+      .join('') +
+    '</tbody>';
 }
 
 function renderFoot() {
@@ -453,22 +853,65 @@ function renderFoot() {
 }
 
 function render() {
-  renderLevel();
-  renderStats();
-  renderToday();
-  renderDays();
-  renderWhy();
-  renderMore();
+  renderChrome();
+  if (page === 'today') {
+    renderLevel();
+    renderStats();
+    renderBurn();
+    renderPace();
+    renderLevelsToday();
+    renderWhy();
+    renderAlso();
+  } else {
+    renderHistory();
+  }
   renderFoot();
 }
 
+// ---------------------------------------------------------------- pages
+
+function show(next) {
+  page = next === 'history' ? 'history' : 'today';
+  $('pageToday').hidden = page !== 'today';
+  $('pageHistory').hidden = page !== 'history';
+  for (const tab of $('tabs').children) tab.setAttribute('aria-selected', String(tab.dataset.page === page));
+  try {
+    history.replaceState(null, '', page === 'history' ? '#history' : location.pathname);
+  } catch {
+    // the address is only a convenience
+  }
+  hideTip();
+  scrollTo(0, 0);
+  if (data) render();
+}
+$('tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('button[data-page]');
+  if (tab) show(tab.dataset.page);
+});
+if (location.hash === '#history') show('history');
+window.burnbot = { mini, fit: fitMini, show }; // handle for poking at the page from the console
+
+$('rangeSeg').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  range = btn.dataset.k;
+  for (const b of $('rangeSeg').children) b.setAttribute('aria-pressed', String(b === btn));
+  if (data) render();
+});
+
 // ---------------------------------------------------------------- wiring
 
-listen((next) => {
-  data = next;
-  render();
-  welcome();
-});
+listen(
+  (next) => {
+    data = next;
+    render();
+    welcome();
+  },
+  (next) => {
+    older = { days: next.days ?? [], projects: next.projects ?? [] };
+    if (data) render();
+  },
+);
 // The app tells the desk screen what each level is called; the names live in robot.js.
 tell('levels', { names: Object.fromEntries(STATE_ORDER.map((s) => [s, STATE_META[s].label])) });
 
@@ -477,18 +920,10 @@ addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => data && render(), 120);
 });
-// The heatmap is measured when its section opens.
+// What is folded away is drawn when it opens.
 for (const fold of document.querySelectorAll('details.fold')) fold.addEventListener('toggle', () => data && render());
 
 setInterval(() => drawLogo($('logo'), state, performance.now() / 1000), 125);
-
-$('daysSeg').addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  dayMetric = btn.dataset.k;
-  for (const b of $('daysSeg').children) b.setAttribute('aria-pressed', String(b === btn));
-  if (data) renderDays();
-});
 
 $('deskFlip').addEventListener('click', () => tell('flipDesk'));
 

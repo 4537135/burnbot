@@ -43,7 +43,7 @@ inline uint16_t mix(uint16_t under, uint16_t over, int a) {      // a: 0 nothing
 enum Look { ASLEEP, IDLE, WARMING, CRUISING, LOCKED, OVERDRIVE, AUTOPILOT };
 
 // One colour per level, cold to hot like a temperature scale (the same as on the Mac).
-const uint16_t ACCENT[7] = {rgb(0x6f83ad), rgb(0x7db4dc), rgb(0x4fc9a4), rgb(0xf4c542), rgb(0xff8f3a), rgb(0xff4f5e), rgb(0xa78bfa)};
+const uint16_t ACCENT[7] = {rgb(0x6f83ad), rgb(0x62a8f5), rgb(0x4fc9a4), rgb(0xf4c542), rgb(0xff8030), rgb(0xf43f6b), rgb(0xa78bfa)};
 const uint16_t GROUND[7] = {rgb(0x0a0f1a), rgb(0x0b0d12), rgb(0x0b0d12), rgb(0x0b0d12), rgb(0x120e0b), rgb(0x170b0c), rgb(0x0e0c18)};
 const uint16_t INK = rgb(0xeef1f6), DIM = rgb(0x6c7686);
 

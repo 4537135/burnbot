@@ -3,7 +3,8 @@
 Burnbot turns how hard you work with your AI coding agent into a level:
 asleep, chilling, warming up, cooking, locked in, on fire. A small steel robot
 shows the level you are on, its face glowing in the level's colour, standing
-in a fire that burns higher the more tokens you burn.
+in a fire that burns higher the more tokens you burn. All of it is pixel art,
+down to the letters.
 
 The levels are calibrated to you. "Locked in" means well above your own
 normal, whatever your normal is.
@@ -13,11 +14,13 @@ by, affiliated with, or endorsed by Anthropic.
 
 ![The robot window](preview/robot.png)
 
-![The dashboard](preview/dashboard.png)
+![The dashboard: today](preview/dashboard.png)
+
+![The dashboard: history](preview/history.png)
 
 ## Install
 
-1. Download `Burnbot-1.0.zip` from the [Releases page](https://github.com/megamind-rgb/burnbot/releases).
+1. Download the newest `Burnbot` zip from the [Releases page](https://github.com/megamind-rgb/burnbot/releases).
 2. Unzip it and drag **Burnbot** into Applications.
 3. Open it.
 
@@ -42,10 +45,14 @@ After that there are two windows:
   level and tokens per hour. Make it bigger and it also shows the whole
   ladder, today's burn and what the next level takes. Drag it anywhere; it
   remembers. Double-click it to fill the screen.
-- **The dashboard.** Your level and the ladder, four numbers, a timeline of
-  today with your level under it, and the last 30 days. Two folded sections
-  hold the rest: why you are on this level, and the detail (typing, code
-  written, a weekday-by-hour heatmap, tokens by project, every day as a table).
+- **The dashboard**, in two pages.
+  - **Today** starts with your level and the ladder, then four numbers, then
+    today's graphs: tokens through the day coloured by level, today against
+    your usual day, the time spent on each level, and the three signals that
+    set your level right now.
+  - **History** covers the last 7 days, the last 30, or everything on record:
+    tokens per day, hours on each level per day, where the time went, tokens
+    by project, and every day drawn hour by hour.
 
 Plug in a second monitor and the robot moves there and goes fullscreen by
 itself; unplug it and the robot comes back to its corner.
@@ -183,6 +190,12 @@ instead of rebuilding:
 open Burnbot.app --args --pages "$PWD/public"
 ```
 
+Everything on screen is drawn in pixels. The letters are Burnbot's own pixel
+font: the capitals and digits are the 5 × 7 letters the desk screen uses, and
+`tools/make-font.py` turns them, with small letters to match, into the font
+in `public/pixel.css`. Change a letter there and run it again. One pixel of a
+letter is a tenth of the font size, so keep text sizes to multiples of 5px.
+
 Level names and colours are in `STATE_META` at the top of `public/robot.js`,
 and the robot is drawn by `drawRobot` in the same file. The desk screen picks
 the names up from there, and has its own copy of the robot and colours in
@@ -197,7 +210,7 @@ Other options, mostly for testing:
 | `--root <folder>` | Read session logs from here instead of `~/.claude/projects` |
 | `--background` | Start without taking the focus (use with `open -g`) |
 | `--snapshot <folder>` | Write a picture of each window a few seconds after start |
-| `--dump-state <file>` | Write what the tracker sees as JSON and quit |
+| `--dump-state <file>` | Write what the tracker sees as JSON and quit. Served as `state.json` next to the pages, it lets you open the dashboard in a browser |
 
 A window that is completely covered is not animated by macOS, so its picture
 comes out without the robot, the fire and the big numbers.
@@ -214,6 +227,7 @@ public/               the dashboard and the robot window
 desk/                 the desk screen's own program, its simulator and upload command
 tools/audit.py        independent recount of the tokens
 tools/make-icon.mjs   redraws the app icon from the robot (needs Node.js)
+tools/make-font.py    draws the pixel font into public/pixel.css
 ```
 
 ## Names and trademarks

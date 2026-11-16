@@ -58,7 +58,8 @@ if let out = argument("--dump-state") {
     let tracker = Tracker(root: logsRoot, storePath: "/nonexistent/store.json")
     tracker.scanAll()
     let now = argument("--now").flatMap(Double.init) ?? Date().timeIntervalSince1970 * 1000
-    let state = analyze(files: Array(tracker.files.values), lastCallMs: tracker.lastCallMs, lastPromptMs: tracker.lastPromptMs, now: now)
+    var state = analyze(files: Array(tracker.files.values), lastCallMs: tracker.lastCallMs, lastPromptMs: tracker.lastPromptMs, now: now)
+    state["older"] = olderHistory(files: Array(tracker.files.values), now: now)
     try? JSONSerialization.data(withJSONObject: state).write(to: URL(fileURLWithPath: out))
     exit(0)
 }
@@ -81,6 +82,9 @@ final class Engine {
                          "locked": "Locked in", "overdrive": "On fire", "autopilot": "Autopilot"]
     /// Called on the main thread with the state as JSON, about every two seconds.
     var onState: ((String) -> Void)?
+    /// Called on the main thread with the days before the 30-day window, when they have been worked out.
+    var onOlder: ((String) -> Void)?
+    private var olderDay = -1
 
     init(root: String, storePath: String) {
         tracker = Tracker(root: root, storePath: storePath)
@@ -98,6 +102,7 @@ final class Engine {
             log(String(format: "Read %d session logs in %.1fs%@", self.tracker.files.count, Date().timeIntervalSince(began),
                        restored ? " (history restored)" : ""))
             self.tracker.save()
+            self.refreshOlder()
             let timer = DispatchSource.makeTimerSource(queue: self.queue)
             timer.schedule(deadline: .now() + 1, repeating: 1)
             timer.setEventHandler { self.step() }
@@ -118,6 +123,19 @@ final class Engine {
         if tick % 2 == 0 { deliver() }
         if let state { desk.send(deskLine(state, names: names)) }
         if tick % 300 == 0 { tracker.save() }
+        if tick % 60 == 0 { refreshOlder() }
+    }
+
+    /// Days older than the live window never change, so they are only worked out again when the day does.
+    private func refreshOlder() {
+        let day = Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0
+        guard day != olderDay else { return }
+        olderDay = day
+        let began = Date()
+        let older = olderHistory(files: Array(tracker.files.values), now: Date().timeIntervalSince1970 * 1000)
+        guard let data = try? JSONSerialization.data(withJSONObject: older), let text = String(data: data, encoding: .utf8) else { return }
+        log(String(format: "Older history: %d days before the last 30, in %.2fs", (older["days"] as? [Any])?.count ?? 0, Date().timeIntervalSince(began)))
+        DispatchQueue.main.async { self.onOlder?(text) }
     }
 
     private func refresh() {
@@ -133,7 +151,7 @@ final class Engine {
         let progress = tracker.scan
         whole["scan"] = ["phase": progress.phase, "done": progress.done, "total": progress.total]
         var extra = meta
-        extra["source"] = tracker.root
+        extra["source"] = (tracker.root as NSString).abbreviatingWithTildeInPath
         extra["foundLogs"] = tracker.foundLogs
         extra["desk"] = desk.status
         whole["meta"] = extra
@@ -188,6 +206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var stageIsFull: Bool { robotStage?.styleMask.contains(.fullScreen) == true }
     private var listening: [WKWebView] = []         // pages that have asked for state
     private var latest = ""
+    private var latestOlder = ""
     /// Keep the robot fullscreen on a second screen whenever one is attached.
     private var followSecondScreen = true
     /// In a window, float the robot above everything so it is always in view.
@@ -203,6 +222,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         log("Burnbot \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "") starting\(fresh ? " (as a first launch)" : "")")
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         engine.onState = { [weak self] json in self?.push(json) }
+        engine.onOlder = { [weak self] json in
+            guard let self else { return }
+            self.latestOlder = json
+            for view in self.listening { view.evaluateJavaScript("window.burnbotOlder && window.burnbotOlder(\(json))") }
+        }
         refreshMeta()
         engine.start()
         let second = secondScreen()
@@ -302,6 +326,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         case "ready":
             guard let view = message.webView else { return }
             if !listening.contains(where: { $0 === view }) { listening.append(view) }
+            if !latestOlder.isEmpty { view.evaluateJavaScript("window.burnbotOlder && window.burnbotOlder(\(latestOlder))") }
             if !latest.isEmpty { view.evaluateJavaScript("window.burnbotReceive && window.burnbotReceive(\(latest))") }
         case "levels":
             if let names = body["names"] as? [String: String] { engine.setNames(names) }
@@ -701,20 +726,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         log("Windows: \(frames.joined(separator: "; "))")
         capture(robotView, as: "robot", in: directory)
 
-        // the dashboard from the top, then scrolled down with its folded sections open
-        let rest = {
-            self.capture(self.dashboardView, as: "dashboard", in: directory) {
-                self.dashboardView?.evaluateJavaScript("document.querySelectorAll('details.fold').forEach((d) => (d.open = true)); window.scrollTo(0, 560)") { _, _ in
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                        self.capture(self.dashboardView, as: "dashboard-2", in: directory) {
-                            self.dashboardView?.evaluateJavaScript("window.scrollTo(0, document.body.scrollHeight)") { _, _ in
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self.capture(self.dashboardView, as: "dashboard-3", in: directory) }
-                            }
-                        }
-                    }
-                }
+        // Today from the top and further down, then History the same way.
+        var shots: [(name: String, script: String)] = [
+            ("dashboard", "window.scrollTo(0, 0)"),
+            ("dashboard-2", "window.scrollTo(0, 620)"),
+            ("dashboard-3", "window.scrollTo(0, document.body.scrollHeight)"),
+            ("history", "window.burnbot.show('history'); window.scrollTo(0, 0)"),
+            ("history-2", "window.scrollTo(0, 700)"),
+            ("history-3", "document.querySelectorAll('details.fold').forEach((d) => (d.open = true)); window.scrollTo(0, document.body.scrollHeight)"),
+        ]
+        func next() {
+            guard !shots.isEmpty else {
+                // leave the dashboard the way a person would find it
+                self.dashboardView?.evaluateJavaScript("document.querySelectorAll('details.fold').forEach((d) => (d.open = false)); window.burnbot.show('today')")
+                return
+            }
+            let shot = shots.removeFirst()
+            self.dashboardView?.evaluateJavaScript(shot.script) { _, _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.capture(self.dashboardView, as: shot.name, in: directory) { next() } }
             }
         }
+        let rest = { next() }
         guard fresh else { return rest() }
         capture(dashboardView, as: "welcome", in: directory) {
             self.dashboardView?.evaluateJavaScript("document.getElementById('welcome').hidden ? 'not shown' : (document.getElementById('welcomeGo').click(), 'shown, Start pressed')") { value, _ in

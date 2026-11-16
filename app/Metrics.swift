@@ -101,7 +101,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
     var sessions = [Int](repeating: 0, count: N), agents = [Int](repeating: 0, count: N)
     var split = [Double](repeating: 0, count: 6)        // input, output, cacheWrite, cacheRead, thinking, calls
     var familyToday = [Double](repeating: 0, count: modelFamilies.count), familyWeek = familyToday
-    var projectWeek: [String: Double] = [:], projectToday: [String: Double] = [:]
+    var projectWeek: [String: Double] = [:], projectToday: [String: Double] = [:], projectMonth: [String: Double] = [:]
     var projectOrder: [String] = []
 
     for file in files {
@@ -120,10 +120,11 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
             lines[i] += v[F.lines]
             calls[i] += v[F.calls]
             if file.side { agents[i] += 1 } else { sessions[i] += 1 }
+            if projectMonth[name] == nil { projectOrder.append(name) }
+            projectMonth[name, default: 0] += total
             if minute >= weekStartMin {
                 for k in 0..<familyWeek.count { familyWeek[k] += v[F.family + k] }
                 if recent {
-                    if projectWeek[name] == nil { projectOrder.append(name) }
                     projectWeek[name, default: 0] += total
                     if i >= todayIdx { projectToday[name, default: 0] += total }
                 }
@@ -250,6 +251,15 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
         previous = s
     }
 
+    /// The state most of the minutes from a up to b were in; asleep only wins outright.
+    func dominant(_ a: Int, _ b: Int) -> Int {
+        var tally = [Int](repeating: 0, count: stateNames.count)
+        for i in a..<b { tally[state[i]] += 1 }
+        var best = 0
+        for s in 1..<tally.count where tally[s] >= tally[best] && tally[s] > 0 { best = s }
+        return best
+    }
+
     // ---- days ----
     struct Day { var t = 0.0, a = 0, b = 0, values: [String: Any] = [:], tokens = 0.0, engaged = 0, active = 0.0 }
     var days: [Day] = []
@@ -259,9 +269,13 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
         let b = min(N, Int(dayStart(now, d - (cfg.days - 2)) / 60000) - startMin)
         var locked = 0, engaged = 0, autopilot = 0
         var peak = 0.0
+        var levelMin = [Int](repeating: 0, count: stateNames.count)     // minutes in each state
+        var strip = ""                                                  // the state of each quarter hour, one digit each
         if a < b {
+            for q in stride(from: a, to: b, by: 15) { strip.append(Character(UnicodeScalar(UInt8(48 + dominant(q, min(b, q + 15)))))) }
             for i in a..<b {
                 let s = state[i]
+                levelMin[s] += 1
                 if s == S.locked || s == S.overdrive { locked += 1 }
                 if s >= S.warming && s <= S.overdrive { engaged += 1 }
                 if s == S.autopilot { autopilot += 1 }
@@ -277,6 +291,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
             "chars": pChars[b] - pChars[a], "pasted": pPasted[b] - pPasted[a], "tools": pTools[b] - pTools[a],
             "lines": pLines[b] - pLines[a], "activeMin": day.active, "engagedMin": engaged, "lockedMin": locked,
             "autopilotMin": autopilot, "peakPerHour": rounded(peak * 60 / Double(cfg.burnWindow)),
+            "levelMin": levelMin, "strip": strip,
         ]
         days.append(day)
     }
@@ -285,6 +300,8 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
     let typicalDay = median(past.map { $0.tokens })
     let usualByNow = median(past.map { pTok[min($0.b, $0.a + minuteOfDay + 1)] - pTok[$0.a] })
     let typicalEngaged = median(past.map { Double($0.engaged) })
+    // The same, for every quarter hour of the day: the curve a usual day follows.
+    let usualCurve = (1...96).map { q in median(past.map { pTok[min($0.b, $0.a + q * 15)] - pTok[$0.a] }) }
 
     // The level this person usually reaches around this time of day: the middle
     // of the best level hit within half an hour either side, over their working days.
@@ -332,11 +349,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
         binChars.append(pChars[b] - pChars[a])
         binPrompts.append(pPrompts[b] - pPrompts[a])
         binTools.append(pTools[b] - pTools[a])
-        var tally = [Int](repeating: 0, count: stateNames.count)
-        for i in a..<b { tally[state[i]] += 1 }
-        var best = 0
-        for s in 1..<tally.count where tally[s] >= tally[best] && tally[s] > 0 { best = s }
-        binState.append(best)
+        binState.append(dominant(a, b))
     }
 
     // ---- right now ----
@@ -397,6 +410,8 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
     today["typicalDay"] = typicalDay
     today["usualByNow"] = usualByNow
     today["typicalEngaged"] = rounded(typicalEngaged)
+    today["usualCurve"] = usualCurve
+    today["usualDays"] = past.count
     today["bins"] = ["start": today0, "step": step, "tokens": binTokens, "chars": binChars, "prompts": binPrompts, "tools": binTools, "state": binState] as [String: Any]
     today["models"] = family(familyToday)
     today["projects"] = top(projectToday)
@@ -450,6 +465,42 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
             "heat": heat,
             "models": family(familyWeek),
             "projects": top(projectWeek),
+            "projectsMonth": top(projectMonth),
         ] as [String: Any],
     ]
+}
+
+/// The days before the calibration window, oldest first, and tokens by project
+/// over all time. Each stretch of older days is judged the way it was at the
+/// time: against the 30 days that ended with it. Old days do not change, so
+/// this is worked out once a day rather than every few seconds.
+func olderHistory(files: [LogFile], now: Double, config cfg: Config = Config()) -> [String: Any] {
+    var earliest = Int.max
+    var totals: [String: Double] = [:]
+    for file in files {
+        var sum = 0.0
+        for (minute, v) in file.minutes {
+            if minute < earliest { earliest = minute }
+            sum += totalTokens(v)
+        }
+        if sum > 0 { totals[file.project.isEmpty ? "unknown" : file.project, default: 0] += sum }
+    }
+    var days: [[String: Any]] = []
+    if earliest != Int.max {
+        let firstDay = dayStart(Double(earliest) * 60000)
+        var end = dayStart(now, -(cfg.days - 1))        // where the live window begins
+        while end > firstDay {
+            let stretch = analyze(files: files, lastCallMs: 0, lastPromptMs: 0, now: end - 1, config: cfg)
+            let found = ((stretch["history"] as? [String: Any])?["days"] as? [[String: Any]]) ?? []
+            days.insert(contentsOf: found.filter { ($0["t"] as? Double ?? 0) >= firstDay }.map { day in
+                var day = day
+                day["strip"] = nil
+                return day
+            }, at: 0)
+            end = dayStart(end - 1, -(cfg.days - 1))
+        }
+    }
+    let projects = totals.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
+        .map { ["name": $0.key, "tokens": $0.value] as [String: Any] }
+    return ["days": days, "projects": projects]
 }

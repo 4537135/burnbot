@@ -9,11 +9,11 @@
 // The colours run from cold to hot, like a temperature scale.
 export const STATE_META = {
   asleep: { level: 0, label: 'Asleep', color: '#6f83ad', blurb: 'Nothing happening for a while' },
-  idle: { level: 1, label: 'Chilling', color: '#7db4dc', blurb: 'Quiet for a few minutes' },
+  idle: { level: 1, label: 'Chilling', color: '#62a8f5', blurb: 'Quiet for a few minutes' },
   warming: { level: 2, label: 'Warming up', color: '#4fc9a4', blurb: 'Working, below your usual pace' },
   cruising: { level: 3, label: 'Cooking', color: '#f4c542', blurb: 'Working at your usual pace' },
-  locked: { level: 4, label: 'Locked in', color: '#ff8f3a', blurb: 'Well above your normal, and sustained' },
-  overdrive: { level: 5, label: 'On fire', color: '#ff4f5e', blurb: 'Your top gear' },
+  locked: { level: 4, label: 'Locked in', color: '#ff8030', blurb: 'Well above your normal, and sustained' },
+  overdrive: { level: 5, label: 'On fire', color: '#f43f6b', blurb: 'Your top gear' },
   autopilot: { level: null, label: 'Autopilot', color: '#a78bfa', blurb: 'Agents are working without you' },
 };
 export const STATE_ORDER = ['asleep', 'idle', 'warming', 'cruising', 'locked', 'overdrive', 'autopilot'];
