@@ -1,14 +1,22 @@
-// Burnbot.app: a native Mac shell around the Burnbot tracker.
+// Burnbot.app: tracks Claude Code token burn on this Mac, turns it into a
+// level calibrated to you, and shows it on two windows of its own (the
+// dashboard and the robot) and, if one is plugged in, a desk screen.
 //
-// It starts the tracker (a small Node server bundled in the app), then shows
-// two windows of its own: the dashboard, and the robot. The robot goes
-// fullscreen on a second screen whenever one is attached, and sits in a normal
-// window when there is only one screen.
+// Everything runs inside the app: there is nothing to install and nothing is
+// sent anywhere. The screens are the pages in public/; the tracker is
+// Tracker.swift and Metrics.swift.
 //
-// Launch with `--snapshot <folder>` to write PNGs of both windows a few seconds
-// after start, for checking that they render.
+// Options, for testing and for working on the screens:
+//   --pages <folder>      serve the screens from a folder instead of the app (edit, then ⌘R)
+//   --root <folder>       read session logs from here instead of ~/.claude/projects
+//   --data <folder>       keep history here instead of Application Support
+//   --fresh               behave like a first launch: no saved history, show the welcome
+//   --background          start without taking the focus (pair with `open -g`)
+//   --snapshot <folder>   write a picture of each window a few seconds after start
+//   --dump-state <file>   print what the tracker sees as JSON and quit (add --now <ms>)
 
 import Cocoa
+import ServiceManagement
 import WebKit
 
 // MARK: - Logging (~/Library/Logs/Burnbot.log)
@@ -24,7 +32,6 @@ let logURL: URL = {
 
 func log(_ message: String) {
     let line = "\(ISO8601DateFormatter().string(from: Date())) \(message)\n"
-    // O_APPEND, because the tracker writes to the same file from another process.
     let fd = open(logURL.path, O_WRONLY | O_APPEND)
     guard fd >= 0 else { return }
     _ = line.withCString { write(fd, $0, strlen($0)) }
@@ -37,52 +44,127 @@ func argument(_ name: String) -> String? {
     return args[i + 1]
 }
 
-// MARK: - Finding the tracker
+let fresh = CommandLine.arguments.contains("--fresh")
+let logsRoot = argument("--root") ?? NSHomeDirectory() + "/.claude/projects"
+let dataFolder: String = {
+    if let chosen = argument("--data") { return chosen }
+    if fresh { return NSTemporaryDirectory() + "burnbot-fresh-\(ProcessInfo.processInfo.processIdentifier)" }
+    return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Burnbot").path
+}()
 
-enum Probe { case burnbot, somethingElse, nothing }
+// MARK: - Headless: what does the tracker see?
 
-/// What, if anything, answers on a local port.
-func probe(_ port: Int) -> Probe {
-    var request = URLRequest(url: URL(string: "http://localhost:\(port)/api/state")!)
-    request.timeoutInterval = 2
-    request.cachePolicy = .reloadIgnoringLocalCacheData
-    let done = DispatchSemaphore(value: 0)
-    var result = Probe.nothing
-    URLSession.shared.dataTask(with: request) { data, response, error in
-        if let http = response as? HTTPURLResponse {
-            let head = String(decoding: (data ?? Data()).prefix(300), as: UTF8.self)
-            result = http.statusCode == 200 && head.contains("\"scan\"") ? .burnbot : .somethingElse
-        } else if let error = error as NSError?, error.code == NSURLErrorTimedOut {
-            result = .somethingElse
-        }
-        done.signal()
-    }.resume()
-    done.wait()
-    return result
+if let out = argument("--dump-state") {
+    let tracker = Tracker(root: logsRoot, storePath: "/nonexistent/store.json")
+    tracker.scanAll()
+    let now = argument("--now").flatMap(Double.init) ?? Date().timeIntervalSince1970 * 1000
+    let state = analyze(files: Array(tracker.files.values), lastCallMs: tracker.lastCallMs, lastPromptMs: tracker.lastPromptMs, now: now)
+    try? JSONSerialization.data(withJSONObject: state).write(to: URL(fileURLWithPath: out))
+    exit(0)
 }
 
-/// Node is not on a GUI app's PATH, so look where it usually lives, then ask the login shell.
-func findNode() -> String? {
-    let home = NSHomeDirectory()
-    var candidates: [String] = []
-    if let override = ProcessInfo.processInfo.environment["BURNBOT_NODE"] { candidates.append(override) }
-    if let saved = Bundle.main.url(forResource: "node-path", withExtension: nil),
-       let text = try? String(contentsOf: saved, encoding: .utf8) {
-        candidates.append(text.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-    candidates += ["\(home)/.local/node/bin/node", "/opt/homebrew/bin/node", "/usr/local/bin/node", "\(home)/.volta/bin/node"]
-    if let found = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) { return found }
+// MARK: - The engine: tracker + desk screen, off the main thread
 
-    let shell = Process()
-    shell.executableURL = URL(fileURLWithPath: "/bin/zsh")
-    shell.arguments = ["-lic", "command -v node"]
-    let pipe = Pipe()
-    shell.standardOutput = pipe
-    shell.standardError = FileHandle.nullDevice
-    guard (try? shell.run()) != nil else { return nil }
-    shell.waitUntilExit()
-    let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-    return output.split(separator: "\n").map(String.init).last(where: { $0.hasPrefix("/") && FileManager.default.isExecutableFile(atPath: $0) })
+final class Engine {
+    let tracker: Tracker
+    private let desk = DeskScreen()
+    private let queue = DispatchQueue(label: "burnbot.engine", qos: .utility)
+    private var timer: DispatchSourceTimer?
+    private var state: [String: Any]?
+    private var json = ""
+    private var analyzedAt = 0.0
+    private var analyzedMinute = 0
+    private var tick = 0
+    private var meta: [String: Any] = [:]
+    /// What each state is called on screen. The pages own the names and send them over.
+    private var names = ["asleep": "Asleep", "idle": "Chilling", "warming": "Warming up", "cruising": "Cooking",
+                         "locked": "Locked in", "overdrive": "On fire", "autopilot": "Autopilot"]
+    /// Called on the main thread with the state as JSON, about every two seconds.
+    var onState: ((String) -> Void)?
+
+    init(root: String, storePath: String) {
+        tracker = Tracker(root: root, storePath: storePath)
+        desk.log = { log($0) }
+    }
+
+    func start() {
+        queue.async {
+            let restored = self.tracker.load()
+            let began = Date()
+            // Publish once as soon as today's logs are in, then again when all of history is.
+            self.tracker.scanAll { self.refresh(); self.deliver() }
+            self.refresh()
+            self.deliver()
+            log(String(format: "Read %d session logs in %.1fs%@", self.tracker.files.count, Date().timeIntervalSince(began),
+                       restored ? " (history restored)" : ""))
+            self.tracker.save()
+            let timer = DispatchSource.makeTimerSource(queue: self.queue)
+            timer.schedule(deadline: .now() + 1, repeating: 1)
+            timer.setEventHandler { self.step() }
+            timer.resume()
+            self.timer = timer
+        }
+    }
+
+    private func step() {
+        tick += 1
+        let changed = tick % 2 == 0 ? tracker.poll() : false
+        let now = Date().timeIntervalSince1970 * 1000
+        if changed || state == nil || Int(now / 60000) != analyzedMinute || now - analyzedAt >= 10_000 {
+            refresh()
+        } else if tick % 2 == 0 {
+            encode()                    // the desk screen may have come or gone
+        }
+        if tick % 2 == 0 { deliver() }
+        if let state { desk.send(deskLine(state, names: names)) }
+        if tick % 300 == 0 { tracker.save() }
+    }
+
+    private func refresh() {
+        let now = Date().timeIntervalSince1970 * 1000
+        state = analyze(files: Array(tracker.files.values), lastCallMs: tracker.lastCallMs, lastPromptMs: tracker.lastPromptMs, now: now)
+        analyzedAt = now
+        analyzedMinute = Int(now / 60000)
+        encode()
+    }
+
+    private func encode() {
+        guard var whole = state else { return }
+        let progress = tracker.scan
+        whole["scan"] = ["phase": progress.phase, "done": progress.done, "total": progress.total]
+        var extra = meta
+        extra["source"] = tracker.root
+        extra["foundLogs"] = tracker.foundLogs
+        extra["desk"] = desk.status
+        whole["meta"] = extra
+        if let data = try? JSONSerialization.data(withJSONObject: whole), let text = String(data: data, encoding: .utf8) { json = text }
+    }
+
+    private func deliver() {
+        let text = json
+        guard !text.isEmpty else { return }
+        DispatchQueue.main.async { self.onState?(text) }
+    }
+
+    /// Things only the main thread knows (screens, preferences), for the pages.
+    func setMeta(_ value: [String: Any]) {
+        queue.async {
+            self.meta = value
+            self.encode()
+            self.deliver()
+        }
+    }
+
+    func setNames(_ value: [String: String]) { queue.async { self.names = value } }
+    func flipDesk() { queue.async { self.desk.flip() } }
+
+    func stop() {
+        queue.sync {
+            timer?.cancel()
+            tracker.save()
+            desk.shutDown()
+        }
+    }
 }
 
 extension NSScreen {
@@ -95,114 +177,51 @@ extension NSScreen {
 // MARK: - The app
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
-    private var server: Process?
-    private var port = 4747
-    private var failure = "The tracker did not start."
+    private let engine = Engine(root: logsRoot, storePath: dataFolder + "/store.json")
+    private let pages = Pages(folder: argument("--pages").map { URL(fileURLWithPath: $0) } ?? Bundle.main.resourceURL!.appendingPathComponent("public"))
     private var dashboard: NSWindow?
     private var dashboardView: WKWebView?
-    private var robot: NSWindow?
+    private var robotPanel: NSPanel?                // the small robot, floating over everything
+    private var robotStage: NSWindow?               // the robot filling a whole screen
     private var robotView: WKWebView?
+    private var robotShown: Bool { robotPanel?.isVisible == true || robotStage?.isVisible == true }
+    private var stageIsFull: Bool { robotStage?.styleMask.contains(.fullScreen) == true }
+    private var listening: [WKWebView] = []         // pages that have asked for state
+    private var latest = ""
     /// Keep the robot fullscreen on a second screen whenever one is attached.
     private var followSecondScreen = true
     /// In a window, float the robot above everything so it is always in view.
-    private var keepOnTop = UserDefaults.standard.object(forKey: "keepRobotOnTop") as? Bool ?? true
+    private var keepOnTop = fresh ? true : UserDefaults.standard.object(forKey: "keepRobotOnTop") as? Bool ?? true
+    private var welcomed = !fresh && UserDefaults.standard.bool(forKey: "welcomed")
     private var afterExitFullScreen: (() -> Void)?
     private var awake: NSObjectProtocol?
-
-    private var base: String { "http://localhost:\(port)" }
 
     // MARK: Launch
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
-        log("Burnbot \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "") starting")
+        log("Burnbot \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "") starting\(fresh ? " (as a first launch)" : "")")
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
-        DispatchQueue.global(qos: .userInitiated).async {
-            let ok = self.startServer()
-            DispatchQueue.main.async { ok ? self.openWindows() : self.reportFailure() }
-        }
-    }
-
-    /// Reuses a tracker that is already running, otherwise starts the bundled one.
-    private func startServer() -> Bool {
-        for candidate in 4747...4756 {
-            switch probe(candidate) {
-            case .burnbot:
-                port = candidate
-                log("Using the tracker already running on port \(candidate)")
-                return true
-            case .somethingElse:
-                continue
-            case .nothing:
-                guard launchServer(on: candidate) else { return false }
-                port = candidate
-                for _ in 0..<80 {
-                    if probe(candidate) == .burnbot { return true }
-                    if server?.isRunning == false { break }
-                    Thread.sleep(forTimeInterval: 0.25)
-                }
-                failure = "The tracker started but did not answer. See ~/Library/Logs/Burnbot.log."
-                return false
-            }
-        }
-        failure = "Ports 4747 to 4756 are all in use by other programs."
-        return false
-    }
-
-    private func launchServer(on port: Int) -> Bool {
-        guard let node = findNode() else {
-            failure = "Burnbot needs Node.js 20 or newer. Install it from nodejs.org and open Burnbot again."
-            return false
-        }
-        guard let code = Bundle.main.resourceURL?.appendingPathComponent("server") else { return false }
-        let data = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Burnbot")
-        try? FileManager.default.createDirectory(at: data, withIntermediateDirectories: true)
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: node)
-        process.arguments = [code.appendingPathComponent("server.mjs").path, "--port", "\(port)", "--parent", "\(ProcessInfo.processInfo.processIdentifier)"]
-        process.currentDirectoryURL = code
-        var environment = ProcessInfo.processInfo.environment
-        environment["BURNBOT_DATA"] = data.path
-        process.environment = environment
-        let fd = open(logURL.path, O_WRONLY | O_APPEND)
-        if fd >= 0 {
-            let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
-            process.standardOutput = handle
-            process.standardError = handle
-        }
-        do {
-            try process.run()
-        } catch {
-            failure = "Could not start the tracker: \(error.localizedDescription)"
-            return false
-        }
-        server = process
-        log("Started the tracker with \(node) on port \(port)")
-        return true
-    }
-
-    private func reportFailure() {
-        log("Failed: \(failure)")
-        let alert = NSAlert()
-        alert.messageText = "Burnbot could not start"
-        alert.informativeText = failure
-        alert.runModal()
-        NSApp.terminate(nil)
-    }
-
-    private func openWindows() {
-        showDashboard()
+        engine.onState = { [weak self] json in self?.push(json) }
+        refreshMeta()
+        engine.start()
         let second = secondScreen()
-        showRobot(on: second ?? NSScreen.screens[0], fullscreen: second != nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if CommandLine.arguments.contains("--background") {
+            ensureDashboard()
+            dashboard?.orderBack(nil)
+            showRobot(on: second ?? NSScreen.screens[0], fullscreen: second != nil)
+        } else {
+            showDashboard()
+            showRobot(on: second ?? NSScreen.screens[0], fullscreen: second != nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
         if let folder = argument("--snapshot") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 9) { self.snapshot(to: folder) }
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        server?.terminate()
+        engine.stop()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
@@ -212,10 +231,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return true
     }
 
-    // MARK: Web views
+    // MARK: Talking to the pages
+
+    private var openAtLogin: Bool { SMAppService.mainApp.status == .enabled }
+
+    /// What the pages need to know that only the app knows.
+    private func refreshMeta() {
+        let screens = NSScreen.screens.enumerated().map { index, screen in
+            ["index": index, "name": screen.localizedName, "width": screen.frame.width, "height": screen.frame.height, "primary": index == 0] as [String: Any]
+        }
+        engine.setMeta([
+            "firstRun": !welcomed,
+            "openAtLogin": openAtLogin,
+            "keepOnTop": keepOnTop,
+            "screens": screens,
+            "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
+        ])
+    }
+
+    private func push(_ json: String) {
+        latest = json
+        for view in listening { view.evaluateJavaScript("window.burnbotReceive && window.burnbotReceive(\(json))") }
+    }
 
     private func makeWebView() -> WKWebView {
         let configuration = WKWebViewConfiguration()
+        configuration.setURLSchemeHandler(pages, forURLScheme: Pages.scheme)
         configuration.userContentController.add(self, name: "burnbot")
         // Page errors are otherwise invisible in an app; send them to the log.
         let report = """
@@ -230,29 +271,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return view
     }
 
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        listening.removeAll { $0 === webView }      // the page is reloading; it will ask again
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         log("Loaded \(webView.url?.absoluteString ?? "?")")
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         log("Could not load \(webView.url?.absoluteString ?? "page"): \(error.localizedDescription)")
-        // The tracker may still be starting, or was restarted: try again shortly.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self, weak webView] in
-            guard let self, let webView else { return }
-            let path = webView === self.robotView ? "/display" : "/"
-            webView.load(URLRequest(url: URL(string: self.base + path)!))
-        }
     }
 
-    /// Links that would open a new tab: the level preview goes to the robot window, anything else to the browser.
+    /// Links that would open a new tab: the level preview goes to the robot window, web links to the browser.
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         guard let url = navigationAction.request.url else { return nil }
-        if url.host == "localhost", url.path == "/display" {
+        if url.scheme == Pages.scheme, url.path == "/display" {
             followSecondScreen = false
-            if robot == nil || robot?.isVisible == false { showRobot(on: dashboard?.screen ?? NSScreen.screens[0], fullscreen: false) }
+            if !robotShown { showRobot(on: dashboard?.screen ?? NSScreen.screens[0], fullscreen: false) }
             robotView?.load(URLRequest(url: url))
-            robot?.makeKeyAndOrderFront(nil)
-        } else {
+        } else if url.scheme == "https" {
             NSWorkspace.shared.open(url)
         }
         return nil
@@ -261,27 +299,74 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
         switch type {
+        case "ready":
+            guard let view = message.webView else { return }
+            if !listening.contains(where: { $0 === view }) { listening.append(view) }
+            if !latest.isEmpty { view.evaluateJavaScript("window.burnbotReceive && window.burnbotReceive(\(latest))") }
+        case "levels":
+            if let names = body["names"] as? [String: String] { engine.setNames(names) }
         case "error":
             log("Page error: \(body["text"] ?? "")")
+        case "welcomed":
+            welcomed = true
+            if !fresh { UserDefaults.standard.set(true, forKey: "welcomed") }
+            refreshMeta()
+        case "openAtLogin":
+            setOpenAtLogin(body["on"] as? Bool ?? false)
+        case "keepOnTop":
+            setKeepOnTop(body["on"] as? Bool ?? true)
         case "toggleFullscreen":
             toggleRobotFullScreen()
         case "robot":
             let screens = NSScreen.screens
             let index = body["index"] as? Int ?? 0
             let fullscreen = body["fullscreen"] as? Bool ?? false
-            let screen = fullscreen && index < screens.count ? screens[index] : (dashboard?.screen ?? screens[0])
             followSecondScreen = false
-            showRobot(on: screen, fullscreen: fullscreen)
+            showRobot(on: fullscreen && index < screens.count ? screens[index] : (dashboard?.screen ?? screens[0]), fullscreen: fullscreen)
         case "hideRobot":
             hideRobot()
+        case "flipDesk":
+            engine.flipDesk()
         default:
             break
         }
     }
 
+    // MARK: Preferences
+
+    private func setOpenAtLogin(_ on: Bool) {
+        guard on != openAtLogin else { return }
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+        } catch {
+            log("Open at login could not be changed: \(error.localizedDescription)")
+        }
+        refreshMeta()
+    }
+
+    @objc func toggleOpenAtLogin() { setOpenAtLogin(!openAtLogin) }
+
+    private func setKeepOnTop(_ on: Bool) {
+        keepOnTop = on
+        if !fresh { UserDefaults.standard.set(on, forKey: "keepRobotOnTop") }
+        applyWindowMode()
+        refreshMeta()
+    }
+
+    @objc func toggleKeepOnTop() { setKeepOnTop(!keepOnTop) }
+
+    @objc func showWelcome() {
+        showDashboard()
+        dashboardView?.evaluateJavaScript("window.burnbotWelcome && window.burnbotWelcome()")
+    }
+
+    @objc func openHelp() {
+        NSWorkspace.shared.open(URL(string: "https://github.com/megamind-rgb/burnbot#readme")!)
+    }
+
     // MARK: Windows
 
-    @objc func showDashboard() {
+    private func ensureDashboard() {
         if dashboard == nil {
             let view = makeWebView()
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1180, height: 820), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -294,11 +379,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             window.contentView = view
             window.center()
             window.setFrameAutosaveName("BurnbotDashboard")
-            view.load(URLRequest(url: URL(string: base + "/")!))
+            view.load(URLRequest(url: URL(string: Pages.home)!))
             dashboard = window
             dashboardView = view
         }
+    }
+
+    @objc func showDashboard() {
+        ensureDashboard()
         dashboard?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     /// The screen the robot should take over by itself: never the primary one.
@@ -315,70 +405,104 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return NSRect(x: area.maxX - width - 24, y: area.minY + 24, width: width, height: height)
     }
 
-    /// In a window the robot floats over everything, on every desktop and over
-    /// other apps' fullscreen, the way a second screen would always be in view.
+    private func robotWebView() -> WKWebView {
+        if let view = robotView { return view }
+        let view = makeWebView()
+        view.load(URLRequest(url: URL(string: Pages.home + "display")!))
+        robotView = view
+        return view
+    }
+
+    /// On top, the small robot floats over everything: every desktop, and other
+    /// apps' fullscreen windows too, the way a second screen would always be in view.
     private func applyWindowMode() {
-        guard let window = robot, !window.styleMask.contains(.fullScreen) else { return }
-        window.level = keepOnTop ? .floating : .normal
-        window.collectionBehavior = keepOnTop ? [.canJoinAllSpaces, .fullScreenAuxiliary] : [.fullScreenPrimary]
+        guard let panel = robotPanel else { return }
+        panel.level = keepOnTop ? .floating : .normal
+        panel.isFloatingPanel = keepOnTop
+        panel.collectionBehavior = keepOnTop ? [.canJoinAllSpaces, .fullScreenAuxiliary] : []
     }
 
-    private func enterFullScreen(_ window: NSWindow) {
-        guard !window.styleMask.contains(.fullScreen) else { return }
-        window.level = .normal
-        window.collectionBehavior = [.fullScreenPrimary]
-        window.toggleFullScreen(nil)
+    /// The small robot. A panel that does not take the focus, which is what
+    /// lets it stay visible over another app's fullscreen window.
+    private func showRobotPanel(on screen: NSScreen?) {
+        if stageIsFull {
+            afterExitFullScreen = { [weak self] in self?.showRobotPanel(on: screen) }
+            robotStage?.toggleFullScreen(nil)
+            return
+        }
+        robotStage?.orderOut(nil)
+        if robotPanel == nil {
+            let home = screen ?? NSScreen.screens[0]
+            let panel = NSPanel(contentRect: cornerFrame(on: home), styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel], backing: .buffered, defer: false)
+            panel.title = "Burnbot Robot"
+            panel.appearance = NSAppearance(named: .darkAqua)
+            panel.titleVisibility = .hidden
+            panel.titlebarAppearsTransparent = true
+            panel.backgroundColor = .black
+            panel.isReleasedWhenClosed = false
+            panel.hidesOnDeactivate = false
+            panel.becomesKeyOnlyIfNeeded = true
+            panel.minSize = NSSize(width: 360, height: 202)
+            panel.delegate = self
+            // Remember where the person puts it.
+            if fresh || !panel.setFrameUsingName("BurnbotRobot") { panel.setFrame(cornerFrame(on: home), display: false) }
+            if !fresh { panel.setFrameAutosaveName("BurnbotRobot") }
+            robotPanel = panel
+        }
+        guard let panel = robotPanel else { return }
+        if let screen, panel.screen != screen { panel.setFrame(cornerFrame(on: screen), display: true) }
+        if panel.contentView !== robotView { panel.contentView = robotWebView() }
+        applyWindowMode()
+        // Regardless: the robot should come into view even when another app has the focus.
+        // (macOS also stops animating a window that is completely covered.)
+        panel.orderFrontRegardless()
+        log("Robot shown in a window on \(panel.screen?.localizedName ?? "?")")
+        updateAwake()
     }
 
-    private func showRobot(on screen: NSScreen, fullscreen: Bool) {
-        if robot == nil {
-            let view = makeWebView()
-            let window = NSWindow(contentRect: cornerFrame(on: screen), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+    /// The robot filling a whole screen, as a normal fullscreen window.
+    private func showRobotStage(on screen: NSScreen) {
+        if stageIsFull {
+            if robotStage?.screen == screen { return }
+            afterExitFullScreen = { [weak self] in self?.showRobotStage(on: screen) }
+            robotStage?.toggleFullScreen(nil)
+            return
+        }
+        if robotStage == nil {
+            let window = NSWindow(contentRect: screen.visibleFrame, styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
             window.title = "Burnbot Robot"
             window.appearance = NSAppearance(named: .darkAqua)
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.backgroundColor = .black
             window.isReleasedWhenClosed = false
-            window.minSize = NSSize(width: 360, height: 202)
-            window.contentView = view
+            window.collectionBehavior = [.fullScreenPrimary]
             window.delegate = self
-            // Remember where the person puts it.
-            if !window.setFrameUsingName("BurnbotRobot") { window.setFrame(cornerFrame(on: screen), display: false) }
-            window.setFrameAutosaveName("BurnbotRobot")
-            view.load(URLRequest(url: URL(string: base + "/display")!))
-            robot = window
-            robotView = view
+            robotStage = window
         }
-        guard let window = robot else { return }
-        let isFull = window.styleMask.contains(.fullScreen)
-        if isFull && fullscreen && window.screen == screen {
-            window.orderFrontRegardless()
-            return
-        }
-        let place = { [weak self] in
-            guard let self, let window = self.robot else { return }
-            if window.screen != screen { window.setFrame(self.cornerFrame(on: screen), display: true) }
-            self.applyWindowMode()
-            // Regardless: the robot should come into view even when another app has the focus.
-            window.orderFrontRegardless()
-            log("Robot shown on \(screen.localizedName)\(fullscreen ? ", going fullscreen" : " in a window")")
-            guard fullscreen else { return }
-            // The window has to be on screen before it can go fullscreen.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self.enterFullScreen(window) }
-        }
-        if isFull {
-            afterExitFullScreen = place
-            window.toggleFullScreen(nil)
-        } else {
-            place()
+        guard let window = robotStage else { return }
+        robotPanel?.orderOut(nil)
+        if window.contentView !== robotView { window.contentView = robotWebView() }
+        window.setFrame(screen.visibleFrame, display: true)
+        window.orderFrontRegardless()
+        log("Robot going fullscreen on \(screen.localizedName)")
+        // The window has to be on screen before it can go fullscreen.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            if !window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
         }
     }
 
+    private func showRobot(on screen: NSScreen, fullscreen: Bool) {
+        if fullscreen { showRobotStage(on: screen) } else { showRobotPanel(on: screen) }
+    }
+
     @objc func toggleRobotFullScreen() {
-        guard let window = robot else { return }
         followSecondScreen = false
-        if window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) } else { enterFullScreen(window) }
+        if stageIsFull {
+            robotStage?.toggleFullScreen(nil)       // back to the small robot, see windowDidExitFullScreen
+        } else {
+            showRobotStage(on: robotPanel?.screen ?? dashboard?.screen ?? NSScreen.screens[0])
+        }
     }
 
     /// View > Full Screen: the robot needs its own path, the dashboard uses the standard one.
@@ -386,16 +510,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if NSApp.keyWindow === dashboard { dashboard?.toggleFullScreen(nil) } else { toggleRobotFullScreen() }
     }
 
-    @objc func toggleKeepOnTop() {
-        keepOnTop.toggle()
-        UserDefaults.standard.set(keepOnTop, forKey: "keepRobotOnTop")
-        applyWindowMode()
-    }
-
     @objc func showRobotLive() {
-        if robotView?.url?.query != nil { robotView?.load(URLRequest(url: URL(string: base + "/display")!)) }
-        if let window = robot, window.isVisible {
-            window.orderFrontRegardless()
+        if robotView?.url?.query != nil { robotView?.load(URLRequest(url: URL(string: Pages.home + "display")!)) }
+        if robotShown {
+            (stageIsFull ? robotStage : robotPanel)?.orderFrontRegardless()
         } else {
             let second = secondScreen()
             followSecondScreen = true
@@ -411,65 +529,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc func robotToWindow() {
         followSecondScreen = false
-        showRobot(on: dashboard?.screen ?? NSScreen.screens[0], fullscreen: false)
+        showRobotPanel(on: robotShown ? nil : dashboard?.screen)
     }
 
     @objc func previewLevels() {
-        if robot == nil || robot?.isVisible == false { robotToWindow() }
-        robotView?.load(URLRequest(url: URL(string: base + "/display?demo=cycle")!))
-        robot?.makeKeyAndOrderFront(nil)
+        if !robotShown { robotToWindow() }
+        robotView?.load(URLRequest(url: URL(string: Pages.home + "display?demo=cycle")!))
     }
 
     @objc func hideRobot() {
         followSecondScreen = false
-        guard let window = robot else { return }
-        if window.styleMask.contains(.fullScreen) {
-            afterExitFullScreen = { window.orderOut(nil) }
-            window.toggleFullScreen(nil)
+        robotPanel?.orderOut(nil)
+        if stageIsFull {
+            afterExitFullScreen = { [weak self] in self?.robotStage?.orderOut(nil) }
+            robotStage?.toggleFullScreen(nil)
         } else {
-            window.orderOut(nil)
+            robotStage?.orderOut(nil)
         }
         updateAwake()
     }
 
     @objc func reload() {
-        (NSApp.keyWindow === robot ? robotView : dashboardView)?.reload()
+        (NSApp.keyWindow === dashboard ? dashboardView : robotView)?.reload()
     }
 
     /// A screen was plugged in or removed.
     @objc func screensChanged() {
-        guard followSecondScreen, let window = robot, window.isVisible else { return }
-        let isFull = window.styleMask.contains(.fullScreen)
+        refreshMeta()
+        guard followSecondScreen, robotShown else { return }
         if let second = secondScreen() {
-            if !(isFull && window.screen == second) {
+            if !(stageIsFull && robotStage?.screen == second) {
                 log("Second screen attached: \(second.localizedName)")
                 showRobot(on: second, fullscreen: true)
             }
-        } else if isFull {
+        } else if stageIsFull {
             // Its screen is gone: do not sit fullscreen over the only screen left.
             log("Second screen removed")
-            showRobot(on: NSScreen.screens[0], fullscreen: false)
+            showRobotPanel(on: NSScreen.screens[0])
         }
     }
 
     func windowDidEnterFullScreen(_ notification: Notification) { updateAwake() }
 
     func windowDidExitFullScreen(_ notification: Notification) {
-        applyWindowMode()
+        guard (notification.object as? NSWindow) === robotStage else { return }
         updateAwake()
-        let work = afterExitFullScreen
-        afterExitFullScreen = nil
-        work?()
+        if let work = afterExitFullScreen {
+            afterExitFullScreen = nil
+            work()
+        } else {
+            showRobotPanel(on: nil)                 // left fullscreen by hand: back to the small robot
+        }
     }
 
     func windowWillClose(_ notification: Notification) {
-        if (notification.object as? NSWindow) === robot { followSecondScreen = false }
+        let closing = notification.object as? NSWindow
+        if closing === robotPanel || closing === robotStage { followSecondScreen = false }
         DispatchQueue.main.async { self.updateAwake() }
     }
 
     /// While the robot owns a whole screen, keep that screen from going to sleep.
     private func updateAwake() {
-        let owning = robot.map { $0.isVisible && $0.styleMask.contains(.fullScreen) } ?? false
+        let owning = robotStage?.isVisible == true && stageIsFull
         if owning, awake == nil {
             awake = ProcessInfo.processInfo.beginActivity(options: [.idleDisplaySleepDisabled], reason: "Burnbot robot on its own screen")
         } else if !owning, let token = awake {
@@ -497,6 +618,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         add("Burnbot", [
             item("About Burnbot", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
+            item("Welcome to Burnbot…", #selector(showWelcome), mine: true),
+            .separator(),
+            item("Open at Login", #selector(toggleOpenAtLogin), mine: true),
             .separator(),
             item("Hide Burnbot", #selector(NSApplication.hide(_:)), "h"),
             item("Quit Burnbot", #selector(NSApplication.terminate(_:)), "q"),
@@ -524,41 +648,84 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             item("Minimize", #selector(NSWindow.performMiniaturize(_:)), "m"),
             item("Close", #selector(NSWindow.performClose(_:)), "w"),
         ])
+        add("Help", [item("Burnbot Help", #selector(openHelp), "?", mine: true)])
         NSApp.mainMenu = bar
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         if menuItem.action == #selector(robotToSecondScreen) { return secondScreen() != nil }
-        if menuItem.action == #selector(hideRobot) { return robot?.isVisible == true }
+        if menuItem.action == #selector(hideRobot) { return robotShown }
         if menuItem.action == #selector(toggleKeepOnTop) { menuItem.state = keepOnTop ? .on : .off }
+        if menuItem.action == #selector(toggleOpenAtLogin) { menuItem.state = openAtLogin ? .on : .off }
         return true
     }
 
     // MARK: Self-check
 
-    /// Writes a picture of each window, and what the pages say, so a build can be checked without looking at the screen.
+    /// Takes a picture of one page. The scene is moved on by hand first, because
+    /// macOS does not animate a window that is covered by other windows.
+    private func capture(_ view: WKWebView?, as name: String, in directory: URL, then: (() -> Void)? = nil) {
+        guard let view else {
+            then?()
+            return
+        }
+        let settle = """
+        (() => { const b = window.burnbot || {}; const s = b.scene || b.mini;
+          if (b.fit) b.fit();
+          if (s) { let t = performance.now(); for (let i = 0; i < 200; i++) { t += 33; s.frame(t); } }
+          return document.title + ' | ' + document.body.innerText.replace(/\\s+/g, ' ').slice(0, 200); })()
+        """
+        view.evaluateJavaScript(settle) { value, _ in
+            log("Text in \(name): \(value ?? "nothing")")
+            view.takeSnapshot(with: nil) { image, error in
+                if let image, let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff),
+                   let png = bitmap.representation(using: .png, properties: [:]) {
+                    try? png.write(to: directory.appendingPathComponent("\(name).png"))
+                    log("Snapshot of \(name): \(Int(image.size.width)) x \(Int(image.size.height))")
+                } else {
+                    log("Snapshot of \(name) failed: \(error?.localizedDescription ?? "no image")")
+                }
+                then?()
+            }
+        }
+    }
+
+    /// Writes pictures of the windows, and what the pages say, so a build can be checked without looking at the screen.
+    /// As a first launch it also presses Start on the welcome and checks that it goes away for good.
     private func snapshot(to folder: String) {
         let directory = URL(fileURLWithPath: folder)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        for (name, view) in [("dashboard", dashboardView), ("robot", robotView)] {
-            guard let view else { continue }
-            view.takeSnapshot(with: nil) { image, error in
-                guard let image, let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff),
-                      let png = bitmap.representation(using: .png, properties: [:]) else {
-                    log("Snapshot of \(name) failed: \(error?.localizedDescription ?? "no image")")
-                    return
-                }
-                try? png.write(to: directory.appendingPathComponent("\(name).png"))
-                log("Snapshot of \(name): \(Int(image.size.width)) x \(Int(image.size.height))")
-            }
-            view.evaluateJavaScript("document.title + ' | ' + document.body.innerText.replace(/\\s+/g, ' ').slice(0, 260)") { value, _ in
-                log("Text in \(name): \(value ?? "nothing")")
-            }
-        }
-        let frames = [dashboard, robot].compactMap { $0 }.map {
+        let frames = [dashboard, robotPanel, robotStage].compactMap { $0 }.filter { $0.isVisible }.map {
             "\($0.title) \(Int($0.frame.width))x\(Int($0.frame.height)) on \($0.screen?.localizedName ?? "no screen") inView=\($0.occlusionState.contains(.visible)) level=\($0.level.rawValue)"
         }
         log("Windows: \(frames.joined(separator: "; "))")
+        capture(robotView, as: "robot", in: directory)
+
+        // the dashboard from the top, then scrolled down with its folded sections open
+        let rest = {
+            self.capture(self.dashboardView, as: "dashboard", in: directory) {
+                self.dashboardView?.evaluateJavaScript("document.querySelectorAll('details.fold').forEach((d) => (d.open = true)); window.scrollTo(0, 560)") { _, _ in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        self.capture(self.dashboardView, as: "dashboard-2", in: directory) {
+                            self.dashboardView?.evaluateJavaScript("window.scrollTo(0, document.body.scrollHeight)") { _, _ in
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self.capture(self.dashboardView, as: "dashboard-3", in: directory) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        guard fresh else { return rest() }
+        capture(dashboardView, as: "welcome", in: directory) {
+            self.dashboardView?.evaluateJavaScript("document.getElementById('welcome').hidden ? 'not shown' : (document.getElementById('welcomeGo').click(), 'shown, Start pressed')") { value, _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    self.dashboardView?.evaluateJavaScript("document.getElementById('welcome').hidden") { hidden, _ in
+                        log("Welcome: \(value ?? "?"); hidden afterwards=\(hidden ?? "?"); remembered=\(self.welcomed)")
+                        rest()
+                    }
+                }
+            }
+        }
     }
 }
 

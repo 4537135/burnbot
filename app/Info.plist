@@ -27,20 +27,6 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Tracks Claude Code token burn on this Mac. Nothing leaves the machine.</string>
-	<!-- The app only ever talks to its own tracker on this machine, over plain HTTP. -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>localhost</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
-		</dict>
-	</dict>
+	<string>An independent project. Not made by, affiliated with, or endorsed by Anthropic.</string>
 </dict>
 </plist>

@@ -1,17 +1,19 @@
-// The second screen: the robot, the fire, the level it is on, and the token burn.
+// The robot window: the robot, the fire, the level you are on, and the token burn.
 // Add ?demo=locked (or any state, or ?demo=cycle) to preview a level.
 
-import { Scene, pixelText, drawLogo, STATE_META, STATE_ORDER, LADDER } from './robot.js';
-import { compact, ticker, clock, duration, subline, levelLine, nextLine } from './format.js';
+import { Scene, drawLogo, STATE_META, STATE_ORDER, LADDER } from './robot.js';
+import { compact, ticker, clock, subline, levelLine, nextLine } from './format.js';
+import { inApp, listen, tell } from './link.js';
 
 const $ = (id) => document.getElementById(id);
 const scene = new Scene($('scene'));
 const fit = () => scene.resize(innerWidth, innerHeight);
-window.burnbot = { scene }; // handle for poking at the scene from the console
+window.burnbot = { scene, fit }; // handle for poking at the scene from the console
 addEventListener('resize', fit);
 fit();
 
-const demo = new URLSearchParams(location.search).get('demo');
+// Outside the app (a browser, while working on the look) there is no tracker: cycle through the levels.
+const demo = new URLSearchParams(location.search).get('demo') || (inApp ? null : 'cycle');
 let data = null;
 let receivedAt = 0;
 let shownRate = 0;
@@ -19,18 +21,15 @@ let shownToday = -1;
 let lastFrame = 0;
 let logoState = '';
 
-pixelText($('brandText'), 'BURNBOT', '#f6ece3');
-
-// The ladder, top level first, with autopilot set apart underneath.
-$('ladder').innerHTML =
-  [...LADDER]
-    .reverse()
-    .map((s) => {
-      const m = STATE_META[s];
-      return `<div class="rung" role="listitem" data-s="${s}" style="--c:${m.color}"><i></i><b>${m.level}</b><span>${m.label}</span><em>usual now</em></div>`;
-    })
-    .join('') +
-  `<div class="rung off" role="listitem" data-s="autopilot" style="--c:${STATE_META.autopilot.color}"><i></i><b>A</b><span>AUTOPILOT</span></div>`;
+// The ladder, top level first. Autopilot only shows while you are on it.
+$('ladder').innerHTML = [...LADDER]
+  .reverse()
+  .concat('autopilot')
+  .map((s) => {
+    const m = STATE_META[s];
+    return `<div class="rung${m.level === null ? ' off' : ''}" role="listitem" data-s="${s}" style="--c:${m.color}"><i></i><span>${m.label}</span><em>usual</em></div>`;
+  })
+  .join('');
 
 // ---------- demo levels, for previewing without waiting for real activity ----------
 
@@ -43,7 +42,7 @@ const DEMO = {
   overdrive: { flame: 1, rate: 126e6, pct: [97, 94, 96] },
   autopilot: { flame: 0.6, rate: 33e6, pct: [70, 0, 66] },
 };
-const DEMO_NEXT = { warming: ['cruising', 35, 0], cruising: ['locked', 72, 35], locked: ['overdrive', 88, 72] };
+const DEMO_NEXT = { warming: ['cruising', 30, 0], cruising: ['locked', 75, 30], locked: ['overdrive', 93, 75] };
 
 function demoState(name, now) {
   const d = DEMO[name];
@@ -57,12 +56,11 @@ function demoState(name, now) {
       state: name,
       level: STATE_META[name].level,
       topLevel: 5,
-      next: up ? { state: up[0], intensity: up[1], progress: Math.max(0, Math.min(1, (intensity - up[2]) / (up[1] - up[2]))), streakLeftMin: 0 } : null,
+      next: up ? { state: up[0], intensity: up[1], progress: 0.5, streakLeftMin: 0 } : null,
       usual: 'cruising',
       intensity,
       hotterThan: d.pct[0],
       tokensPerHour: d.rate,
-      outputPerHour: d.rate * 0.012,
       flame: d.flame,
       idleMin: name === 'asleep' ? 95 : 8,
       humanIdleMin: 41,
@@ -70,8 +68,8 @@ function demoState(name, now) {
       lockedRunMin: 34,
       lastCallMs: now - 95 * 60000,
     },
-    today: { tokens: 186.4e6 + ((now - started) / 3600000) * d.rate, usualByNow: 131e6, typicalDay: 240e6 },
-    baseline: { calibrated: true, activeMinutes: 3120, needMinutes: 120, windowDays: 30 },
+    today: { tokens: 186.4e6 + ((now - started) / 3600000) * d.rate, usualByNow: 131e6 },
+    baseline: { thresholds: { cruise: 30, lock: 75, overdrive: 93 } },
   };
 }
 
@@ -83,8 +81,9 @@ if (demo) {
   tick();
   setInterval(tick, 1000);
 } else {
-  const stream = new EventSource('/api/events');
-  stream.addEventListener('state', (e) => receive(JSON.parse(e.data)));
+  listen(receive);
+  // The app tells the desk screen what each level is called; the names live in robot.js.
+  tell('levels', { names: Object.fromEntries(STATE_ORDER.map((s) => [s, STATE_META[s].label])) });
 }
 
 function receive(next) {
@@ -96,21 +95,24 @@ function receive(next) {
 function render() {
   const { live, today, scan, baseline } = data;
   const meta = STATE_META[live.state];
-  // Say that the levels are fitted to this person, or how far along the fitting is.
-  $('cal').innerHTML = baseline.calibrated
-    ? `<b>Calibrated to you</b> · ${duration(baseline.activeMinutes)} of your work · last ${baseline.windowDays} days`
-    : `<b>Calibrating to you</b> · ${baseline.activeMinutes} of ${baseline.needMinutes} min`;
   document.body.className = `s-${live.state}` + (document.body.classList.contains('quiet') ? ' quiet' : '');
   document.documentElement.style.setProperty('--state', meta.color);
-  document.documentElement.style.setProperty('--glow', meta.glow);
 
   // which level, and why
   $('levelCap').textContent = levelLine(live);
-  pixelText($('stateText'), meta.label, meta.color);
+  $('levelName').textContent = meta.label;
   const scanning = scan && scan.phase !== 'live';
-  $('sub').textContent = scanning ? `Reading your Claude history… ${scan.done} of ${scan.total} sessions` : subline(live);
+  $('sub').textContent = scanning ? `Reading your history… ${scan.done} of ${scan.total} sessions` : subline(live);
 
-  // the ladder: everything up to the current level is lit, the usual level for this hour is tagged
+  // how far up the scale, and what the next level takes
+  if (!$('track').querySelector('u')) {
+    const cuts = baseline.thresholds;
+    $('track').insertAdjacentHTML('beforeend', [cuts.cruise, cuts.lock, cuts.overdrive].map((v) => `<u style="left:${v}%"></u>`).join(''));
+  }
+  $('bar').style.width = `${Math.max(1, live.intensity)}%`;
+  $('note').textContent = nextLine(live, live.next ? STATE_META[live.next.state].label : '');
+
+  // the ladder: everything up to the current level is lit; the usual level for this hour is tagged
   for (const rung of $('ladder').children) {
     const s = rung.dataset.s;
     const level = STATE_META[s].level;
@@ -119,22 +121,8 @@ function render() {
     rung.classList.toggle('usual', s === live.usual && s !== live.state);
   }
 
-  // the way up
-  const up = live.next;
-  $('nextCap').textContent = up ? `Next · ${STATE_META[up.state].label}` : live.level === live.topLevel ? 'Top level' : 'Next level';
-  $('nextBar').style.width = `${up ? Math.max(2, up.progress * 100) : live.level === live.topLevel ? 100 : 0}%`;
-  let note = nextLine(live, up ? STATE_META[up.state].label.toLowerCase() : '');
-  if (live.usual && live.usual !== live.state) {
-    const usual = STATE_META[live.usual];
-    const below = live.level !== null && usual.level > live.level;
-    note += `. Your usual level at ${clock(data.now)}: ${usual.label.toLowerCase()}${below ? ', so you are behind' : ''}`;
-  }
-  $('nextNote').textContent = note + '.';
-
-  // tokens
-  $('rateSub').textContent = `${compact(live.outputPerHour)} of them written by Claude`;
   const pace = today.usualByNow > 1000 ? Math.round((today.tokens / today.usualByNow) * 100) : null;
-  $('pace').textContent = pace === null ? 'Still learning your usual day' : `${pace}% of your usual by ${clock(data.now)}`;
+  $('pace').textContent = pace === null ? 'burned today' : `burned today · ${pace}% of your usual`;
 
   // More burn, more tokens falling into the fire.
   scene.setLive({ state: live.state, flame: live.flame, dropRate: live.flame > 0.1 ? 0.25 + 4.5 * live.flame ** 2 : 0 });
@@ -150,36 +138,37 @@ function render() {
     $('favicon').href = icon.toDataURL();
   }
   document.title = `${meta.label} · ${compact(live.tokensPerHour)} tokens/h · Burnbot`;
+  paint(0);
 }
 
-// ---------- animation ----------
+// The numbers ease toward their values, and today's total keeps creeping at
+// the current rate between updates, so the tokens are visibly burning.
+function paint(dt) {
+  if (!data) return;
+  const { live, today } = data;
+  const ease = dt ? 1 - Math.exp(-dt * 2.5) : 1;
+  shownRate += (live.tokensPerHour - shownRate) * ease;
+  if (Math.abs(live.tokensPerHour - shownRate) < 500) shownRate = live.tokensPerHour;
+  $('rate').textContent = compact(shownRate);
+
+  const ahead = live.flame > 0.1 ? (live.tokensPerHour / 3600) * Math.min(6, (performance.now() - receivedAt) / 1000) : 0;
+  const target = today.tokens + ahead;
+  if (shownToday < 0 || Math.abs(target - shownToday) > Math.max(2e6, live.tokensPerHour / 60)) shownToday = target;
+  else if (target > shownToday) shownToday += (target - shownToday) * ease;
+  $('today').textContent = ticker(shownToday);
+}
 
 function frame(now) {
   const dt = Math.min(0.1, (now - lastFrame) / 1000 || 0.016);
   lastFrame = now;
-  if (data) {
-    const { live, today } = data;
-    const ease = 1 - Math.exp(-dt * 2.5);
-
-    shownRate += (live.tokensPerHour - shownRate) * ease;
-    if (Math.abs(live.tokensPerHour - shownRate) < 500) shownRate = live.tokensPerHour;
-    pixelText($('rateText'), compact(shownRate), '#f6ece3');
-
-    // Keep the day's total creeping at the current rate between updates, so
-    // the tokens are visibly burning rather than jumping every two seconds.
-    const ahead = live.flame > 0.1 ? (live.tokensPerHour / 3600) * Math.min(6, (now - receivedAt) / 1000) : 0;
-    const target = today.tokens + ahead;
-    if (shownToday < 0 || Math.abs(target - shownToday) > Math.max(2e6, live.tokensPerHour / 60)) shownToday = target;
-    else if (target > shownToday) shownToday += (target - shownToday) * ease;
-    pixelText($('todayText'), ticker(shownToday), STATE_META[live.state].color);
-  }
+  paint(dt);
   $('clock').textContent = clock(Date.now());
   scene.frame(now);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-// ---------- being a good second screen ----------
+// ---------- window manners ----------
 
 const toast = (text, ms = 4000) => {
   $('toast').textContent = text;
@@ -189,14 +178,14 @@ const toast = (text, ms = 4000) => {
 };
 
 // Inside Burnbot.app the window is native, so fullscreen is the app's job.
-const native = window.webkit?.messageHandlers?.burnbot;
-if (native) {
-  addEventListener('dblclick', () => native.postMessage({ type: 'toggleFullscreen' }));
+if (inApp) {
+  addEventListener('dblclick', () => tell('toggleFullscreen'));
 } else {
   addEventListener('click', () => {
     if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen?.().catch(() => {});
   });
+  setTimeout(() => !document.fullscreenElement && toast('Click anywhere for fullscreen'), 1500);
 }
 
 // Hide the pointer once it stops moving.
@@ -206,24 +195,3 @@ addEventListener('mousemove', () => {
   clearTimeout(quietTimer);
   quietTimer = setTimeout(() => document.body.classList.add('quiet'), 2500);
 });
-
-// Stop the monitor from going to sleep while the robot is on it.
-async function stayAwake() {
-  try {
-    const lock = await navigator.wakeLock.request('screen');
-    lock.addEventListener('release', () => document.visibilityState === 'visible' && stayAwake());
-  } catch {
-    /* not supported, or the page is hidden */
-  }
-}
-document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && stayAwake());
-stayAwake();
-
-if (!native && !document.fullscreenElement && !matchMedia('(display-mode: fullscreen)').matches) {
-  setTimeout(() => !document.fullscreenElement && toast('Click anywhere for fullscreen'), 1500);
-}
-
-// Lost the tracker (it was stopped or restarted): say so instead of freezing.
-setInterval(() => {
-  if (!demo && data && performance.now() - receivedAt > 8000) toast('Reconnecting to Burnbot…', 3000);
-}, 3000);

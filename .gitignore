@@ -1,8 +1,7 @@
-# your usage history and the robot browser profile
-data/
-# build output: run ./build-app.sh to make Burnbot.app
+# build output: run ./build-app.sh
 Burnbot.app/
 build/
+dist/
 # local editor and tool settings
 .claude/
 node_modules/

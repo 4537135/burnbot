@@ -1,60 +1,30 @@
-// The pixel-art side of Burnbot: the orange robot, the fire it stands over, the
-// tokens that fall into it, and a small bitmap font. Everything is drawn on a
-// low-resolution canvas and scaled up with hard pixels.
+// The pixel-art side of Burnbot: the robot, the fire it stands over, and the
+// tokens that fall into it. Everything is drawn on a low-resolution canvas and
+// scaled up with hard pixels.
+//
+// The robot is Burnbot's own character: steel grey, with a face that glows in
+// the colour of the level you are on.
 
-// The states, shown to the person as levels. Rename a level by editing its label.
+// The levels. Rename one by editing its label; recolour it by editing its colour.
+// The colours run from cold to hot, like a temperature scale.
 export const STATE_META = {
-  asleep: { level: 0, label: 'ASLEEP', color: '#8493b8', blurb: 'No Claude activity for a while' },
-  idle: { level: 1, label: 'CHILLING', color: '#9d968e', blurb: 'Quiet for a few minutes' },
-  warming: { level: 2, label: 'WARMING UP', color: '#b8774c', blurb: 'Working, below your usual pace' },
-  cruising: { level: 3, label: 'COOKING', color: '#f58d4d', blurb: 'Working at your usual pace' },
-  locked: { level: 4, label: 'LOCKED IN', color: '#ffc74f', blurb: 'Well above your normal, and sustained' },
-  overdrive: { level: 5, label: 'ON FIRE', color: '#fff0c4', glow: '#ff5a36', blurb: 'Your top gear' },
-  autopilot: { level: null, label: 'AUTOPILOT', color: '#72b4f8', blurb: 'Agents are working without you' },
+  asleep: { level: 0, label: 'Asleep', color: '#6f83ad', blurb: 'Nothing happening for a while' },
+  idle: { level: 1, label: 'Chilling', color: '#7db4dc', blurb: 'Quiet for a few minutes' },
+  warming: { level: 2, label: 'Warming up', color: '#4fc9a4', blurb: 'Working, below your usual pace' },
+  cruising: { level: 3, label: 'Cooking', color: '#f4c542', blurb: 'Working at your usual pace' },
+  locked: { level: 4, label: 'Locked in', color: '#ff8f3a', blurb: 'Well above your normal, and sustained' },
+  overdrive: { level: 5, label: 'On fire', color: '#ff4f5e', blurb: 'Your top gear' },
+  autopilot: { level: null, label: 'Autopilot', color: '#a78bfa', blurb: 'Agents are working without you' },
 };
-for (const m of Object.values(STATE_META)) m.glow ??= m.color;
-/** The ladder, bottom to top. Autopilot is off it: Claude works while you are away. */
-export const LADDER = ['asleep', 'idle', 'warming', 'cruising', 'locked', 'overdrive'];
 export const STATE_ORDER = ['asleep', 'idle', 'warming', 'cruising', 'locked', 'overdrive', 'autopilot'];
+/** The ladder, bottom to top. Autopilot is off it: the AI works while you are away. */
+export const LADDER = ['asleep', 'idle', 'warming', 'cruising', 'locked', 'overdrive'];
 
-// ---------------------------------------------------------------- bitmap font
-
-const GLYPHS = {
-  A: [14, 17, 17, 31, 17, 17, 17], B: [30, 17, 17, 30, 17, 17, 30], C: [14, 17, 16, 16, 16, 17, 14],
-  D: [30, 17, 17, 17, 17, 17, 30], E: [31, 16, 16, 30, 16, 16, 31], F: [31, 16, 16, 30, 16, 16, 16],
-  G: [14, 17, 16, 23, 17, 17, 15], H: [17, 17, 17, 31, 17, 17, 17], I: [14, 4, 4, 4, 4, 4, 14],
-  J: [7, 2, 2, 2, 2, 18, 12], K: [17, 18, 20, 24, 20, 18, 17], L: [16, 16, 16, 16, 16, 16, 31],
-  M: [17, 27, 21, 21, 17, 17, 17], N: [17, 17, 25, 21, 19, 17, 17], O: [14, 17, 17, 17, 17, 17, 14],
-  P: [30, 17, 17, 30, 16, 16, 16], Q: [14, 17, 17, 17, 21, 18, 13], R: [30, 17, 17, 30, 20, 18, 17],
-  S: [15, 16, 16, 14, 1, 1, 30], T: [31, 4, 4, 4, 4, 4, 4], U: [17, 17, 17, 17, 17, 17, 14],
-  V: [17, 17, 17, 17, 17, 10, 4], W: [17, 17, 17, 21, 21, 21, 10], X: [17, 17, 10, 4, 10, 17, 17],
-  Y: [17, 17, 17, 10, 4, 4, 4], Z: [31, 1, 2, 4, 8, 16, 31],
-  0: [14, 17, 19, 21, 25, 17, 14], 1: [4, 12, 4, 4, 4, 4, 14], 2: [14, 17, 1, 2, 4, 8, 31],
-  3: [31, 2, 4, 2, 1, 17, 14], 4: [2, 6, 10, 18, 31, 2, 2], 5: [31, 16, 30, 1, 1, 17, 14],
-  6: [6, 8, 16, 30, 17, 17, 14], 7: [31, 1, 2, 4, 8, 8, 8], 8: [14, 17, 17, 14, 17, 17, 14],
-  9: [14, 17, 17, 15, 1, 2, 12],
-  ' ': [0, 0, 0, 0, 0, 0, 0], '-': [0, 0, 0, 31, 0, 0, 0], '.': [0, 0, 0, 0, 0, 12, 12],
-  ',': [0, 0, 0, 0, 12, 4, 8], '!': [4, 4, 4, 4, 4, 0, 4], '%': [24, 25, 2, 4, 8, 19, 3],
-  $: [4, 15, 20, 14, 5, 30, 4], '/': [0, 1, 2, 4, 8, 16, 0], ':': [0, 12, 12, 0, 12, 12, 0],
-  '+': [0, 4, 4, 31, 4, 4, 0],
-};
-
-/** Renders text into a canvas at one canvas pixel per font pixel; size it with CSS. */
-export function pixelText(canvas, text, color) {
-  const s = String(text).toUpperCase();
-  const key = s + '|' + color;
-  if (canvas.dataset.key === key) return;
-  canvas.dataset.key = key;
-  const w = Math.max(1, s.length * 6 - 1);
-  canvas.width = w;
-  canvas.height = 7;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = color;
-  for (let i = 0; i < s.length; i++) {
-    const g = GLYPHS[s[i]] || GLYPHS[' '];
-    for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) if (g[r] & (16 >> c)) ctx.fillRect(i * 6 + c, r, 1, 1);
-  }
-  canvas.setAttribute('aria-label', text);
+/** Mixes a hex colour toward white (amount 0..1). */
+function lighten(hex, amount) {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (c) => Math.round(c + (255 - c) * amount);
+  return `rgb(${mix(n >> 16)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`;
 }
 
 // ---------------------------------------------------------------------- robot
@@ -72,13 +42,13 @@ export function drawRobot(ctx, cx, gy, state, t) {
   const working = state === 'warming' || state === 'cruising' || locked || over;
   const accent = STATE_META[state].color;
 
-  let body = '#d9774f';
-  let hi = '#f3a57f';
-  let sh = '#ad5330';
-  let dark = '#7a391e';
-  if (asleep) [body, hi, sh, dark] = ['#80554a', '#96685b', '#664238', '#4a2f27'];
-  if (over) [body, hi, sh] = ['#ea6a3a', '#ffb489', '#b8481f'];
-  const screen = '#1e110c';
+  let body = '#a3b0c2';
+  let hi = '#d2dae5';
+  let sh = '#75839a';
+  let dark = '#4d586b';
+  if (asleep) [body, hi, sh, dark] = ['#5f6878', '#757f90', '#4a5261', '#353b47'];
+  const screen = '#0e131b';
+  const glow = asleep ? '#7c869b' : lighten(accent, over ? 0.75 : 0.45);
 
   const R = (x, y, w, h, c) => {
     ctx.fillStyle = c;
@@ -115,7 +85,7 @@ export function drawRobot(ctx, cx, gy, state, t) {
     R(x0 + 12, gy - 10 + r, 5, 2, hi);
     // key sparks under whichever hand just came down
     const sx = beat % 2 ? x0 + 13 : x0 - 16;
-    R(sx + ((beat * 7) % 4), gy - 6, 1, 1, '#ffe9c7');
+    R(sx + ((beat * 7) % 4), gy - 6, 1, 1, '#ffffff');
     if (locked || over) R(sx + ((beat * 5) % 4), gy - 4, 1, 1, accent);
   } else {
     R(x0 - 15, gy - 18, 4, 11, sh);
@@ -132,7 +102,7 @@ export function drawRobot(ctx, cx, gy, state, t) {
   R(x0 - 6, gy - 16, 12, 7, screen);
   for (let k = 0; k < 3; k++) {
     const h = working ? 1 + Math.floor((Math.sin(t * (5 + k * 2.3) + k * 1.7) + 1) * 2.4) : asleep ? 1 : auto ? 3 : 2;
-    R(x0 - 5 + k * 4, gy - 10 - h, 2, h, asleep ? '#5d4a44' : accent);
+    R(x0 - 5 + k * 4, gy - 10 - h, 2, h, asleep ? '#4f5868' : accent);
   }
 
   // neck and head
@@ -149,7 +119,6 @@ export function drawRobot(ctx, cx, gy, state, t) {
   R(x0 - 12, hy + 5, 24, 11, screen);
 
   // eyes
-  const glow = asleep ? '#8a90a6' : auto ? '#a9d4ff' : locked ? '#ffd87c' : over ? '#ffffff' : '#ffe9c7';
   const ey = hy + 7;
   const lx = x0 - 8;
   const rx = x0 + 4;
@@ -165,8 +134,8 @@ export function drawRobot(ctx, cx, gy, state, t) {
       R(ex + 3, ey + 2, 1, 2, glow);
     }
   } else if (locked || over) {
-    glowBox(lx - 1, ey, 6, 5, accent, 0.28);
-    glowBox(rx - 1, ey, 6, 5, accent, 0.28);
+    glowBox(lx - 1, ey, 6, 5, accent, 0.3);
+    glowBox(rx - 1, ey, 6, 5, accent, 0.3);
     R(lx, ey + 1, 4, 3, glow);
     R(rx, ey + 1, 4, 3, glow);
     R(lx + 3, ey + 1, 1, 1, screen); // slanted inner corners: the focused look
@@ -208,12 +177,12 @@ export function drawRobot(ctx, cx, gy, state, t) {
   R(x0 - 1, hy - 5, 2, 5, sh);
   if (auto) {
     const w = [9, 6, 2, 6][Math.floor(t * 12) % 4];
-    R(x0 - 1, hy - 8, 2, 3, '#9fd0ff');
-    R(x0 - w / 2, hy - 8, w, 1, '#d6ebff');
+    R(x0 - 1, hy - 8, 2, 3, accent);
+    R(x0 - w / 2, hy - 8, w, 1, glow);
   } else {
-    let bulb = '#5a4640';
-    if (idle) bulb = Math.sin(t * 1.6) > 0.6 ? '#e6ab62' : '#7a5a3a';
-    else if (working) bulb = locked || over || beat % 2 ? accent : '#8a5a3a';
+    let bulb = '#4a5362';
+    if (idle) bulb = Math.sin(t * 1.6) > 0.6 ? accent : '#4f5a6c';
+    else if (working) bulb = locked || over || beat % 2 ? accent : '#566173';
     if (locked || over) glowBox(x0 - 4, hy - 11, 8, 8, accent, 0.25 + 0.15 * Math.sin(t * 5));
     R(x0 - 2, hy - 9, 4, 4, bulb);
     if (over) R(x0 - 1, hy - 8, 2, 2, '#fff6d2');
@@ -221,17 +190,17 @@ export function drawRobot(ctx, cx, gy, state, t) {
 
   // headphones go on when it locks in
   if (locked || over) {
-    const band = '#2c2832';
+    const band = '#232a36';
     R(x0 - 17, hy - 2, 34, 2, band);
     R(x0 - 18, hy - 1, 2, 8, band);
     R(x0 + 16, hy - 1, 2, 8, band);
-    R(x0 - 20, hy + 6, 4, 11, '#3b3542');
-    R(x0 + 16, hy + 6, 4, 11, '#3b3542');
+    R(x0 - 20, hy + 6, 4, 11, '#303a49');
+    R(x0 + 16, hy + 6, 4, 11, '#303a49');
     R(x0 - 20, hy + 10, 1, 3, accent);
     R(x0 + 19, hy + 10, 1, 3, accent);
   }
 
-  // overdrive: the head is on fire
+  // on fire: the head is burning
   if (over) {
     for (let k = 0; k < 6; k++) {
       const fx = x0 - 13 + k * 5 + Math.round(Math.sin(t * 9 + k));
@@ -258,7 +227,7 @@ export function drawRobot(ctx, cx, gy, state, t) {
   }
 }
 
-/** The app's logo is the robot's head, so it changes with the state too. */
+/** The app's logo is the robot's head, so it changes with the level too. */
 export function drawLogo(canvas, state, t = 0.5) {
   if (canvas.width !== 42) canvas.width = 42;
   if (canvas.height !== 36) canvas.height = 36;
@@ -291,13 +260,13 @@ function firePalette() {
   return pal;
 }
 
-// A token: a small diamond that spins as it falls, so three widths of it.
+// A token: a small chip that turns as it falls, so three widths of it.
 const TOKEN = [
-  ['..x..', '.xhx.', 'xhxxs', '.xxs.', '..s..'],
-  ['.x.', 'xhx', 'xhs', 'xxs', '.s.'],
-  ['x', 'h', 'x', 's', 's'],
+  ['xhx', 'xxs', 'sss'],
+  ['hx', 'xs', 'ss'],
+  ['h', 'x', 's'],
 ];
-const TOKEN_COLORS = { x: '#ffd2ac', h: '#ffffff', s: '#dd8552' };
+const TOKEN_COLORS = { x: '#dbe3ee', h: '#ffffff', s: '#9aa9be' };
 
 export class Scene {
   /** `centered` puts the robot in the middle with the fire at full height all the way across. */
@@ -423,6 +392,7 @@ export class Scene {
   }
 
   frame(nowMs) {
+    if (!this.img) return; // not sized yet
     const dt = Math.min(0.05, this.last ? (nowMs - this.last) / 1000 : 0.016);
     this.last = nowMs;
     this.t += dt;
@@ -451,33 +421,30 @@ export class Scene {
       ctx.globalAlpha = 1;
     }
 
-    // locked in: a slow sunburst behind the robot
+    // locked in: slow ripples spreading out from the robot
     if (state === 'locked' || state === 'overdrive') {
-      const color = STATE_META[state].glow;
-      const rays = 12;
-      const reach = Math.max(W, H) * 0.55;
-      const cy = gy - 30;
-      ctx.fillStyle = color;
-      for (let k = 0; k < rays; k++) {
-        const a = (k / rays) * Math.PI * 2 + t * (state === 'overdrive' ? 0.5 : 0.18);
-        const ca = Math.cos(a);
-        const sa = Math.sin(a);
-        ctx.globalAlpha = (state === 'overdrive' ? 0.085 : 0.06) * (0.75 + 0.25 * Math.sin(t * 2 + k));
-        for (let r = 34; r < reach; r += 2) {
-          const w = Math.max(1, Math.round(r * 0.1));
-          ctx.fillRect(Math.round(cx + ca * r - w / 2), Math.round(cy + sa * r - w / 2), w, w);
+      const cy = gy - 28;
+      const reach = Math.max(W, H) * 0.5;
+      ctx.fillStyle = STATE_META[state].color;
+      for (let k = 0; k < 3; k++) {
+        const r = 24 + ((t * (state === 'overdrive' ? 22 : 12) + (k * reach) / 3) % reach);
+        ctx.globalAlpha = 0.22 * (1 - r / (reach + 24));
+        const steps = Math.ceil(r * 5);
+        for (let i = 0; i < steps; i++) {
+          const a = (i / steps) * Math.PI * 2;
+          ctx.fillRect(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), 1, 1);
         }
       }
       ctx.globalAlpha = 1;
     }
 
     // platform
-    ctx.fillStyle = '#17110e';
+    ctx.fillStyle = '#10141b';
     ctx.fillRect(cx - 19, gy + 3, 3, H - gy);
     ctx.fillRect(cx + 16, gy + 3, 3, H - gy);
-    ctx.fillStyle = '#2b211c';
+    ctx.fillStyle = '#1d232d';
     ctx.fillRect(cx - 24, gy, 48, 3);
-    ctx.fillStyle = '#46362c';
+    ctx.fillStyle = '#2f3846';
     ctx.fillRect(cx - 24, gy, 48, 1);
 
     drawRobot(ctx, cx, gy, state, t);
@@ -497,18 +464,16 @@ export class Scene {
       c.y += c.vy * dt;
       c.spin += dt * 7;
       if (c.y >= surface) {
-        this.#burst(c.x + 2);
+        this.#burst(c.x + 1);
         this.drops.splice(i, 1);
         continue;
       }
       const rows = TOKEN[[0, 1, 2, 1][Math.floor(c.spin) % 4]];
-      const x = Math.round(c.x) + (5 - rows[0].length) / 2;
+      const x = Math.round(c.x) + Math.floor((3 - rows[0].length) / 2);
       const y = Math.round(c.y);
       for (let r = 0; r < rows.length; r++)
         for (let q = 0; q < rows[r].length; q++) {
-          const ch = rows[r][q];
-          if (ch === '.') continue;
-          ctx.fillStyle = TOKEN_COLORS[ch];
+          ctx.fillStyle = TOKEN_COLORS[rows[r][q]];
           ctx.fillRect(x + q, y + r, 1, 1);
         }
     }

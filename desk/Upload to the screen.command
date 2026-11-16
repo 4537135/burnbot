@@ -41,7 +41,7 @@ if [ "$1" = "--build-only" ]; then
   exit 0
 fi
 
-if pgrep -f "Burnbot.app/Contents/MacOS/Burnbot" >/dev/null || pgrep -f "server.mjs" >/dev/null; then
+if pgrep -x Burnbot >/dev/null; then
   echo "Burnbot is running and talking to the board. Quit it, then run this again."
   exit 1
 fi

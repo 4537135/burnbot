@@ -1,4 +1,4 @@
-// Number and time formatting shared by both screens. Burn is always shown in
+// Number, time and wording shared by both screens. Burn is always shown in
 // tokens, never money.
 
 export function compact(v) {
@@ -39,18 +39,18 @@ export function levelLine(live) {
 export function subline(live) {
   switch (live.state) {
     case 'asleep':
-      return live.lastCallMs ? `Last Claude activity at ${clock(live.lastCallMs)}` : 'No Claude activity yet';
+      return live.lastCallMs ? `Last activity at ${clock(live.lastCallMs)}` : 'No activity yet';
     case 'idle':
       return `Quiet for ${duration(live.idleMin)}`;
     case 'autopilot':
-      return `Agents burning without you · last prompt ${duration(live.humanIdleMin)} ago`;
+      return `Agents working without you · last prompt ${duration(live.humanIdleMin)} ago`;
     case 'locked':
     case 'overdrive': {
       const top = live.hotterThan === null ? '' : ` · top ${Math.max(1, 100 - live.hotterThan)}% for you`;
       return `${duration(live.lockedRunMin)} locked in${top}`;
     }
     default:
-      return `${duration(live.streakMin)} streak · intensity ${live.intensity} of 100`;
+      return `${duration(live.streakMin)} streak`;
   }
 }
 
@@ -58,10 +58,10 @@ export function subline(live) {
 export function nextLine(live, name) {
   const n = live.next;
   if (!n) {
-    if (live.level === live.topLevel) return 'Nothing above this';
+    if (live.level === live.topLevel) return 'Top level';
     if (live.state === 'autopilot') return 'Send a prompt to get back on the ladder';
-    return 'Start working with Claude to climb';
+    return 'Start working to climb';
   }
   if (live.intensity >= n.intensity && n.streakLeftMin > 0) return `${n.streakLeftMin} more min of unbroken work to reach ${name}`;
-  return `Intensity ${live.intensity}, ${name} starts at ${n.intensity}`;
+  return `${name} starts at ${n.intensity} · you are at ${live.intensity}`;
 }

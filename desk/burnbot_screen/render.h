@@ -39,13 +39,13 @@ inline uint16_t mix(uint16_t under, uint16_t over, int a) {      // a: 0 nothing
 }
 
 // The robot's seven looks. The first six are the levels 0 to 5; autopilot is
-// off the ladder (Claude working while the person is away).
+// off the ladder (the AI working while the person is away).
 enum Look { ASLEEP, IDLE, WARMING, CRUISING, LOCKED, OVERDRIVE, AUTOPILOT };
 
-const uint16_t ACCENT[7] = {rgb(0x8493b8), rgb(0x9d968e), rgb(0xb8774c), rgb(0xf58d4d), rgb(0xffc74f), rgb(0xfff0c4), rgb(0x72b4f8)};
-const uint16_t GLOW[7] = {rgb(0x8493b8), rgb(0x9d968e), rgb(0xb8774c), rgb(0xf58d4d), rgb(0xffc74f), rgb(0xff5a36), rgb(0x72b4f8)};
-const uint16_t GROUND[7] = {rgb(0x070a14), rgb(0x0c0a0a), rgb(0x0e0907), rgb(0x0e0907), rgb(0x150c06), rgb(0x1c0805), rgb(0x070d16)};
-const uint16_t INK = rgb(0xf6ece3), DIM = rgb(0x8f8177);
+// One colour per level, cold to hot like a temperature scale (the same as on the Mac).
+const uint16_t ACCENT[7] = {rgb(0x6f83ad), rgb(0x7db4dc), rgb(0x4fc9a4), rgb(0xf4c542), rgb(0xff8f3a), rgb(0xff4f5e), rgb(0xa78bfa)};
+const uint16_t GROUND[7] = {rgb(0x0a0f1a), rgb(0x0b0d12), rgb(0x0b0d12), rgb(0x0b0d12), rgb(0x120e0b), rgb(0x170b0c), rgb(0x0e0c18)};
+const uint16_t INK = rgb(0xeef1f6), DIM = rgb(0x6c7686);
 
 // What the Mac last said. The words arrive ready to draw, so renaming a level
 // on the Mac needs nothing new on the board.
@@ -216,15 +216,16 @@ inline void rect(uint16_t *fb, float fx, float fy, int w, int h, uint16_t c, int
     for (int xx = x; xx < x1; xx++) fb[yy * AW + xx] = a >= 255 ? c : mix(fb[yy * AW + xx], c, a);
 }
 
-/** The robot, standing with its feet at (cx, gy). The same drawing as on the Mac, look for look. */
+/** The robot, standing with its feet at (cx, gy): steel grey, with a face that glows in the level's colour.
+ *  The same drawing as on the Mac, look for look. */
 inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
   bool asleep = look == ASLEEP, idle = look == IDLE, locked = look == LOCKED, over = look == OVERDRIVE, autop = look == AUTOPILOT;
   bool working = look == WARMING || look == CRUISING || locked || over;
   uint16_t accent = ACCENT[look];
-  uint16_t body = rgb(0xd9774f), hi = rgb(0xf3a57f), sh = rgb(0xad5330), dark = rgb(0x7a391e);
-  if (asleep) { body = rgb(0x80554a); hi = rgb(0x96685b); sh = rgb(0x664238); dark = rgb(0x4a2f27); }
-  if (over) { body = rgb(0xea6a3a); hi = rgb(0xffb489); sh = rgb(0xb8481f); }
-  const uint16_t screen = rgb(0x1e110c), white = rgb(0xffffff);
+  uint16_t body = rgb(0xa3b0c2), hi = rgb(0xd2dae5), sh = rgb(0x75839a), dark = rgb(0x4d586b);
+  if (asleep) { body = rgb(0x5f6878); hi = rgb(0x757f90); sh = rgb(0x4a5261); dark = rgb(0x353b47); }
+  const uint16_t screen = rgb(0x0e131b), white = rgb(0xffffff);
+  const uint16_t glow = asleep ? rgb(0x7c869b) : mix(accent, white, over ? 191 : 115);
 #define R(x, y, w, h, c) rect(fb, (float)(x), (float)(y), w, h, c)
 
   float pace = asleep ? 1.1f : idle ? 1.7f : autop ? 2.0f : look == WARMING ? 3.0f : look == CRUISING ? 4.2f : locked ? 6.0f : 9.0f;
@@ -250,7 +251,7 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
     R(x0 - 17, gy - 10 + l, 5, 2, hi);
     R(x0 + 12, gy - 10 + r, 5, 2, hi);
     int sx = beat % 2 ? x0 + 13 : x0 - 16;   // key sparks under the hand that just came down
-    R(sx + (beat * 7) % 4, gy - 6, 1, 1, rgb(0xffe9c7));
+    R(sx + (beat * 7) % 4, gy - 6, 1, 1, white);
     if (locked || over) R(sx + (beat * 5) % 4, gy - 4, 1, 1, accent);
   } else {
     R(x0 - 15, gy - 18, 4, 11, sh);
@@ -267,7 +268,7 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
   R(x0 - 6, gy - 16, 12, 7, screen);
   for (int k = 0; k < 3; k++) {
     int h = working ? 1 + (int)floorf((sinf(t * (5 + k * 2.3f) + k * 1.7f) + 1) * 2.4f) : asleep ? 1 : autop ? 3 : 2;
-    R(x0 - 5 + k * 4, gy - 10 - h, 2, h, asleep ? rgb(0x5d4a44) : accent);
+    R(x0 - 5 + k * 4, gy - 10 - h, 2, h, asleep ? rgb(0x4f5868) : accent);
   }
 
   // neck and head
@@ -284,7 +285,6 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
   R(x0 - 12, hy + 5, 24, 11, screen);
 
   // eyes
-  uint16_t glow = asleep ? rgb(0x8a90a6) : autop ? rgb(0xa9d4ff) : locked ? rgb(0xffd87c) : over ? white : rgb(0xffe9c7);
   int ey = hy + 7, lx = x0 - 8, rx = x0 + 4;
   static const int LOOKS[6] = {-1, 0, 0, 1, 0, 0};
   int glance = idle ? LOOKS[(int)floorf(t / 1.3f) % 6] : 0;
@@ -300,8 +300,8 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
       R(ex + 3, ey + 2, 1, 2, glow);
     }
   } else if (locked || over) {
-    rect(fb, lx - 1, ey, 6, 5, accent, 71);
-    rect(fb, rx - 1, ey, 6, 5, accent, 71);
+    rect(fb, lx - 1, ey, 6, 5, accent, 76);
+    rect(fb, rx - 1, ey, 6, 5, accent, 76);
     R(lx, ey + 1, 4, 3, glow);
     R(rx, ey + 1, 4, 3, glow);
     R(lx + 3, ey + 1, 1, 1, screen);          // slanted inner corners: the focused look
@@ -344,12 +344,12 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
   if (autop) {
     static const int BLADE[4] = {9, 6, 2, 6};
     int w = BLADE[(int)floorf(t * 12) % 4];
-    R(x0 - 1, hy - 8, 2, 3, rgb(0x9fd0ff));
-    R(x0 - w / 2.0f, hy - 8, w, 1, rgb(0xd6ebff));
+    R(x0 - 1, hy - 8, 2, 3, accent);
+    R(x0 - w / 2.0f, hy - 8, w, 1, glow);
   } else {
-    uint16_t bulb = rgb(0x5a4640);
-    if (idle) bulb = sinf(t * 1.6f) > 0.6f ? rgb(0xe6ab62) : rgb(0x7a5a3a);
-    else if (working) bulb = (locked || over || beat % 2) ? accent : rgb(0x8a5a3a);
+    uint16_t bulb = rgb(0x4a5362);
+    if (idle) bulb = sinf(t * 1.6f) > 0.6f ? accent : rgb(0x4f5a6c);
+    else if (working) bulb = (locked || over || beat % 2) ? accent : rgb(0x566173);
     if (locked || over) rect(fb, x0 - 4, hy - 11, 8, 8, accent, (int)(255 * (0.25f + 0.15f * sinf(t * 5))));
     R(x0 - 2, hy - 9, 4, 4, bulb);
     if (over) R(x0 - 1, hy - 8, 2, 2, rgb(0xfff6d2));
@@ -357,7 +357,7 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
 
   // headphones go on when it locks in
   if (locked || over) {
-    uint16_t band = rgb(0x2c2832), cup = rgb(0x3b3542);
+    uint16_t band = rgb(0x232a36), cup = rgb(0x303a49);
     R(x0 - 17, hy - 2, 34, 2, band);
     R(x0 - 18, hy - 1, 2, 8, band);
     R(x0 + 16, hy - 1, 2, 8, band);
@@ -395,11 +395,11 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
 struct Drop { float x, y, vy, spin; bool on; };
 struct Ember { float x, y, vx, vy, life, ttl; bool on; };
 
-// A token: a small diamond that spins as it falls, so three widths of it.
-const char *const TOKEN[3][5] = {
-    {"..x..", ".xhx.", "xhxxs", ".xxs.", "..s.."},
-    {".x.", "xhx", "xhs", "xxs", ".s."},
-    {"x", "h", "x", "s", "s"},
+// A token: a small chip that turns as it falls, so three widths of it.
+const char *const TOKEN[3][3] = {
+    {"xhx", "xxs", "sss"},
+    {"hx", "xs", "ss"},
+    {"h", "x", "s"},
 };
 
 /** The moving part of the screen: fire, falling tokens, embers, and the robot standing in them. */
@@ -553,15 +553,16 @@ struct Scene {
       }
     }
 
-    // locked in: a slow sunburst behind the robot
+    // locked in: slow ripples spreading out from the robot
     if (look == LOCKED || look == OVERDRIVE) {
-      float spin = t * (look == OVERDRIVE ? 0.5f : 0.18f);
-      for (int k = 0; k < 12; k++) {
-        float a = k / 12.0f * 6.2831853f + spin, ca = cosf(a), sa = sinf(a);
-        int alpha = (int)(255 * (look == OVERDRIVE ? 0.10f : 0.075f) * (0.75f + 0.25f * sinf(t * 2 + k)));
-        for (int r = 24; r < 78; r += 2) {
-          int w = r / 10 < 1 ? 1 : r / 10;
-          rect(fb, CX + ca * r - w / 2.0f, GY - 30 + sa * r - w / 2.0f, w, w, GLOW[look], alpha);
+      const float reach = 60, speed = look == OVERDRIVE ? 22.0f : 12.0f;
+      for (int k = 0; k < 3; k++) {
+        float r = 22 + fmodf(t * speed + k * reach / 3, reach);
+        int alpha = (int)(56 * (1 - r / (reach + 22)));
+        int steps = (int)(r * 5);
+        for (int i = 0; i < steps; i++) {
+          float a = i * 6.2831853f / steps;
+          rect(fb, CX + cosf(a) * r, GY - 28 + sinf(a) * r, 1, 1, ACCENT[look], alpha);
         }
       }
     }
@@ -573,31 +574,31 @@ struct Scene {
       bool lit = !waiting && s.level >= level;
       bool here = !waiting && s.level == level;
       if (here) rect(fb, 2, y - 1, 9, 8, ACCENT[level], 255);
-      rect(fb, 3, y, 7, 6, lit ? ACCENT[level] : rgb(0x2a221d), 255);
+      rect(fb, 3, y, 7, 6, lit ? ACCENT[level] : rgb(0x232a36), 255);
       if (here) rect(fb, 5, y + 2, 3, 2, ground, 255);
       if (!waiting && s.usual == level) rect(fb, 12, y + 2, 3, 2, INK, 255);
     }
     if (!waiting && s.level < 0) rect(fb, 3, 53, 7, 2, ACCENT[AUTOPILOT], 255);   // off the ladder
 
     // platform
-    rect(fb, CX - 19, GY + 3, 3, AH - GY, rgb(0x17110e));
-    rect(fb, CX + 16, GY + 3, 3, AH - GY, rgb(0x17110e));
-    rect(fb, CX - 24, GY, 48, 3, rgb(0x2b211c));
-    rect(fb, CX - 24, GY, 48, 1, rgb(0x46362c));
+    rect(fb, CX - 19, GY + 3, 3, AH - GY, rgb(0x10141b));
+    rect(fb, CX + 16, GY + 3, 3, AH - GY, rgb(0x10141b));
+    rect(fb, CX - 24, GY, 48, 3, rgb(0x1d232d));
+    rect(fb, CX - 24, GY, 48, 1, rgb(0x2f3846));
 
     robot(fb, CX, GY, look, t);
 
     // tokens
+    const uint16_t white = rgb(0xffffff);
     for (const Drop &d : drops) {
       if (!d.on) continue;
       static const int FRAME[4] = {0, 1, 2, 1};
       const char *const *rows = TOKEN[FRAME[(int)d.spin % 4]];
       int w = (int)strlen(rows[0]);
-      for (int r = 0; r < 5; r++)
+      for (int r = 0; r < 3; r++)
         for (int q = 0; q < w; q++) {
           char ch = rows[r][q];
-          if (ch == '.') continue;
-          rect(fb, lroundf(d.x) + (5 - w) / 2.0f + q, lroundf(d.y) + r, 1, 1, ch == 'x' ? rgb(0xffd2ac) : ch == 'h' ? rgb(0xffffff) : rgb(0xdd8552));
+          rect(fb, lroundf(d.x) + (3 - w) / 2 + q, lroundf(d.y) + r, 1, 1, ch == 'x' ? rgb(0xdbe3ee) : ch == 'h' ? white : rgb(0x9aa9be));
         }
     }
 

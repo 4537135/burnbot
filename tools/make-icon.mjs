@@ -82,11 +82,11 @@ for (let y = 0; y < SIZE; y++) {
     const cover = coverage(x, y);
     if (!cover) continue;
     const t = (y - INSET) / BOX;
-    // warm dark gradient with a glow rising from the fire
+    // cool dark gradient, warming toward the fire at the bottom
     const glow = Math.max(0, t - 0.45) * 1.6;
-    let r = 30 + 16 * (1 - t) + 70 * glow;
-    let g = 18 + 8 * (1 - t) + 22 * glow;
-    let b = 13 + 6 * (1 - t) + 6 * glow;
+    let r = 16 + 10 * (1 - t) + 86 * glow;
+    let g = 20 + 10 * (1 - t) + 24 * glow;
+    let b = 28 + 12 * (1 - t) - 10 * glow;
     const ax = Math.floor((x - INSET) / PX);
     const ay = Math.floor((y - INSET) / PX);
     if (ax >= 0 && ay >= 0 && ax < G && ay < G) {
