@@ -83,7 +83,7 @@ dashboard says so. Use Claude Code and it wakes up on its own.
 | Level | Name | When |
 |---|---|---|
 | 0 | Asleep | No activity for 30 minutes |
-| 1 | Chilling | Quiet for 5 minutes |
+| 1 | Chilling | Quiet for 5 minutes. Reading a plan or a question Claude put to you does not count as quiet: while you are at the Mac with one open, you are still working |
 | 2 | Warming up | Working, in your quietest 30% |
 | 3 | Cooking | Above your quietest 30%: your usual working pace |
 | 4 | Locked in | Your top 25%, after 20 minutes of unbroken work |
@@ -102,7 +102,7 @@ seconds Burnbot looks at your last 30 days and works everything out again:
    |---|---|---|
    | Burn | 40% | Tokens per hour: everything the model read and wrote, cached context included |
    | Typing | 35% | Characters you typed into your prompts. Pasted text and system messages are left out |
-   | Actions | 25% | Your prompts plus the tool calls the AI made |
+   | Actions | 25% | Your prompts, your answers (to Claude's questions, plans and permission asks), and the tool calls the AI made |
 
 2. **Intensity, ranked against you again.** The blend of the three is ranked
    against your own hands-on time once more, so intensity 75 always means
@@ -129,6 +129,15 @@ and only when there is good reason to:
 | Waiting on you | Claude Code asks permission for something | If you are in your terminal or editor, a face; if you are elsewhere, a bubble that stays until you are back. Click it to go to your terminal |
 | Your move | Claude stops after working for two minutes or more | A bubble, only if you are elsewhere |
 | Session over | The session ends, or goes quiet for 30 minutes after at least 20 minutes of work | A recap: how long, what went green, commits and pull requests |
+| Going round | Three near-repeats of the same ask, interrupts or turned-down plans in 20 minutes, with no file changed, no run passing and no plan approved in between | A puzzled face and "Going round" under the robot. Still at it 15 minutes later, a bubble, once, if Claude agrees it is a loop (see AI below) |
+| Drifted | Claude handed you the turn, you are at the Mac but in another app for longer than your usual break | A bored face and "Drifted · 6 min · shop is waiting"; at twice your usual break, one "Still there?" bubble. Click it to go back |
+| Back to | You come back to your terminal or editor after drifting | "Back to: <session>" under the robot for a minute |
+| Goal hit | Today's wins reach your daily goal | A happy face and "Goal hit · 4 wins, goal 4 · 6-day streak" under the robot |
+
+Iterating is not going round: a prompt that changes files, or makes a run
+pass, resets the count. Your usual break is learned from the stretches you
+spend in other apps before you come back and prompt again (five minutes
+until it has seen twenty of them).
 
 It decides how loud to be from where you are: which app is in front, and
 how long since you touched the Mac. One bubble at a time, the most important
@@ -145,6 +154,24 @@ last time. It changes when something matters more, not every few seconds.
 **Robot → Play Every Moment** plays a recorded session through all of it in
 about a minute, on the robot window and the desk screen.
 
+### Daily goal and streak
+
+A day is counted in wins, not hours:
+
+| Win | Counts |
+|---|---|
+| Red to green | A breakthrough, as above |
+| Shipped | A session that committed: once per session per day, however many commits Claude made |
+| Pull request | Each `gh pr create` that worked |
+| Plan approved | Each plan of Claude's you approved |
+
+The goal is the wins of your usual working day (the median over the last 30
+days you worked at least 30 minutes), or 3 until you have a week of them.
+Set your own on the dashboard (− / + / Auto). The streak counts working days
+that hit the goal; a day with under 30 minutes hands-on is skipped, not a
+break. The robot window and the desk screen show today's wins against the
+goal and the streak; the dashboard's Today page shows what they were.
+
 ### Claude Code alerts
 
 Knowing that Claude is waiting for a yes, or has stopped, needs Claude Code
@@ -159,23 +186,30 @@ alone, and takes its three out again when you switch the alerts off.
 Without them the robot still has its faces, the breakthrough and the
 session recap, all read from the logs.
 
-### AI session summaries
+### AI recaps and loop checks
 
-Off unless you switch it on (the welcome, or **Robot → AI Session
-Summaries**). When a session ends, Burnbot asks Claude for a short recap
-through the `claude` command you already use, on your own plan: what got
-done and what is next, shown as "Last time: … · next: …" when you come back.
+On by default; **Robot → AI Recaps and Loop Checks** turns them off. Burnbot
+uses the `claude` command you already use, on your own plan, for two things:
+
+- **Recaps.** When a session ends: what got done and what is next, shown as
+  "Last time: … · next: …" when you come back.
+- **Loop checks.** Before the robot says you are going round, Claude is
+  shown your last few prompts and asked whether they repeat or move forward.
+  If it says real iteration, or gives no answer, the robot keeps quiet.
+
 It sends the session's name, your prompts (shortened), the names of files
 edited and how runs turned out, never the contents of your files. At most
-20 a day, a minute at most each, with a small model; an answer that does not
-fit the expected shape is thrown away and the recap from the logs stays.
+20 calls a day between the two, with a small model and a time limit; an
+answer that does not fit the expected shape is thrown away. With them off,
+the recap comes from the logs alone and the rule decides about loops.
 
 ## Privacy
 
 Burnbot reads the session logs Claude Code already writes on your Mac, in
-`~/.claude/projects`. It makes no network connections of its own, and
-nothing leaves the Mac unless you switch on AI session summaries (above),
-which go through your own `claude` command. Its own history is kept in
+`~/.claude/projects`. It makes no network connections of its own. With AI
+recaps and loop checks on (the default, above), session names, your
+prompts, file names and test results go to Claude through your own `claude`
+command; turn them off and nothing leaves the Mac. Its own history is kept in
 `~/Library/Application Support/Burnbot` (with the last 50 sessions in
 `sessions.json`), so it survives when Claude Code clears old logs, and a log
 in `~/Library/Logs/Burnbot.log`.
@@ -222,8 +256,18 @@ Burnbot finds the board by itself and tells it your level once a second; the
 board keeps the fire and the robot moving in between. The dashboard shows
 "Desk screen on" when it is answering, with a **Flip** link if the picture is
 upside down. A board running another program is left alone. A board still
-on Burnbot 1.0's program keeps showing the levels; the dashboard says
-"old program" until you upload the new one.
+on an older program keeps showing the levels; the dashboard says "old
+program" until you upload the new one (1.2's board answers `BURNBOT 3`).
+
+The daily goal sits on the right of the scene: one lamp per win of the
+goal, lit as you get them, with the streak above.
+
+**Knock.** On a XIAO Sense the board feels a double knock on its case. It
+is off until you try it: **Robot → Test Knock** shows each knock it feels
+for 30 seconds, **Knock Sensitivity** sets how hard it has to be (light,
+medium, firm), and with **Knock to Dismiss** on, a double knock closes the
+speech bubble, and takes you back to your terminal if the bubble was asking
+for you.
 
 To put the program on the board: quit Burnbot, plug the board in, and
 double-click `desk/Upload to the screen.command`. It needs `arduino-cli`
@@ -237,8 +281,9 @@ c++ -std=c++11 -O2 -I desk/burnbot_screen desk/tools/sim.cpp -o /tmp/burnbot-sim
 open /tmp/screen.bmp
 ```
 
-Add `|ex=w`, `|ex=h` or `|ex=a` to the line for the worried, happy or
-waiting face, and a speech bubble after the seconds:
+Add `|ex=w`, `|ex=h`, `|ex=a`, `|ex=p` or `|ex=d` to the line for the
+worried, happy, waiting, puzzled or bored face, `|gl=3/4|sk=5` for the
+goal and streak, and a speech bubble after the seconds:
 
 ```bash
 /tmp/burnbot-sim /tmp/screen.bmp 'B|s=3|lv=3|tp=5|u=3|i=54|f=55|nm=COOKING|cp=LEVEL 3 OF 5|rt=21.4M|ex=h' 6 'M|k=b|h=1|t=FINALLY. ALL GREEN.|a=3 TRIES.|b=COMMIT IT.'
@@ -315,7 +360,8 @@ app/Tracker.swift     reads and tails Claude Code's session logs
 app/Metrics.swift     baseline, intensity, levels
 app/Signals.swift     Claude Code's hooks, and which app you are in
 app/Moments.swift     what the robot notices, and whether to say anything
-app/Summaries.swift   remembered sessions and the optional AI summary
+app/Runs.swift        what a command Claude ran was, whether it passed, red to green
+app/Summaries.swift   remembered sessions, AI recaps and loop checks
 app/Replay.swift      replays a recorded session (tests, Play Every Moment)
 app/DeskScreen.swift  finds the desk screen on USB and feeds it
 app/Pages.swift       serves the pages to the app's own windows

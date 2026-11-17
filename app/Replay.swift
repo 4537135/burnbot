@@ -126,6 +126,14 @@ func replayTimeline(_ folder: String, voice: Voice, frame: ((Double, MomentsOutp
     moments.isWork = { attention.isWork($0) }
     moments.sessionInfo = { id, at, since in tracker.session(id, now: at, since: since) }
     moments.trace = { out.append($0) }
+    // fixture.json "judge": true / false stands in for your claude's answer on a loop; left out, the rule decides.
+    if let verdict = settings["judge"] as? Bool { moments.judgeLoop = { _, answer in answer(verdict) } }
+    // "levels": true prints the level each minute; "goal": n sets the daily goal (the replay has no other days).
+    let showLevels = settings["levels"] as? Bool ?? false
+    let goalSet = (settings["goal"] as? NSNumber)?.intValue
+    let stamp = DateFormatter()
+    stamp.dateFormat = "HH:mm:ss"
+    var shownLevel = ""
 
     var hookIndex = 0
     var level = ""
@@ -134,12 +142,24 @@ func replayTimeline(_ folder: String, voice: Voice, frame: ((Double, MomentsOutp
         let signals = tracker.takeSignals()
         var due: [HookEvent] = []
         while hookIndex < hooks.count && hooks[hookIndex].ms <= now { due.append(hooks[hookIndex]); hookIndex += 1 }
-        // The level only matters to a run's result (how long a breakthrough shows), and working it out is slow.
-        if signals.contains(where: { if case .result = $0 { return true } else { return false } }) {
-            level = analyze(files: Array(tracker.files.values), lastCallMs: tracker.lastCallMs, lastPromptMs: tracker.lastPromptMs, now: now)["state"] as? String ?? ""
-        }
         let place = attention.now
-        moments.tick(signals: signals, hooks: due, front: place.front, idle: place.idle, level: level, now: now)
+        // The level only matters to a run's result (how long a breakthrough shows), and working it out is slow,
+        // unless the fixture asks for levels or a goal: then once a minute too.
+        var goal: GoalState?
+        let minutely = (showLevels || goalSet != nil) && Int(now) % 60_000 == 0
+        if minutely || signals.contains(where: { if case .result = $0 { return true } else { return false } }) {
+            // As the engine does: an open question or plan counts as hands-on while you are at the Mac.
+            let askedAt = place.idle < 120 ? tracker.pendingAsk(now: now) : 0
+            let state = analyze(files: Array(tracker.files.values), lastCallMs: tracker.lastCallMs, lastPromptMs: tracker.lastPromptMs,
+                                now: now, askedAt: askedAt, goal: goalSet ?? 0)
+            level = (state["live"] as? [String: Any])?["state"] as? String ?? ""
+            if goalSet != nil { goal = GoalState(state["goal"], now: now) }
+            if showLevels && minutely && level != shownLevel {
+                out.append("\(stamp.string(from: Date(timeIntervalSince1970: now / 1000)))  LEVEL \(level)\(askedAt > 0 ? " (a question or plan is open)" : "")")
+                shownLevel = level
+            }
+        }
+        moments.tick(signals: signals, hooks: due, front: place.front, idle: place.idle, level: level, goal: goal, now: now)
         frame?(now, moments.output)
         now += 1000
     }

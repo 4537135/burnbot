@@ -1,0 +1,8 @@
+10:00:00  front app: com.apple.Terminal (work)
+10:00:00  NOW On: Paginate the orders list
+10:02:20  front app: com.apple.Safari
+10:06:05  your-move:a1b2c3d4-0014-4000-8000-000000000014 noticed (stopped while you were away)
+10:06:05  SHOW your-move: YOUR MOVE / shop stopped / after 6 min. / It is waiting on you.
+10:07:06  your-move:a1b2c3d4-0014-4000-8000-000000000014 over (its time is up, or you are back)
+10:07:06  SHOW nothing
+10:15:20  NOW -

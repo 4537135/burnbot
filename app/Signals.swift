@@ -229,6 +229,7 @@ final class Attention {
     private var front = ""
     private var lastWork = ""
     private var learned: [String: Int]
+    private var breaks: [Double]            // seconds: stretches in other apps that ended with you prompting again
     private let remember: Bool
     /// Set to replace the real thing (fixtures): (bundle id in front, seconds since input).
     var scripted: (() -> (String, Double))?
@@ -236,6 +237,26 @@ final class Attention {
     init(remember: Bool) {
         self.remember = remember
         learned = remember ? (UserDefaults.standard.dictionary(forKey: "workApps") as? [String: Int] ?? [:]) : [:]
+        breaks = remember ? (UserDefaults.standard.array(forKey: "breaks") as? [Double] ?? []) : []
+    }
+
+    /// One more of your breaks, in ms (the last 100 are kept).
+    func addBreak(_ ms: Double) {
+        lock.lock()
+        defer { lock.unlock() }
+        breaks = Array((breaks + [ms / 1000]).suffix(100))
+        if remember { UserDefaults.standard.set(breaks, forKey: "breaks") }
+    }
+
+    /// How long you usually step away to another app mid-session, in ms: 5 min until 20 breaks
+    /// are known, then the 75th percentile of them, kept between 3 and 20 min.
+    var usualBreak: Double {
+        lock.lock()
+        defer { lock.unlock() }
+        guard breaks.count >= 20 else { return 5 * 60_000 }
+        let sorted = breaks.sorted()
+        let p75 = sorted[min(sorted.count - 1, Int((Double(sorted.count - 1) * 0.75).rounded()))]
+        return min(20 * 60, max(3 * 60, p75)) * 1000
     }
 
     private func known(_ id: String) -> Bool {

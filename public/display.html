@@ -55,6 +55,7 @@
     display: flex; flex-direction: column; justify-content: center;
     text-shadow: .1em .1em 0 rgba(0, 0, 0, .6);        /* a hard shadow, one letter-pixel down and across */
   }
+  .hud > * { flex-shrink: 0; }                        /* a tall HUD must not squeeze the bar (it has no content to keep it open) */
   .eyebrow { font-size: max(10px, round(calc(1.4 * var(--u)), 5px)); letter-spacing: .2em; text-transform: uppercase; color: var(--state); transition: color 1s steps(4); }
   #levelName { margin-top: calc(.6 * var(--u)); font-size: max(20px, round(calc(6.8 * var(--u)), 10px)); line-height: 1; white-space: nowrap; color: var(--state); transition: color 1s steps(4); }
   #sub { margin-top: calc(1.2 * var(--u)); font-size: max(10px, round(calc(1.8 * var(--u)), 5px)); color: var(--ink-2); min-height: 1.3em; }
@@ -76,6 +77,14 @@
   .stat b { display: block; font-size: max(20px, round(calc(5 * var(--u)), 10px)); line-height: 1; white-space: nowrap; }
   .stat span { display: block; margin-top: calc(.7 * var(--u)); font-size: max(10px, round(calc(1.4 * var(--u)), 5px)); color: var(--ink-3); }
   .stat + .stat { margin-top: calc(2.4 * var(--u)); }
+  /* Today's wins against your goal, and the streak of days that made it. */
+  .goal[hidden] { display: none; }
+  .stat.goal b { font-size: max(15px, round(calc(3.5 * var(--u)), 5px)); }
+  .stat + .goal { margin-top: calc(1.8 * var(--u)); }
+  .goal b small { font-size: .5em; color: var(--ink-3); margin-left: .15em; }
+  .goal.hit b { color: #4fc9a4; }
+  .goal .pips { display: inline-flex; gap: calc(.35 * var(--u)); margin-left: calc(.8 * var(--u)); vertical-align: middle; }
+  .goal .pips i { width: calc(.8 * var(--u)); height: calc(.8 * var(--u)); background: #4fc9a4; }
 
   /* the ladder: every level, top to bottom */
   .ladder { display: flex; flex-direction: column; gap: calc(.2 * var(--u)); }
@@ -147,7 +156,10 @@
      the level, and the burn. Make it bigger for the rest. */
   @media (max-width: 760px) and (min-aspect-ratio: 5/4) {
     :root { --u: min(1.55vw, 2.75vh); }
-    .brand b, #clock, #sub, .track, #note, .stat + .stat, .cols > .ladder { display: none; }
+    .brand b, #clock, #sub, .track, #note, .stat + .stat:not(.goal), .cols > .ladder { display: none; }
+    .goal b { font-size: max(15px, round(calc(2.6 * var(--u)), 5px)); display: inline; }
+    .goal span { display: inline; margin-left: calc(.8 * var(--u)); }
+    .stat + .goal { margin-top: calc(1.6 * var(--u)); }
     .top { top: calc(3.2 * var(--u)); left: calc(3 * var(--u)); }
     .hud { left: 47vw; right: calc(3 * var(--u)); top: calc(4 * var(--u)); bottom: calc(7 * var(--u)); }
     #levelName { font-size: max(20px, round(calc(5.6 * var(--u)), 10px)); }
@@ -177,6 +189,7 @@
       <div>
         <div class="stat"><b id="rate">0</b><span>tokens per hour</span></div>
         <div class="stat"><b id="today">0</b><span id="pace">burned today</span></div>
+        <div class="stat goal" id="goal" hidden><b id="wins">0</b><span id="goalNote">wins today</span></div>
       </div>
       <div class="ladder" id="ladder" role="list" aria-label="Levels"></div>
     </div>

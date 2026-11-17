@@ -20,16 +20,23 @@ final class DeskScreen {
     private(set) var program: String?
     private var said = ""                   // the last M line sent (what the robot is saying)
     private var saidAt = 0.0
+    private(set) var feelsKnocks = false    // the board has a motion sensor and it answered ("k=1")
+    private(set) var sensitivity = 1        // how hard a knock has to be, as the board keeps it: 0 light, 1 medium, 2 firm
     var log: (String) -> Void = { _ in }
+    /// Someone knocked twice on the case (called on the engine's queue).
+    var onKnock: (() -> Void)?
 
     /// The board's program can show the robot's faces and speech bubbles: "BURNBOT 2" or later.
     /// One on "BURNBOT 1" still shows the levels, and the dashboard says its program is out of date.
     var speaks: Bool { state == "connected" && version >= 2 }
+    /// "BURNBOT 3" and later report knocks, when the board has the sensor for it.
+    var knocks: Bool { state == "connected" && version >= 3 && feelsKnocks }
     private var version: Int { program.flatMap { Int($0.split(separator: " ").last ?? "") } ?? 0 }
+    static let current = 3                  // the program in desk/burnbot_screen
 
     var status: [String: Any] {
         ["state": state, "port": port ?? NSNull(), "program": program ?? NSNull(), "answering": Date().timeIntervalSince1970 - heardAt < 5,
-         "outdated": state == "connected" && version < 2]
+         "outdated": state == "connected" && version < DeskScreen.current, "knocks": knocks, "sensitivity": sensitivity]
     }
 
     private func ports() -> [String] {
@@ -105,6 +112,8 @@ final class DeskScreen {
         if fd >= 0 { close(fd) }
         fd = -1
         said = ""
+        pending = ""
+        feelsKnocks = false
     }
 
     private func connect() {
@@ -147,10 +156,28 @@ final class DeskScreen {
             connect()
             if fd < 0 { return }
         }
+        // What the board said, a whole line at a time; a part line waits for the rest.
         pending += drain(fd)
-        if pending.contains("OK") { heardAt = now }
-        if let match = pending.range(of: "Q\\|o=[0-9]", options: .regularExpression) { rotation = Int(String(pending[match].last!)) ?? rotation }
-        pending = String(pending.suffix(64))
+        var lines = pending.components(separatedBy: "\n")
+        pending = String((lines.removeLast()).suffix(200))
+        for raw in lines {
+            let reply = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if reply == "OK" { heardAt = now }
+            else if reply == "K" { heardAt = now; onKnock?() }
+            else if reply.hasPrefix("Q|") {
+                heardAt = now
+                for field in reply.split(separator: "|").dropFirst() {
+                    let pair = field.split(separator: "=", maxSplits: 1)
+                    guard pair.count == 2, let value = Int(pair[1]) else { continue }
+                    switch pair[0] {
+                    case "o": rotation = value
+                    case "k": feelsKnocks = value == 1
+                    case "n": sensitivity = value
+                    default: break
+                    }
+                }
+            }
+        }
         var out = line + "\n"
         if speaks, let moment, moment != said || now - saidAt >= 5 {
             out += moment + "\n"
@@ -166,6 +193,12 @@ final class DeskScreen {
             disconnect()
             set("silent", port)
         }
+    }
+
+    /// How hard a knock has to be: 0 light, 1 medium, 2 firm. The board remembers it.
+    func setSensitivity(_ level: Int) {
+        guard fd >= 0, version >= 3, (0...2).contains(level), write(fd, "S\(level)\nQ\n") else { return }
+        sensitivity = level
     }
 
     /// Turns the picture the other way up, for a screen mounted with its pins at the top.
@@ -201,6 +234,11 @@ func deskLine(_ state: [String: Any], names: [String: String], expr: String = ""
     let usual = (live["usual"] as? String).flatMap { stateNames.firstIndex(of: $0) } ?? -1
     let cuts = (state["baseline"] as? [String: Any])?["thresholds"] as? [String: Any] ?? [:]
     let clock = Calendar.current.dateComponents([.hour, .minute], from: Date())
+    // Today's wins against the goal, and the streak; boards before 3 ignore keys they do not know.
+    var goal = ""
+    if let g = state["goal"] as? [String: Any], int(g["target"]) > 0 {
+        goal = "|gl=\(int(g["wins"]))/\(int(g["target"]))|sk=\(int(g["streak"]))"
+    }
     return [
         "B",
         "s=\(stateNames.firstIndex(of: name) ?? 0)",
@@ -214,7 +252,8 @@ func deskLine(_ state: [String: Any], names: [String: String], expr: String = ""
         "cp=\(level < 0 ? "OFF LADDER" : "LEVEL \(level) OF \(top)")",
         "rt=\(tokens((live["tokensPerHour"] as? NSNumber)?.doubleValue ?? 0))",
         String(format: "tm=%02d:%02d", clock.hour ?? 0, clock.minute ?? 0),
-    ].joined(separator: "|") + (expr.isEmpty ? "" : "|ex=" + (["worried": "w", "happy": "h", "waiting": "a"][expr] ?? "-"))
+    ].joined(separator: "|") + goal
+        + (expr.isEmpty ? "" : "|ex=" + (["worried": "w", "happy": "h", "waiting": "a", "puzzled": "p", "bored": "d"][expr] ?? "-"))
 }
 
 /// What the robot is saying, as the desk draws it: capitals, the board's own letters, the words
@@ -255,7 +294,7 @@ func deskMoment(_ card: Card?) -> String {
         rows += wrapped
         if i == 0 { head = wrapped.count }
     }
-    let kind = ["waiting": "w", "breakthrough": "b", "your-move": "m", "done": "d"][card.kind] ?? "m"
+    let kind = ["waiting": "w", "breakthrough": "b", "your-move": "m", "done": "d", "loop": "l", "drift": "r"][card.kind] ?? "m"
     var fields = ["M", "k=\(kind)", "h=\(max(1, head))", "t=" + cut(clean(card.title), 19)]
     for (i, row) in rows.enumerated() { fields.append("\(["a", "b", "c", "d"][i])=\(row)") }
     return fields.joined(separator: "|")

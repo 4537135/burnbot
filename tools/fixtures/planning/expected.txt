@@ -1,0 +1,4 @@
+10:00:00  LEVEL warming
+10:00:00  front app: com.apple.Terminal (work)
+10:00:00  NOW On: Plan the refunds flow
+10:30:00  LEVEL idle

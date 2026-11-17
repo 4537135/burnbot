@@ -36,8 +36,9 @@ def iso(t):
 
 
 class Case:
-    def __init__(self, name, about, end=None):
+    def __init__(self, name, about, end=None, **settings):
         self.name, self.about, self.end = name, about, end
+        self.settings = settings            # levels=True, goal=n, judge=True/False (see app/Replay.swift)
         self.logs = {}
         self.hooks = []
         self.attention = []
@@ -81,9 +82,9 @@ class Case:
         with open(os.path.join(folder, 'attention.txt'), 'w') as f:
             for t, app, idle in sorted(self.attention):
                 f.write(f'{iso(t)} {app} {idle}\n')
-        if self.end:
+        if self.end or self.settings:
             with open(os.path.join(folder, 'fixture.json'), 'w') as f:
-                json.dump({'end': iso(at(self.end))}, f)
+                json.dump({**({'end': iso(at(self.end))} if self.end else {}), **self.settings}, f)
                 f.write('\n')
         if expected is not None:
             with open(os.path.join(folder, 'expected.txt'), 'w') as f:
@@ -152,6 +153,41 @@ class Session:
             line['message'] = {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': tool, 'content': output, 'is_error': False}]}
             line['toolUseResult'] = {'stdout': output, 'stderr': '', 'interrupted': interrupted, 'isImage': False, 'noOutputExpected': False}
         self.lines.append(line)
+
+
+    def interrupt(self, hms):
+        """You pressed Esc while Claude was working."""
+        line, _ = self._base('user', hms)
+        line['message'] = {'role': 'user', 'content': [{'type': 'text', 'text': '[Request interrupted by user]'}]}
+        self.lines.append(line)
+
+    def _tool_answer(self, tool, done, text, result, error=False):
+        line, _ = self._base('user', done)
+        line['sourceToolAssistantUUID'] = 'x'
+        line['message'] = {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': tool, 'content': text, 'is_error': error}]}
+        line['toolUseResult'] = result
+        self.lines.append(line)
+
+    def ask(self, hms, done, question, answer):
+        """Claude asks you a question (AskUserQuestion); you answer at `done`."""
+        tool = f'toolu_q{next(self.case.ids):04d}'
+        self._assistant(hms, [{'type': 'tool_use', 'id': tool, 'name': 'AskUserQuestion',
+                               'input': {'questions': [{'question': question, 'header': 'Q', 'multiSelect': False,
+                                                        'options': [{'label': answer, 'description': ''}, {'label': 'Other', 'description': ''}]}]}}])
+        self._tool_answer(tool, done, f'User has answered your questions: "{question}"="{answer}".',
+                          {'questions': [{'question': question}], 'answers': {question: answer}})
+
+    def plan(self, hms, done, approved=True):
+        """Claude shows you a plan (ExitPlanMode); you approve or turn it down at `done`."""
+        tool = f'toolu_p{next(self.case.ids):04d}'
+        plan = '# Plan\n\n## Context\n\nDo the thing.'
+        self._assistant(hms, [{'type': 'tool_use', 'id': tool, 'name': 'ExitPlanMode', 'input': {'plan': plan}}])
+        if approved:
+            self._tool_answer(tool, done, 'User has approved your plan. You can now start coding.',
+                              {'plan': plan, 'isAgent': False, 'filePath': '/Users/dev/.claude/plans/plan.md'})
+        else:
+            self._tool_answer(tool, done, "The user doesn't want to proceed with this tool use. The tool use was rejected.",
+                              'User rejected tool use', error=True)
 
 
 FAIL_2 = 'FAIL src/checkout.test.ts\n  ✕ adds tax to the total (14 ms)\n  ✕ rounds to cents (3 ms)\nTests:       2 failed, 12 passed, 14 total'
@@ -346,16 +382,29 @@ cases.append(c)
 # The app plays this one for "Play Every Moment" (Robot menu, or --demo), with the
 # quiet stretches cut short. build-app.sh copies it into the app.
 c = Case('demo', """
-Every moment in one session. The tests fail twice while you watch (worried),
-then pass (all green). Claude needs a yes while you are in Safari (your call,
-until you are back). Claude stops after a long turn while you are in Slack
-(your move). The session ends, and once the bubble budget allows, the recap.
-""", end='10:31:00')
+Every moment in one session, for Play Every Moment. A plan you approve (a win).
+The same ask three times with nothing changing (puzzled, going round), until
+Claude edits. The tests fail twice while you watch (worried), then pass: all
+green, and with it the daily goal of 2 (happy). Claude needs a yes while you
+are in Safari (your call, until you are back). Claude stops after a long turn
+while you read in Safari at the Mac (your move), you stay there (bored, then
+still there?), come back (back to), and the session ends: the recap, once the
+bubble budget allows.
+""", end='10:42:00', goal=2)
 s = c.session('d3m0d3m0-0000-4000-8000-000000000001', 'shop', 'Fix checkout tax tests', branch='fix/tax')
 c.busy('09:49:40', '10:06:20')
-s.prompt('09:50:00', 'Checkout totals are a cent off. Find out why.')
-s.work('09:50:20', '09:59:30')
-s.prompt('10:00:00', 'The checkout tests fail on the tax line. Fix them.')
+s.prompt('09:50:00', 'Checkout totals are a cent off. Plan the fix first.')
+s.work('09:50:20', '09:52:00')
+s.plan('09:52:30', '09:54:00')
+s.prompt('09:54:20', 'Make the checkout total match the receipt.')
+s.work('09:54:40', '09:56:20')
+s.interrupt('09:56:40')
+s.prompt('09:56:50', 'Make the checkout total match the receipt exactly.')
+s.work('09:57:10', '09:58:00')
+s.prompt('09:58:20', 'The checkout total still does not match the receipt. Make it match.')
+s.work('09:58:40', '09:59:20')
+s.interrupt('09:59:40')
+s.prompt('09:59:50', 'Stop. The tax line is wrong. Fix the checkout tests on the tax line.')
 s.edit('10:00:40', 'src/tax.ts')
 s.bash('10:01:00', 'npm test', '10:01:40', exit=1, output=FAIL_2)
 s.edit('10:02:10', 'src/tax.ts')
@@ -371,13 +420,129 @@ c.hook('10:07:01', 'PermissionRequest', s, tool_name='Bash', tool_input={'comman
 c.busy('10:09:00', '10:10:20')
 s.think('10:09:40', 'Rebuilt.')
 s.prompt('10:10:00', 'Run the whole suite and fix what breaks.')
-c.front('10:10:30', SLACK, 0)
+c.busy('10:10:30', '10:28:00', SAFARI)
 s.work('10:10:20', '10:17:00')
 c.hook('10:17:02', 'Stop', s)
-c.busy('10:19:00', '10:31:00')
-s.prompt('10:19:30', 'Good. Push it.')
-s.work('10:19:50', '10:21:00')
-c.hook('10:21:10', 'SessionEnd', s, reason='prompt_input_exit')
+c.busy('10:28:20', '10:42:00')
+s.prompt('10:28:40', 'Good. Push it.')
+s.work('10:29:00', '10:30:00')
+c.hook('10:30:10', 'SessionEnd', s, reason='prompt_input_exit')
+cases.append(c)
+
+# ---------------------------------------------------------------------------
+# Burnbot 1.2: planning counts as work, loops, drift, the daily goal.
+
+c = Case('planning', """
+Planning with Claude at the terminal. Claude asks a question (3 min to answer),
+then shows a plan you read for 9 min before approving. Nothing is typed while you
+read, and Claude is silent, but you are working: the level must never drop to
+idle (Chilling) while a question or plan is open and you are at the Mac.
+""", end='10:30:00', levels=True)
+s = c.session('a1b2c3d4-0011-4000-8000-000000000011', 'shop', 'Plan the refunds flow')
+c.busy('09:59:40', '10:30:00')
+s.prompt('10:00:00', 'Plan how refunds should work: partial refunds, store credit, and the emails.')
+s.work('10:00:20', '10:06:00')
+s.ask('10:06:30', '10:09:30', 'Should store credit expire?', 'No, never')
+s.work('10:09:40', '10:12:00')
+s.plan('10:12:30', '10:21:30')
+s.work('10:21:40', '10:25:00')
+s.edit('10:25:30', 'src/refunds.ts')
+cases.append(c)
+
+c = Case('loop-real', """
+The same ask three times, but Claude changes files between them: that is
+iteration, not going round. No puzzled face, no bubble.
+""", end='10:20:00')
+s = c.session('a1b2c3d4-0012-4000-8000-000000000012', 'shop', 'Restyle the checkout button')
+c.busy('09:59:40', '10:20:00')
+s.prompt('10:00:00', 'Make the checkout button bigger and use the brand colour.')
+s.work('10:00:20', '10:02:00')
+s.edit('10:02:30', 'src/Button.css')
+s.prompt('10:04:00', 'Make the checkout button bigger still, and the brand colour darker.')
+s.work('10:04:20', '10:05:00')
+s.edit('10:05:30', 'src/Button.css')
+s.prompt('10:07:00', 'Make the checkout button a bit bigger, brand colour is right now.')
+s.work('10:07:20', '10:08:00')
+s.edit('10:08:30', 'src/Button.css')
+cases.append(c)
+
+
+def stuck(name, about, **settings):
+    c = Case(name, about, end='10:32:00', **settings)
+    s = c.session('a1b2c3d4-0013-4000-8000-000000000013', 'shop', 'Fix the flaky login test')
+    c.busy('09:59:40', '10:32:00')
+    s.prompt('10:00:00', 'Fix the flaky login test, it times out on CI.')
+    s.work('10:00:20', '10:03:00')
+    s.interrupt('10:03:30')
+    s.prompt('10:03:45', 'Fix the flaky login test, it still times out on CI.')
+    s.work('10:04:00', '10:05:30')
+    s.prompt('10:06:00', 'The login test is still flaky on CI, fix the timeout.')
+    s.work('10:06:20', '10:08:30')
+    s.interrupt('10:09:00')
+    s.prompt('10:09:20', 'Just fix the flaky login test timeout.')
+    s.work('10:09:40', '10:24:30')
+    s.prompt('10:25:00', 'Fix the login test timeout. It is still flaky.')
+    s.work('10:25:20', '10:27:30')
+    s.edit('10:28:00', 'test/login.test.ts')
+    return c
+
+
+cases.append(stuck('loop-stuck', """
+The same ask again and again: stopped, retyped, reworded, and Claude changes
+nothing. On the third redo the robot looks puzzled and the line under it says
+so. Fifteen minutes on, one more redo: with no AI, the rule decides and the
+robot says it once. Claude finally editing a file ends it.
+"""))
+cases.append(stuck('loop-judged', """
+The same session as loop-stuck, but AI is on and your claude reads it as real
+iteration: the puzzled face and the line still show, the bubble does not.
+""", judge=False))
+
+
+def drift(name, about, at_mac):
+    c = Case(name, about, end='10:22:00')
+    s = c.session('a1b2c3d4-0014-4000-8000-000000000014', 'shop', 'Paginate the orders list')
+    c.busy('09:59:40', '10:02:00')
+    s.prompt('10:00:00', 'Paginate the orders list, 50 a page.')
+    s.work('10:00:20', '10:06:00')
+    c.hook('10:06:05', 'Stop', s)
+    if at_mac:
+        c.busy('10:02:20', '10:19:00', SAFARI)
+        c.busy('10:19:20', '10:22:00')
+        s.prompt('10:19:40', 'Looks good. Add a page size picker.')
+        s.work('10:20:00', '10:21:30')
+    else:
+        c.front('10:02:20', SAFARI, 0)          # then nothing: you left the Mac
+    return c
+
+
+cases.append(drift('drift', """
+Claude finishes a 6-minute turn while you are reading in Safari, at the Mac.
+Your move gets its bubble. Past your usual break (5 min until learned) the
+robot looks bored and the line says what is waiting; past twice that, one
+bubble. Back in the terminal: "Back to" for a minute.
+""", at_mac=True))
+cases.append(drift('drift-away', """
+The same, but you walked away from the Mac: that is 1.1's away path (your move,
+kept), not drifting. No bored face, no drift bubble.
+""", at_mac=False))
+
+c = Case('goal', """
+A daily goal of 2 wins. An approved plan is the first; tests going green after
+two failures is the second: the goal is hit, a happy face and the line for two
+minutes, no bubble.
+""", end='10:16:00', goal=2)
+s = c.session('a1b2c3d4-0015-4000-8000-000000000015', 'shop', 'Fix checkout tax tests')
+c.busy('09:59:40', '10:16:00')
+s.prompt('10:00:00', 'Plan the tax fix first.')
+s.work('10:00:20', '10:02:00')
+s.plan('10:02:30', '10:04:00')
+s.edit('10:04:30', 'src/tax.ts')
+s.bash('10:05:00', 'npm test', '10:05:40', exit=1, output=FAIL_2)
+s.edit('10:06:10', 'src/tax.ts')
+s.bash('10:06:30', 'npm test', '10:07:10', exit=1, output=FAIL_1)
+s.edit('10:07:40', 'src/round.ts')
+s.bash('10:08:00', 'npm test', '10:08:40', output=PASS)
 cases.append(c)
 
 if __name__ == '__main__':

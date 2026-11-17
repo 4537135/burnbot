@@ -389,7 +389,7 @@ function renderChrome() {
     $('desk').classList.toggle('on', desk.state === 'connected' && desk.answering);
     $('deskFlip').hidden = desk.state !== 'connected';
     $('desk').title = desk.outdated
-      ? 'It shows the levels but not the robot\'s faces and speech bubbles. To update it, double-click "Upload to the screen" in the desk folder.'
+      ? 'An older program: it may be missing the robot\'s faces, speech bubbles, daily goal or knock. To update it, double-click "Upload to the screen" in the desk folder.'
       : '';
     $('deskText').textContent =
       desk.state === 'connected'
@@ -470,6 +470,31 @@ function renderStats() {
     [duration(t.engagedMin), 'hands-on today', t.typicalEngaged ? `usually ${duration(t.typicalEngaged)} a day` : 'you prompting, the AI working'],
     [duration(t.lockedMin), 'locked in or higher', t.engagedMin ? `${Math.round((t.lockedMin / t.engagedMin) * 100)}% of hands-on time` : 'not yet today'],
   ]);
+}
+
+// A win is red turning green, a session that shipped (once a day however many commits),
+// a pull request, or a plan you approved. The goal is your usual number of them, or yours.
+function renderGoal() {
+  const g = data.goal;
+  $('goalCard').hidden = !g;
+  if (!g) return;
+  const k = data.today.winKinds || {};
+  $('goalBody').classList.toggle('hit', g.hitToday);
+  $('goalWins').innerHTML = `${g.wins}<small> / ${g.target} wins</small>`;
+  $('goalPips').innerHTML = Array.from({ length: Math.min(g.target, 12) }, (_, i) => `<i class="${i < g.wins ? 'on' : ''}"></i>`).join('');
+  const parts = [
+    [k.greens, 'red to green', 'red to green'],
+    [k.commits, 'session shipped', 'sessions shipped'],
+    [k.prs, 'pull request', 'pull requests'],
+    [k.plans, 'plan approved', 'plans approved'],
+  ].filter(([n]) => n > 0).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
+  const streak = g.streak > 0 ? `${g.streak}-day streak${g.hitToday ? '' : ' so far'}` : 'No streak yet';
+  $('goalKinds').innerHTML = `${esc(parts.length ? parts.join(' · ') : 'No wins yet today')}<small>${esc(streak)} · a day under 30 min hands-on does not break it</small>`;
+  $('goalHint').textContent = g.auto
+    ? g.workingDays >= 7 ? `Auto: your usual day, ${g.suggested} wins` : `Auto: ${g.suggested} until a week of work shows your usual`
+    : `Set by you · auto would be ${g.suggested}`;
+  $('goalAuto').setAttribute('aria-pressed', String(g.auto));
+  $('goalLess').disabled = g.target <= 1;
 }
 
 // ---------------------------------------------------------------- Today: the graphs
@@ -846,13 +871,13 @@ function renderTable(days) {
 }
 
 function renderFoot() {
-  const key = `${data.meta.source}|${Boolean(data.meta.aiSummaries)}`;
+  const key = `${data.meta.source}|${Boolean(data.meta.aiOn)}`;
   if (renderFoot.done === key) return;
   renderFoot.done = key;
   $('foot').innerHTML =
     `Burnbot reads the Claude Code session logs in <code>${esc(data.meta.source)}</code> and keeps its own history, so nothing is lost when old logs are cleared. ` +
-    (data.meta.aiSummaries
-      ? 'AI session summaries are on: when a session ends, its name, your prompts, file names and test results go to Claude through your own <code>claude</code> command. Nothing else leaves this Mac. '
+    (data.meta.aiOn
+      ? 'AI recaps and loop checks are on: session names, your prompts, file names and test results (never file contents) go to Claude through your own <code>claude</code> command, at most 20 times a day. Nothing else leaves this Mac; turn it off in the Robot menu. '
       : 'Nothing leaves this Mac. ') +
     'Tokens count everything read and written, cached context included. ' +
     '<a href="/display?demo=cycle" target="_blank" rel="noopener">Preview every level</a>.<br>' +
@@ -864,6 +889,7 @@ function render() {
   if (page === 'today') {
     renderLevel();
     renderStats();
+    renderGoal();
     renderBurn();
     renderPace();
     renderLevelsToday();
@@ -933,6 +959,9 @@ for (const fold of document.querySelectorAll('details.fold')) fold.addEventListe
 setInterval(() => drawLogo($('logo'), state, performance.now() / 1000), 125);
 
 $('deskFlip').addEventListener('click', () => tell('flipDesk'));
+$('goalLess').addEventListener('click', () => data.goal && tell('dailyGoal', { n: Math.max(1, data.goal.target - 1) }));
+$('goalMore').addEventListener('click', () => data.goal && tell('dailyGoal', { n: Math.min(20, data.goal.target + 1) }));
+$('goalAuto').addEventListener('click', () => tell('dailyGoal', { n: 0 }));
 
 // ---- where the robot shows ----
 
@@ -996,7 +1025,6 @@ function welcome(force = false) {
   $('optTop').checked = data.meta.keepOnTop !== false;
   // Asked for the first time (new, or coming from 1.0): alerts default on, summaries off.
   $('optAlerts').checked = data.meta.firstRun ? true : Boolean(data.meta.claudeAlerts);
-  $('optSummaries').checked = Boolean(data.meta.aiSummaries);
   fillWelcome();
   $('welcome').hidden = false;
   $('welcomeGo').focus({ preventScroll: true }); $('welcome').scrollTop = 0;
@@ -1006,7 +1034,6 @@ $('welcomeGo').addEventListener('click', () => {
   tell('openAtLogin', { on: $('optLogin').checked });
   tell('keepOnTop', { on: $('optTop').checked });
   tell('claudeAlerts', { on: $('optAlerts').checked });
-  tell('aiSummaries', { on: $('optSummaries').checked });
   tell('welcomed');
   $('welcome').hidden = true;
 });

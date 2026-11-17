@@ -44,7 +44,7 @@ inline uint16_t mix(uint16_t under, uint16_t over, int a) {      // a: 0 nothing
 enum Look { ASLEEP, IDLE, WARMING, CRUISING, LOCKED, OVERDRIVE, AUTOPILOT };
 
 // A reaction drawn over the level's face for a few seconds (the same three as on the Mac).
-enum Expr { EX_NONE, EX_WORRIED, EX_HAPPY, EX_WAITING };
+enum Expr { EX_NONE, EX_WORRIED, EX_HAPPY, EX_WAITING, EX_PUZZLED, EX_BORED };
 
 // One colour per level, cold to hot like a temperature scale (the same as on the Mac).
 const uint16_t ACCENT[7] = {rgb(0x6f83ad), rgb(0x62a8f5), rgb(0x4fc9a4), rgb(0xf4c542), rgb(0xff8030), rgb(0xf43f6b), rgb(0xa78bfa)};
@@ -65,6 +65,7 @@ struct State {
   char rate[12] = "0";                      // tokens per hour, already shortened ("94.3M")
   char clock[8] = "";
   int expr = EX_NONE;                       // a reaction over the face
+  int wins = 0, target = 0, streak = 0;     // today's wins against the goal (target 0: none sent)
 };
 
 // What the robot is saying: a speech bubble that takes the place of the words at
@@ -112,7 +113,14 @@ inline bool parse(const char *line, State &s) {
     else if (is("cp")) copyText(s.caption, sizeof(s.caption), v, vlen);
     else if (is("rt")) copyText(s.rate, sizeof(s.rate), v, vlen);
     else if (is("tm")) copyText(s.clock, sizeof(s.clock), v, vlen);
-    else if (is("ex")) s.expr = *v == 'w' ? EX_WORRIED : *v == 'h' ? EX_HAPPY : *v == 'a' ? EX_WAITING : EX_NONE;
+    else if (is("ex")) s.expr = *v == 'w' ? EX_WORRIED : *v == 'h' ? EX_HAPPY : *v == 'a' ? EX_WAITING
+                              : *v == 'p' ? EX_PUZZLED : *v == 'd' ? EX_BORED : EX_NONE;
+    else if (is("gl")) {                      // "3/4": wins today / the goal
+      s.wins = atoi(v);
+      const char *slash = (const char *)memchr(v, '/', vlen);
+      s.target = slash ? atoi(slash + 1) : 0;
+    }
+    else if (is("sk")) s.streak = atoi(v);
     p = *end ? end + 1 : end;
   }
   if (s.look < 0 || s.look > AUTOPILOT) s.look = ASLEEP;
@@ -330,7 +338,8 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t, int expr = EX
 
   float pace = asleep ? 1.1f : idle ? 1.7f : autop ? 2.0f : look == WARMING ? 3.0f : look == CRUISING ? 4.2f : locked ? 6.0f : 9.0f;
   int bob = sinf(t * pace) > 0.35f ? 1 : 0;
-  int x0 = cx + (over ? (int)lroundf(sinf(t * 41)) : 0) + (autop ? (int)lroundf(sinf(t * 1.3f)) : 0);
+  bool bored = expr == EX_BORED;
+  int x0 = cx + (over ? (int)lroundf(sinf(t * 41)) : 0) + (autop || bored ? (int)lroundf(sinf(t * (bored ? 0.8f : 1.3f))) : 0);
   int hy = gy - 43 + bob + (asleep ? 2 : 0);   // top of the head
 
   // legs and feet
@@ -353,7 +362,7 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t, int expr = EX
     R(x0 + 14, gy - 23, 4, 3, sh);
     R(x0 + 17, gy - 26 - wr, 4, 3, body);
     R(x0 + 17, gy - 29 - wr, 5, 3, hi);
-  } else if (working) {
+  } else if (working && !bored) {
     int l = beat % 2 ? 0 : 2, r = beat % 2 ? 2 : 0;
     R(x0 - 15, gy - 18, 4, 6, sh);
     R(x0 + 11, gy - 18, 4, 6, sh);
@@ -426,6 +435,19 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t, int expr = EX
       R(lx + 1, ey + 1, 2, 2, screen);
       R(rx + 1, ey + 1, 2, 2, screen);
     }
+  } else if (expr == EX_PUZZLED) {
+    // left brow up, right eye narrowed
+    R(lx, ey - 2, 4, 1, glow);
+    R(lx, ey, 4, 5, glow);
+    R(rx, ey + 1, 4, 1, glow);
+    R(rx, ey + 2, 4, 2, glow);
+  } else if (bored) {
+    // half shut, looking off to the side, now and then the other way
+    int away = (int)floorf(t / 3.1f) % 3 == 2 ? -1 : 1;
+    R(lx + away, ey + 2, 4, 1, sh);
+    R(rx + away, ey + 2, 4, 1, sh);
+    R(lx + away, ey + 3, 4, 2, glow);
+    R(rx + away, ey + 3, 4, 2, glow);
   } else if (asleep || blink) {
     R(lx, ey + 4, 4, 1, glow);
     R(rx, ey + 4, 4, 1, glow);
@@ -469,6 +491,10 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t, int expr = EX
     R(x0 - 4, my - 1, 8, 1, white);
     R(x0 - 3, my, 6, 1, glow);
   } else if (expr == EX_WAITING) R(x0 - 1, my - 1, 2, 2, glow);
+  else if (expr == EX_PUZZLED) {
+    R(x0 - 2, my, 4, 1, glow);
+    R(x0 + 2, my - 1, 2, 1, glow);
+  } else if (bored) R(x0 - 3, my, 6, 1, glow);
   else if (asleep) R(x0 - 1, my, 2, 1, glow);
   else if (autop) {
     R(x0 - 4, my - 1, 1, 1, glow);
@@ -542,6 +568,16 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t, int expr = EX
       R(x0 + 19, hy - 11, 2, 5, rgb(0xffd25e));
       R(x0 + 19, hy - 5, 2, 2, rgb(0xffd25e));
     }
+  } else if (expr == EX_PUZZLED) {
+    // "?" over its shoulder, bobbing
+    int bx = x0 + 18, by = hy - 11 + (int)floorf(t * 1.6f) % 2;
+    uint16_t q = rgb(0xc5cde4);
+    R(bx + 1, by, 2, 1, q);
+    R(bx, by + 1, 1, 1, q);
+    R(bx + 3, by + 1, 1, 2, q);
+    R(bx + 2, by + 3, 1, 1, q);
+    R(bx + 1, by + 4, 1, 1, q);
+    R(bx + 1, by + 6, 1, 1, q);
   }
 
   // asleep: z z z
@@ -746,6 +782,30 @@ struct Scene {
       if (!waiting && s.usual == level) rect(fb, 12, y + 2, 3, 2, INK, 255);
     }
     if (!waiting && s.level < 0) rect(fb, 3, 53, 7, 2, ACCENT[AUTOPILOT], 255);   // off the ladder
+
+    // Today's goal, opposite the ladder: a lamp per win to go (five at most), lit green as
+    // wins come in, and the streak of days that made it, above them.
+    if (!waiting && s.target > 0) {
+      const uint16_t green = rgb(0x4fc9a4), off = rgb(0x232a36);
+      int lamps = s.target < 5 ? s.target : 5;
+      int lit = s.wins >= s.target ? lamps : s.wins * lamps / s.target;
+      for (int k = 0; k < lamps; k++) {
+        int y = 45 - k * 8;
+        rect(fb, 71, y, 7, 6, k < lit ? green : off, 255);
+        if (k < lit && s.wins >= s.target) rect(fb, 73, y + 2, 3, 2, ground, 255);
+      }
+      if (s.streak > 1) {
+        static const uint8_t DIGIT[10][5] = {{7,5,5,5,7},{2,6,2,2,7},{7,1,7,4,7},{7,1,7,1,7},{5,5,7,1,1},
+                                             {7,4,7,1,7},{7,4,7,5,7},{7,1,2,2,2},{7,5,7,5,7},{7,5,7,1,7}};
+        char text[4];
+        int n = snprintf(text, sizeof(text), "%d", s.streak > 99 ? 99 : s.streak);
+        int x = 78 - n * 4 + 1, top = 45 - (lamps - 1) * 8 - 7;
+        for (int i = 0; i < n; i++, x += 4)
+          for (int r = 0; r < 5; r++)
+            for (int c = 0; c < 3; c++)
+              if (DIGIT[text[i] - '0'][r] & (4 >> c)) rect(fb, x + c, top + r, 1, 1, green, 255);
+      }
+    }
 
     // platform
     rect(fb, CX - 19, GY + 3, 3, AH - GY, rgb(0x10141b));

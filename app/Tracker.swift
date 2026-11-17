@@ -20,8 +20,19 @@ enum F {
     static let pasted = 9         // characters the person pasted
     static let lines = 10         // lines Claude wrote through Edit/Write
     static let family = 11        // all tokens by model family: +0 fable, +1 opus, +2 sonnet, +3 haiku, +4 other
-    static let count = 16
+    // You at work without typing a prompt: answering Claude's questions, approving or turning down
+    // a plan, a permission click, stopping Claude. The wait before an answer counts too (you were reading).
+    static let hands = 16
+    // Wins, for the daily goal: a green after a fight with red runs, a commit, a pull request, a plan you approved.
+    static let greens = 17
+    static let commits = 18       // a log that shipped a commit: once a day, however many it made
+    static let prs = 19
+    static let plans = 20
+    static let count = 21
 }
+
+/// What a store row looked like before Burnbot 1.2.
+private let oldCount = 16
 
 let modelFamilies = ["fable", "opus", "sonnet", "haiku", "other"]
 
@@ -45,7 +56,10 @@ final class LogFile {
     var branch = ""
     var edited: Set<String> = []            // files written to
     var lastPrompt = 0.0                    // ms of the last prompt you typed here
-    var runs: [String: (command: String, ms: Double)] = [:]   // Bash runs still waiting for their result (live only)
+    var runs: [String: PendingRun] = [:]   // Bash runs still waiting for their result
+    var asks: [String: (tool: String, ms: Double)] = [:]   // questions and plans still waiting for your answer
+    var ledger = RunLedger()                // red runs on the way to a green
+    var shippedDay = -1                     // the day this log last counted a commit as a win
     let agent: String                       // a subagent's id, "" for the main log
 
     init(path: String) {
@@ -68,6 +82,18 @@ struct RunResult {
     let output: String                      // the last 2 KB of what it printed
 }
 
+/// A Bash run waiting for its result. History only keeps the ones that can be wins.
+struct PendingRun {
+    let command: String
+    let ms: Double
+    let family: Family?
+    let core: String
+    let git: String?
+}
+
+/// How you answered Claude without typing a prompt.
+enum Decision: String { case answer, approve, reject, permission, interrupt }
+
 /// One session as a whole (Tracker.session).
 struct SessionInfo {
     let id: String
@@ -81,7 +107,10 @@ struct SessionInfo {
 /// Something that just happened in a session, seen in a live log (never during the first read of history).
 enum LogSignal {
     case line(session: String, agent: String, assistant: Bool, ms: Double)   // Claude or you did something; agent "" = main log
-    case prompt(session: String, ms: Double)                // you typed a prompt
+    case prompt(session: String, ms: Double, text: String)  // you typed a prompt (what you typed, cut to 500)
+    case ask(session: String, tool: String, ms: Double)     // Claude asked you a question or showed a plan
+    case decision(session: String, kind: Decision, ms: Double)
+    case edit(session: String, ms: Double)                  // Claude changed a file (progress, as far as loops go)
     case run(session: String, id: String, command: String, ms: Double)
     case result(session: String, id: String, command: String, outcome: RunResult, ms: Double)
 }
@@ -95,6 +124,7 @@ private let needleAssistant = bytes("\"type\":\"assistant\"")
 private let needleUser = bytes("\"type\":\"user\"")
 private let needleToolResult = bytes("\"tool_use_id\"")
 private let needleTitle = bytes("-title\"")           // "ai-title" and "custom-title" lines
+private let needleYours = bytes("\"source\":\"user")    // a permission you granted yourself
 private let exitCode = try! NSRegularExpression(pattern: "^(?:Error: )?Exit code (-?[0-9]+)")
 
 private func has(_ needle: UnsafeRawBufferPointer, _ line: UnsafeRawPointer, _ length: Int) -> Bool {
@@ -102,6 +132,16 @@ private func has(_ needle: UnsafeRawBufferPointer, _ line: UnsafeRawPointer, _ l
 }
 
 private let writeTools: Set<String> = ["Edit", "Write", "MultiEdit", "NotebookEdit"]
+/// Tools that wait for you to answer.
+private let askTools: Set<String> = ["AskUserQuestion", "ExitPlanMode"]
+/// A wait this long or shorter before an answer was you reading; a longer one, you were away
+/// and only its last minutes count.
+private let readingWait = 20
+
+/// "[Request interrupted by user]": you stopped Claude.
+func isInterrupt(_ text: String) -> Bool {
+    text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("[Request interrupted by user")
+}
 
 // Wrappers the harness injects into user turns. None of it was typed by the person.
 private let injected = try! NSRegularExpression(
@@ -259,6 +299,18 @@ final class Tracker {
         return found.sorted { $0.ms < $1.ms }.suffix(limit).map { $0.text }
     }
 
+    /// When Claude started waiting for your answer to a question or a plan (the oldest one still
+    /// open), or 0. Questions older than `within` are taken as forgotten.
+    func pendingAsk(now: Double, within: Double = 20 * 60_000) -> Double {
+        var oldest = 0.0
+        for file in files.values where !file.gone {
+            for ask in file.asks.values where now - ask.ms < within && ask.ms <= now {
+                if oldest == 0 || ask.ms < oldest { oldest = ask.ms }
+            }
+        }
+        return oldest
+    }
+
     /// What happened in live logs since the last call.
     func takeSignals() -> [LogSignal] {
         defer { signals = [] }
@@ -311,12 +363,22 @@ final class Tracker {
                 tools += 1
                 let name = block["name"] as? String ?? ""
                 let input = block["input"] as? [String: Any] ?? [:]
-                if live, name == "Bash", input["run_in_background"] as? Bool != true,
+                if askTools.contains(name), let id = block["id"] as? String {
+                    file.asks[id] = (name, ms)
+                    if live { signals.append(.ask(session: file.session, tool: name, ms: ms)) }
+                }
+                if name == "Bash", input["run_in_background"] as? Bool != true,
                    let id = block["id"] as? String, let command = input["command"] as? String {
-                    file.runs[id] = (command, ms)
-                    signals.append(.run(session: file.session, id: id, command: command, ms: ms))
+                    let kind = classify(command)
+                    let git = gitAction(command)
+                    // Live, every run is news for the robot; in history only the ones that can be wins matter.
+                    if live || kind != nil || git != nil {
+                        file.runs[id] = PendingRun(command: command, ms: ms, family: kind?.family, core: kind?.core ?? "", git: git)
+                    }
+                    if live { signals.append(.run(session: file.session, id: id, command: command, ms: ms)) }
                 }
                 guard writeTools.contains(name) else { continue }
+                if live { signals.append(.edit(session: file.session, ms: ms)) }
                 if let target = (input["file_path"] ?? input["notebook_path"]) as? String, file.edited.count < 500 { file.edited.insert(target) }
                 lines += lineCount(input["new_string"] ?? input["content"] ?? input["new_source"])
                 if let edits = input["edits"] as? [[String: Any]] { for edit in edits { lines += lineCount(edit["new_string"]) } }
@@ -352,19 +414,75 @@ final class Tracker {
         return ms
     }
 
-    private func user(_ file: LogFile, _ object: [String: Any], _ ms: Double) -> Double {
+    /// A prompt you sent. Returns its time, or 0 when the line is something else. Stopping Claude
+    /// is you at work too, but not a prompt.
+    private func user(_ file: LogFile, _ object: [String: Any], _ ms: Double, live: Bool) -> Double {
         guard let text = promptText(object) else { return 0 }
+        let minute = Int((ms / 60000).rounded(.down))
+        if isInterrupt(text) {
+            bump(file, minute, F.hands, 1)
+            if live { signals.append(.decision(session: file.session, kind: .interrupt, ms: ms)) }
+            return 0
+        }
         let measured = measurePrompt(text)
         if measured.typed == 0, measured.pasted == 0 { return 0 }
-        let minute = Int((ms / 60000).rounded(.down))
         bump(file, minute, F.prompts, 1)
         bump(file, minute, F.chars, Double(measured.typed))
         bump(file, minute, F.pasted, Double(measured.pasted))
+        if live { signals.append(.prompt(session: file.session, ms: ms, text: String(typedOnly(text).prefix(500)))) }
         return ms
     }
 
+    /// Your answers that are not prompts: to a question, to a plan, to a permission prompt.
+    /// The minutes you spent reading before answering count as hands-on.
+    private func decisions(_ file: LogFile, _ object: [String: Any], _ ms: Double, live: Bool) {
+        guard let blocks = (object["message"] as? [String: Any])?["content"] as? [[String: Any]] else { return }
+        let minute = Int((ms / 60000).rounded(.down))
+        var answered = false
+        for block in blocks where block["type"] as? String == "tool_result" {
+            guard let id = block["tool_use_id"] as? String, let ask = file.asks.removeValue(forKey: id) else { continue }
+            var text = block["content"] as? String ?? ""
+            if let parts = block["content"] as? [[String: Any]] { text = parts.compactMap { $0["text"] as? String }.joined(separator: "\n") }
+            let result = object["toolUseResult"] as? [String: Any]
+            var kind: Decision
+            var typed = 0
+            if text.hasPrefix("The user doesn't want to proceed") || text.hasPrefix("User rejected tool use") {
+                kind = .reject
+                // Turning a plan down with a note: the note is typed.
+                if let said = text.range(of: "the user said:") { typed = text[said.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines).utf16.count }
+            } else if ask.tool == "ExitPlanMode", result?["plan"] != nil || text.hasPrefix("User has approved your plan") {
+                kind = .approve
+            } else if ask.tool == "AskUserQuestion", let answers = result?["answers"] as? [String: Any] {
+                kind = .answer
+                // An answer that is none of the offered options was typed ("Other").
+                var offered = Set<String>()
+                for question in result?["questions"] as? [[String: Any]] ?? [] {
+                    for option in question["options"] as? [[String: Any]] ?? [] { if let label = option["label"] as? String { offered.insert(label) } }
+                }
+                for case let answer as String in answers.values {
+                    for part in answer.components(separatedBy: ", ") where !offered.contains(part) { typed += part.utf16.count }
+                }
+            } else {
+                continue                    // it failed or was cut off: not you
+            }
+            answered = true
+            let asked = Int((ask.ms / 60000).rounded(.down))
+            let from = minute - asked <= readingWait ? asked : minute - 2
+            for m in min(minute, max(from, minute - readingWait))...minute { bump(file, m, F.hands, 1) }
+            if typed > 0 { bump(file, minute, F.chars, Double(typed)) }
+            if kind == .approve { bump(file, minute, F.plans, 1) }
+            if live { signals.append(.decision(session: file.session, kind: kind, ms: ms)) }
+        }
+        // A permission prompt you answered yourself (not a rule, not the classifier).
+        if !answered, let decision = object["permissionDecision"] as? [String: Any],
+           (decision["source"] as? String ?? "").hasPrefix("user") {
+            bump(file, minute, F.hands, 1)
+            if live { signals.append(.decision(session: file.session, kind: .permission, ms: ms)) }
+        }
+    }
+
     /// The results of Bash runs this log is waiting for.
-    private func results(_ file: LogFile, _ object: [String: Any], _ ms: Double) {
+    private func results(_ file: LogFile, _ object: [String: Any], _ ms: Double, live: Bool) {
         guard let blocks = (object["message"] as? [String: Any])?["content"] as? [[String: Any]] else { return }
         for block in blocks where block["type"] as? String == "tool_result" {
             guard let id = block["tool_use_id"] as? String, let run = file.runs.removeValue(forKey: id) else { continue }
@@ -383,7 +501,20 @@ final class Tracker {
             let denied = object["toolDenialKind"] != nil || head.hasPrefix("Permission ") || head.hasPrefix("The user doesn't want")
             let outcome = RunResult(error: block["is_error"] as? Bool ?? false, exit: code, denied: denied, interrupted: interrupted,
                                     output: String(output.suffix(2000)))
-            signals.append(.result(session: file.session, id: id, command: run.command, outcome: outcome, ms: ms))
+            // Wins, counted the same way the robot cheers them.
+            if run.family != nil || run.git != nil {
+                let minute = Int((ms / 60000).rounded(.down))
+                let result = verdict(run.command, outcome)
+                if let git = run.git, result != .fail, !outcome.error, !outcome.denied {
+                    // Claude commits often and in small steps: a session that ships counts once a day.
+                    if git != "commit" { bump(file, minute, F.prs, 1) }
+                    else if minute / 1440 != file.shippedDay { file.shippedDay = minute / 1440; bump(file, minute, F.commits, 1) }
+                }
+                if let family = run.family, case .green = file.ledger.record(family, core: run.core, verdict: result, ms: ms) {
+                    bump(file, minute, F.greens, 1)
+                }
+            }
+            if live { signals.append(.result(session: file.session, id: id, command: run.command, outcome: outcome, ms: ms)) }
         }
     }
 
@@ -396,6 +527,9 @@ final class Tracker {
             file.minutes = [:]
             file.seen = [:]
             file.runs = [:]
+            file.asks = [:]
+            file.ledger = RunLedger()
+            file.shippedDay = -1
             file.offset = 0
         }
         file.modified = modified
@@ -417,12 +551,14 @@ final class Tracker {
                 if length > 20 {
                     let line = base + start
                     // Cheap byte-level filter first: most lines are tool output and bookkeeping.
-                    // Tool output is only opened when it is news and a Bash run is waiting for it.
+                    // Tool output is only opened when a run or a question is waiting for it, or when
+                    // it carries a permission you gave.
                     let isAssistant = has(needleAssistant, line, length)
                     let isUser = !isAssistant && has(needleUser, line, length)
                     let isResult = isUser && has(needleToolResult, line, length)
                     let isTitle = !isAssistant && !isUser && length < 4000 && has(needleTitle, line, length)
-                    if isAssistant || (isUser && (!isResult || (live && !file.runs.isEmpty))) || isTitle {
+                    let wanted = isResult && (!file.runs.isEmpty || !file.asks.isEmpty || has(needleYours, line, length))
+                    if isAssistant || (isUser && (!isResult || wanted)) || isTitle {
                         let slice = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: line), count: length, deallocator: .none)
                         let object = (try? JSONSerialization.jsonObject(with: slice)) as? [String: Any] ?? [:]
                         if let id = object["sessionId"] as? String, !id.isEmpty { file.session = id }
@@ -440,12 +576,12 @@ final class Tracker {
                             case "assistant":
                                 call = max(call, assistant(file, object, ms, live: live))
                             case "user" where isResult:
-                                results(file, object, ms)
+                                results(file, object, ms, live: live)
+                                decisions(file, object, ms, live: live)
                             case "user":
-                                let typed = user(file, object, ms)
+                                let typed = user(file, object, ms, live: live)
                                 prompt = max(prompt, typed)
                                 if typed > 0 { file.lastPrompt = max(file.lastPrompt, typed) }
-                                if live, typed > 0 { signals.append(.prompt(session: file.session, ms: ms)) }
                             default: break
                             }
                             if live { signals.append(.line(session: file.session, agent: file.agent, assistant: isAssistant, ms: ms)) }
@@ -570,11 +706,10 @@ final class Tracker {
     func load() -> Bool {
         guard let data = FileManager.default.contents(atPath: storePath),
               let raw = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let version = raw["version"] as? Int, version == 4 || version == 5, (raw["root"] as? String) == root,
+              let version = raw["version"] as? Int, (4...6).contains(version), (raw["root"] as? String) == root,
               let saved = raw["files"] as? [[String: Any]] else { return false }
-        // Version 4 (Burnbot 1.0) kept no session titles or details. Logs from the last day are read
-        // again from the start to get them; older ones keep their counts, including deleted logs.
-        let rereadAfter = Date().timeIntervalSince1970 - 86400
+        // Before version 6 (Burnbot 1.2) answers, plans and wins were not counted. Every log still on
+        // disk is read again from the start, once, to count them; deleted logs keep what they had.
         for entry in saved {
             guard let path = entry["p"] as? String else { continue }
             let file = LogFile(path: path)
@@ -587,14 +722,18 @@ final class Tracker {
             file.branch = entry["b"] as? String ?? ""
             file.edited = Set(entry["e"] as? [String] ?? [])
             file.lastPrompt = number(entry["lp"])
-            if version == 4, file.modified > rereadAfter, FileManager.default.fileExists(atPath: path) {
+            if version < 6, FileManager.default.fileExists(atPath: path) {
                 file.offset = 0
                 files[path] = file
                 continue
             }
-            for row in entry["m"] as? [[NSNumber]] ?? [] where row.count == F.count + 1 {
-                file.minutes[row[0].intValue] = row.dropFirst().map { $0.doubleValue }
+            for row in entry["m"] as? [[NSNumber]] ?? [] where row.count == F.count + 1 || row.count == oldCount + 1 {
+                file.minutes[row[0].intValue] = row.dropFirst().map { $0.doubleValue } + [Double](repeating: 0, count: F.count + 1 - row.count)
             }
+            for row in entry["a"] as? [[Any]] ?? [] where row.count == 3 {
+                if let id = row[0] as? String, let tool = row[1] as? String { file.asks[id] = (tool, number(row[2])) }
+            }
+            if let day = entry["sd"] as? Int { file.shippedDay = day }
             for row in entry["i"] as? [[Any]] ?? [] {
                 guard let id = row.first as? String else { continue }
                 file.seen[id] = row.dropFirst().map { number($0) }
@@ -620,12 +759,14 @@ final class Tracker {
             if file.renamed { entry["r"] = true }
             if !file.branch.isEmpty { entry["b"] = file.branch }
             if file.lastPrompt > 0 { entry["lp"] = file.lastPrompt }
+            if !file.asks.isEmpty { entry["a"] = file.asks.map { [$0.key, $0.value.tool, $0.value.ms] as [Any] } }
+            if file.shippedDay >= 0 { entry["sd"] = file.shippedDay }
             // Which files a session touched only matters while it might still be recapped.
             if !file.edited.isEmpty, Date().timeIntervalSince1970 - file.modified < 2 * 86400 { entry["e"] = Array(file.edited) }
             saved.append(entry)
         }
         let body: [String: Any] = [
-            "version": 5, "root": root, "savedAt": Date().timeIntervalSince1970 * 1000,
+            "version": 6, "root": root, "savedAt": Date().timeIntervalSince1970 * 1000,
             "lastCallMs": lastCallMs, "lastPromptMs": lastPromptMs, "files": saved,
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: body) else { return }

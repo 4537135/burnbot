@@ -51,15 +51,18 @@ const DEMO_NEXT = { warming: ['cruising', 30, 0], cruising: ['locked', 75, 30], 
 // What the reactions look like, one after another. The app plays the real thing (Robot > Play Every Moment).
 const card = (kind, title, lines, more = {}) => ({ id: kind, kind, title, lines, action: null, persistent: false, ...more });
 const DEMO_MOMENTS = [
-  { expr: 'worried', now: 'Claude running tests · 1m 40s', moment: null },
-  { expr: 'happy', now: 'On: Fix checkout tax tests', moment: card('breakthrough', 'Finally. All green.', ['3 tries.', '5 min in the red.', 'Commit it.']) },
+  { expr: 'worried', nowLine: 'Claude running tests · 1m 40s', moment: null },
+  { expr: 'happy', nowLine: 'On: Fix checkout tax tests', moment: card('breakthrough', 'Finally. All green.', ['3 tries.', '5 min in the red.', 'Commit it.']) },
   {
     expr: 'waiting',
-    now: 'Waiting on you · shop',
+    nowLine: 'Waiting on you · shop',
     moment: card('waiting', 'Your call', ['shop is stuck', 'until you say yes to', 'rm -rf dist && npm run build'], { action: 'focus', persistent: true }),
   },
-  { expr: '', now: 'On: Fix checkout tax tests', moment: card('your-move', 'Your move', ['shop stopped', 'after 12 min.', 'It is waiting on you.']) },
-  { expr: '', now: 'Last time: Fix checkout tax tests', moment: card('done', 'Session over', ['27 min on Fix checkout tax tests', 'Tests green after 3 tries', '1 commit']) },
+  { expr: '', nowLine: 'On: Fix checkout tax tests', moment: card('your-move', 'Your move', ['shop stopped', 'after 12 min.', 'It is waiting on you.']) },
+  { expr: '', nowLine: 'Last time: Fix checkout tax tests', moment: card('done', 'Session over', ['27 min on Fix checkout tax tests', 'Tests green after 3 tries', '1 commit']) },
+  { expr: 'puzzled', nowLine: 'Going round · 4 retries, no progress', moment: card('loop', 'Same ask again', ['4 retries, no edits.', 'Split it, or ask why', 'it keeps missing.']) },
+  { expr: 'bored', nowLine: 'Drifted · 6 min · shop is waiting', moment: card('drift', 'Still there?', ['shop has waited', '12 min on you.'], { action: 'focus' }) },
+  { expr: 'happy', nowLine: 'Goal hit · 4 of 4 wins', moment: null, goal: { wins: 4, target: 4, streak: 6, hitToday: true } },
 ];
 
 function demoState(name, now) {
@@ -87,6 +90,7 @@ function demoState(name, now) {
       lastCallMs: now - 95 * 60000,
     },
     today: { tokens: 186.4e6 + ((now - started) / 3600000) * d.rate, usualByNow: 131e6 },
+    goal: { wins: 3, target: 4, streak: 5, hitToday: false },
     baseline: { thresholds: { cruise: 30, lock: 75, overdrive: 93 } },
   };
 }
@@ -149,6 +153,17 @@ function render() {
     rung.classList.toggle('usual', s === live.usual && s !== live.state);
   }
 
+  // today's wins, the goal and the streak
+  const goal = data.goal;
+  $('goal').hidden = !goal || !goal.target;
+  if (goal && goal.target) {
+    $('goal').classList.toggle('hit', goal.hitToday);
+    $('wins').innerHTML = `${goal.wins}<small>/${goal.target}</small>`;
+    const streak = goal.streak > 1 ? ` · ${goal.streak}-day streak` : '';
+    const pips = goal.streak > 1 ? `<span class="pips">${'<i></i>'.repeat(Math.min(7, goal.streak))}</span>` : '';
+    $('goalNote').innerHTML = `${goal.wins === 1 ? 'win' : 'wins'} today${streak}${pips}`;
+  }
+
   const pace = today.usualByNow > 1000 ? Math.round((today.tokens / today.usualByNow) * 100) : null;
   $('pace').textContent = pace === null ? 'burned today' : `burned today · ${pace}% of your usual`;
 
@@ -156,8 +171,11 @@ function render() {
   scene.setLive({ state: live.state, flame: live.flame, dropRate: live.flame > 0.1 ? 0.25 + 4.5 * live.flame ** 2 : 0 });
 
   // What the robot noticed.
-  scene.setExpr(data.expr);
-  const now = data.now || '';
+  // Test Knock (Robot menu): every knock the desk screen feels, for 30 s; it falls back to happy when one lands.
+  const knock = data.knockTest;
+  scene.setExpr(knock ? (knock.felt ? 'happy' : '') : data.expr);
+  if (knock) toast(knock.felt ? 'Knock! Felt that one.' : `Test Knock: knock twice on the desk screen · ${knock.left} s`, 2500);
+  const now = data.nowLine || '';
   if ($('now').textContent !== now && now) $('now').textContent = now;
   $('now').classList.toggle('on', Boolean(now));
   showMoment(data.moment);

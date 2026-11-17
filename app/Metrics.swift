@@ -43,6 +43,10 @@ struct Config {
     var overdriveAt = 93.0
     var overdriveHold = 88.0
     var minWindows = 120            // hands-on minutes of history needed before the baseline is trusted
+    // The daily goal: wins (a green after red, a commit, a pull request, a plan you approved).
+    var goalDefault = 3             // until there are enough working days to go by
+    var goalMinDays = 7
+    var workingDayMin = 30          // a day with less hands-on time than this neither counts nor breaks a streak
     // Used until there is enough history: the value that counts as "typical".
     var defaultBurn = 3e6, defaultTyping = 400.0, defaultActions = 20.0
 }
@@ -86,7 +90,12 @@ private func dayStart(_ ms: Double, _ deltaDays: Int = 0) -> Double {
 private func rounded(_ x: Double) -> Double { (x + 0.5).rounded(.down) }      // as JavaScript's Math.round
 
 /// Everything the screens need, as plain JSON-ready values.
-func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Double, config cfg: Config = Config()) -> [String: Any] {
+/// `askedAt`: Claude has been waiting for your answer to a question or a plan since then, and you
+/// are at the Mac: those minutes are you reading, so they count as hands-on.
+/// `goal`: the daily goal you set (0 = worked out from your days). `before`: the days older than the
+/// window (olderHistory), so a streak can run past it.
+func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Double, askedAt: Double = 0,
+             goal: Int = 0, before: [[String: Any]] = [], config cfg: Config = Config()) -> [String: Any] {
     let nowMin = Int((now / 60000).rounded(.down))
     let today0 = dayStart(now)
     let startMin = Int(dayStart(now, -(cfg.days - 1)) / 60000)
@@ -98,6 +107,8 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
 
     // ---- dense per-minute series over the calibration window ----
     var tok = zeros(), out = zeros(), chars = zeros(), prompts = zeros(), tools = zeros(), lines = zeros(), pasted = zeros(), calls = zeros()
+    var hands = zeros(), wins = zeros()
+    var winKinds = [Double](repeating: 0, count: 4)     // today: greens, commits, prs, plans
     var sessions = [Int](repeating: 0, count: N), agents = [Int](repeating: 0, count: N)
     var split = [Double](repeating: 0, count: 6)        // input, output, cacheWrite, cacheRead, thinking, calls
     var familyToday = [Double](repeating: 0, count: modelFamilies.count), familyWeek = familyToday
@@ -119,6 +130,8 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
             tools[i] += v[F.tools]
             lines[i] += v[F.lines]
             calls[i] += v[F.calls]
+            hands[i] += v[F.hands]
+            wins[i] += v[F.greens] + v[F.commits] + v[F.prs] + v[F.plans]
             if file.side { agents[i] += 1 } else { sessions[i] += 1 }
             if projectMonth[name] == nil { projectOrder.append(name) }
             projectMonth[name, default: 0] += total
@@ -137,19 +150,25 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
                 split[3] += v[F.cacheRead]
                 split[4] += v[F.thinking]
                 split[5] += v[F.calls]
+                for k in 0..<4 { winKinds[k] += v[F.greens + k] }
             }
         }
     }
     var acts = zeros(), active = zeros()
     var human = [Bool](repeating: false, count: N)
+    // Answering Claude (a question, a plan, a permission, stopping it) is you at work, like a prompt.
+    if askedAt > 0 {
+        for i in max(0, Int((askedAt / 60000).rounded(.down)) - startMin)..<N { hands[i] = max(hands[i], 1) }
+    }
     for i in 0..<N {
-        acts[i] = prompts[i] + tools[i]
-        if calls[i] > 0 || prompts[i] > 0 { active[i] = 1 }
-        human[i] = prompts[i] > 0
+        acts[i] = prompts[i] + tools[i] + hands[i]
+        if calls[i] > 0 || prompts[i] > 0 || hands[i] > 0 { active[i] = 1 }
+        human[i] = prompts[i] > 0 || hands[i] > 0
     }
 
     let pTok = prefix(tok), pOut = prefix(out), pChars = prefix(chars), pActs = prefix(acts), pActive = prefix(active)
     let pPrompts = prefix(prompts), pTools = prefix(tools), pLines = prefix(lines), pPasted = prefix(pasted)
+    let pHands = prefix(hands), pWins = prefix(wins)
 
     // ---- autopilot timing: how long this person usually goes between prompts ----
     var gaps: [Double] = []
@@ -261,7 +280,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
     }
 
     // ---- days ----
-    struct Day { var t = 0.0, a = 0, b = 0, values: [String: Any] = [:], tokens = 0.0, engaged = 0, active = 0.0 }
+    struct Day { var t = 0.0, a = 0, b = 0, values: [String: Any] = [:], tokens = 0.0, engaged = 0, active = 0.0, wins = 0.0 }
     var days: [Day] = []
     for d in 0..<cfg.days {
         let t = dayStart(now, d - (cfg.days - 1))
@@ -286,7 +305,9 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
         day.tokens = pTok[b] - pTok[a]
         day.engaged = engaged
         day.active = pActive[b] - pActive[a]
+        day.wins = pWins[b] - pWins[a]
         day.values = [
+            "wins": day.wins, "handsMin": pHands[b] - pHands[a],
             "t": t, "tokens": day.tokens, "output": pOut[b] - pOut[a], "prompts": pPrompts[b] - pPrompts[a],
             "chars": pChars[b] - pChars[a], "pasted": pPasted[b] - pPasted[a], "tools": pTools[b] - pTools[a],
             "lines": pLines[b] - pLines[a], "activeMin": day.active, "engagedMin": engaged, "lockedMin": locked,
@@ -319,6 +340,25 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
         reached.append(Double(best))
     }
     let usual: Any = reached.count >= 3 ? stateNames[Int(median(reached).rounded(.down))] : NSNull()
+
+    // ---- the daily goal and the streak ----
+    // Working days: enough hands-on time to count. Older days (before the window) only help a streak along.
+    let workingDays = days.dropLast().filter { $0.active >= Double(cfg.workingDayMin) }
+    let auto = workingDays.count >= cfg.goalMinDays ? max(1, Int(median(workingDays.map { $0.wins }).rounded())) : cfg.goalDefault
+    let target = goal > 0 ? goal : auto
+    let winsToday = days[days.count - 1].wins
+    var streak = 0
+    var counting = true
+    for day in workingDays.reversed() where counting {
+        if day.wins >= Double(target) { streak += 1 } else { counting = false }
+    }
+    if counting {
+        for day in before.reversed() where counting && (day["activeMin"] as? Double ?? 0) >= Double(cfg.workingDayMin) {
+            if (day["wins"] as? Double ?? 0) >= Double(target) { streak += 1 } else { counting = false }
+        }
+    }
+    let hitToday = winsToday >= Double(target)
+    if hitToday { streak += 1 }
 
     // ---- weekday x hour heatmap, averaged over the weeks on record ----
     var heat = [[Double]](repeating: [Double](repeating: 0, count: 24), count: 7)
@@ -415,6 +455,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
     today["bins"] = ["start": today0, "step": step, "tokens": binTokens, "chars": binChars, "prompts": binPrompts, "tools": binTools, "state": binState] as [String: Any]
     today["models"] = family(familyToday)
     today["projects"] = top(projectToday)
+    today["winKinds"] = ["greens": winKinds[0], "commits": winKinds[1], "prs": winKinds[2], "plans": winKinds[3]]
 
     return [
         "now": now,
@@ -445,6 +486,10 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
             ],
         ] as [String: Any],
         "today": today,
+        "goal": [
+            "wins": winsToday, "target": target, "auto": goal <= 0, "suggested": auto,
+            "streak": streak, "hitToday": hitToday, "workingDays": workingDays.count,
+        ] as [String: Any],
         "baseline": [
             "calibrated": calibrated,
             "activeMinutes": n,

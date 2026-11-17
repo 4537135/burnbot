@@ -1,0 +1,5 @@
+10:00:00  front app: com.apple.Terminal (work)
+10:00:00  NOW On: Restyle the checkout button
+10:04:00  a1b2c3d4: you asked for nearly the same again (1 without progress)
+10:07:00  a1b2c3d4: you asked for nearly the same again (1 without progress)
+10:18:30  NOW -

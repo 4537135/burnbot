@@ -91,7 +91,9 @@ final class Engine {
     private let summaries = Summaries()
     // Set from the main thread through setOptions.
     private var intelligence = true         // the pricing switch: the robot's reactions, Now line and summaries
-    private var aiSummaries = false         // you switch these on yourself
+    private var aiOn = true                 // AI recaps and loop judging through your own claude
+    private var dailyGoal = 0               // wins a day you set; 0 = worked out from your days
+    private var olderDays: [[String: Any]] = []     // the days before the live window, for the streak
     private let desk = DeskScreen()
     private let queue = DispatchQueue(label: "burnbot.engine", qos: .utility)
     private var timer: DispatchSourceTimer?
@@ -106,6 +108,14 @@ final class Engine {
                          "locked": "Locked in", "overdrive": "On fire", "autopilot": "Autopilot"]
     /// Called on the main thread with the state as JSON, about every two seconds.
     var onState: ((String) -> Void)?
+    /// A knock on the desk screen closed a bubble that was asking for you (main thread).
+    var onFocus: (() -> Void)?
+    /// Whether the desk screen can feel knocks, and its knock setting, when that changes (main thread).
+    var onDeskKnocks: ((Bool, Int) -> Void)?
+    private var knockDismiss = false        // a knock closes the bubble; off until you have tried it on your desk
+    private var testKnockUntil = 0.0        // Test Knock: until then every knock felt is shown, nothing closes
+    private var knockFeltAt = 0.0
+    private var reportedKnocks: (Bool, Int)?
     /// Called on the main thread with the days before the 30-day window, when they have been worked out.
     var onOlder: ((String) -> Void)?
     private var olderDay = -1
@@ -113,6 +123,7 @@ final class Engine {
     init(root: String, storePath: String) {
         tracker = Tracker(root: root, storePath: storePath)
         desk.log = { log($0) }
+        desk.onKnock = { [weak self] in self?.knocked() }
         moments.voice = Voice(file: pagesFolder.appendingPathComponent("voice.json"))
         moments.isWork = { [attention] in attention.isWork($0) }
         moments.sessionInfo = { [tracker] id, now, since in tracker.session(id, now: now, since: since) }
@@ -120,12 +131,31 @@ final class Engine {
         summaries.log = { log($0) }
         moments.lastSession = { [memory] now in memory.last(now: now) }
         moments.onSessionDone = { [weak self] recap in self?.remember(recap) }
+        moments.usualBreak = { [attention] in attention.usualBreak }
+        moments.onBreak = { [attention] in attention.addBreak($0) }
+        applyAI()
     }
 
-    /// A session ended: keep its recap, and if you switched AI summaries on, ask your claude for one.
+    /// With AI on, your claude tells a loop from real iteration; with it off, the rule decides alone.
+    private func applyAI() {
+        moments.judgeLoop = intelligence && aiOn ? { [weak self] prompts, answer in self?.judge(prompts, answer) ?? answer(nil) } : nil
+    }
+
+    /// Going round or real iteration: your claude decides when AI is on. If it fails or gives no
+    /// answer, the robot keeps quiet; once today's AI runs are used up, the rule decides.
+    private func judge(_ prompts: [String], _ answer: @escaping (Bool?) -> Void) {
+        guard memory.takeRun(now: Date().timeIntervalSince1970 * 1000, limit: summaries.perDay) else {
+            // Out of AI runs for today: the rule already says it is a loop, so it stands.
+            log("AI loop check skipped: \(summaries.perDay) AI runs already today; the rule decides")
+            return answer(true)
+        }
+        summaries.judgeLoop(prompts, then: queue, answer: answer)
+    }
+
+    /// A session ended: keep its recap, and with AI on, ask your claude for a summary of it.
     private func remember(_ recap: SessionRecap) {
         memory.add(recap)
-        guard intelligence, aiSummaries else { return }
+        guard intelligence, aiOn else { return }
         guard memory.takeRun(now: Date().timeIntervalSince1970 * 1000, limit: summaries.perDay) else {
             log("AI summary skipped: \(summaries.perDay) already today")
             return
@@ -138,11 +168,14 @@ final class Engine {
     }
 
     /// Settings from the menu and the welcome screen.
-    func setOptions(intelligence: Bool, aiSummaries: Bool) {
+    func setOptions(intelligence: Bool, aiOn: Bool, dailyGoal: Int) {
         queue.async {
             self.intelligence = intelligence
-            self.aiSummaries = aiSummaries
-            self.encode()
+            self.aiOn = aiOn
+            self.applyAI()
+            let goalChanged = dailyGoal != self.dailyGoal
+            self.dailyGoal = dailyGoal
+            if goalChanged, self.state != nil { self.refresh() } else { self.encode() }
             self.deliver()
         }
     }
@@ -176,7 +209,7 @@ final class Engine {
         if signals.contains(where: { if case .prompt = $0 { return true } else { return false } }) { attention.learn() }
         let place = attention.now
         let moved = moments.tick(signals: signals, hooks: inbox.drain(), front: place.front, idle: place.idle,
-                                 level: state?["state"] as? String ?? "", now: now)
+                                 level: (state?["live"] as? [String: Any])?["state"] as? String ?? "", goal: GoalState(state?["goal"], now: now), now: now)
         if changed || state == nil || Int(now / 60000) != analyzedMinute || now - analyzedAt >= 10_000 {
             refresh()
         } else if moved || tick % 2 == 0 {
@@ -186,7 +219,17 @@ final class Engine {
         if moved || tick % 2 == 0 || !demo.isEmpty { deliver() }
         if let state {
             let speaks = desk.speaks
-            desk.send(deskLine(state, names: names, expr: speaks ? shown.expr : ""), moment: speaks ? deskMoment(shown.card) : nil)
+            let felt = now - knockFeltAt < 1500
+            let moment = !speaks ? nil
+                : now < testKnockUntil ? (felt ? "M|k=b|h=1|t=KNOCK!|a=FELT THAT ONE." : "M|k=m|h=1|t=TEST KNOCK|a=KNOCK TWICE ON|b=THE CASE.")
+                : deskMoment(shown.card)
+            let expr = !speaks ? "" : now < testKnockUntil ? (felt ? "happy" : "") : shown.expr
+            desk.send(deskLine(state, names: names, expr: expr), moment: moment)
+        }
+        let knocks = (desk.knocks, desk.sensitivity)
+        if reportedKnocks == nil || reportedKnocks! != knocks {
+            reportedKnocks = knocks
+            DispatchQueue.main.async { self.onDeskKnocks?(knocks.0, knocks.1) }
         }
         if tick % 300 == 0 { tracker.save() }
         if tick % 60 == 0 { refreshOlder() }
@@ -199,6 +242,8 @@ final class Engine {
         olderDay = day
         let began = Date()
         let older = olderHistory(files: Array(tracker.files.values), now: Date().timeIntervalSince1970 * 1000)
+        olderDays = older["days"] as? [[String: Any]] ?? []
+        if state != nil { refresh() }           // the streak can reach back into them
         guard let data = try? JSONSerialization.data(withJSONObject: older), let text = String(data: data, encoding: .utf8) else { return }
         log(String(format: "Older history: %d days before the last 30, in %.2fs", (older["days"] as? [Any])?.count ?? 0, Date().timeIntervalSince(began)))
         DispatchQueue.main.async { self.onOlder?(text) }
@@ -206,7 +251,10 @@ final class Engine {
 
     private func refresh() {
         let now = Date().timeIntervalSince1970 * 1000
-        state = analyze(files: Array(tracker.files.values), lastCallMs: tracker.lastCallMs, lastPromptMs: tracker.lastPromptMs, now: now)
+        // A question or plan waiting on you while you are at the Mac: you are reading it, which is work.
+        let askedAt = attention.now.idle < 120 ? tracker.pendingAsk(now: now) : 0
+        state = analyze(files: Array(tracker.files.values), lastCallMs: tracker.lastCallMs, lastPromptMs: tracker.lastPromptMs,
+                        now: now, askedAt: askedAt, goal: dailyGoal, before: olderDays)
         analyzedAt = now
         analyzedMinute = Int(now / 60000)
         encode()
@@ -230,6 +278,8 @@ final class Engine {
             shown = intelligence ? moments.output : MomentsOutput()
         }
         if whole["demo"] != nil || intelligence { for (key, value) in shown.json { whole[key] = value } }
+        let now = Date().timeIntervalSince1970 * 1000
+        if now < testKnockUntil { whole["knockTest"] = ["felt": now - knockFeltAt < 1500, "left": Int((testKnockUntil - now) / 1000)] }
         if let data = try? JSONSerialization.data(withJSONObject: whole), let text = String(data: data, encoding: .utf8) { json = text }
     }
 
@@ -290,18 +340,47 @@ final class Engine {
 
     func dismissMoment(_ id: String) {
         queue.async {
-            let now = Date().timeIntervalSince1970 * 1000
-            if let shown = self.demoOutput(now), shown.card?.id == id {
-                // Clicking a bubble in the demo skips ahead to whatever comes after it.
-                let elapsed = now - self.demoStart
-                if let next = self.demo.first(where: { $0.at > elapsed && $0.output.card?.id != id }) {
-                    self.demoStart = now - next.at
-                }
-                self.encode()
-                self.deliver()
-                return
-            }
-            self.moments.dismiss(id, now: now)
+            self.close(id, now: Date().timeIntervalSince1970 * 1000)
+            self.encode()
+            self.deliver()
+        }
+    }
+
+    private func close(_ id: String, now: Double) {
+        if let shown = demoOutput(now), shown.card?.id == id {
+            // Closing a bubble in the demo skips ahead to whatever comes after it.
+            let elapsed = now - demoStart
+            if let next = demo.first(where: { $0.at > elapsed && $0.output.card?.id != id }) { demoStart = now - next.at }
+            return
+        }
+        moments.dismiss(id, now: now)
+    }
+
+    /// Two taps on the desk screen's case. In Test Knock it only shows that it felt it; otherwise, with
+    /// Knock to Dismiss on, it does what a click on the bubble does.
+    private func knocked() {
+        let now = Date().timeIntervalSince1970 * 1000
+        if now < testKnockUntil {
+            knockFeltAt = now
+            log("Test Knock: felt one")
+        } else if knockDismiss, let card = shown.card {
+            log("Knock closed \"\(card.title)\"")
+            if card.action == "focus", demoOutput(now) == nil { DispatchQueue.main.async { self.onFocus?() } }
+            close(card.id, now: now)
+        } else {
+            return
+        }
+        encode()
+        deliver()
+    }
+
+    func setKnock(dismiss: Bool) { queue.async { self.knockDismiss = dismiss } }
+    func setKnockSensitivity(_ level: Int) { queue.async { self.desk.setSensitivity(level) } }
+    func testKnock() {
+        queue.async {
+            self.testKnockUntil = Date().timeIntervalSince1970 * 1000 + 30_000
+            self.knockFeltAt = 0
+            log("Test Knock: 30 s")
             self.encode()
             self.deliver()
         }
@@ -345,7 +424,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var keepOnTop = fresh ? true : UserDefaults.standard.object(forKey: "keepRobotOnTop") as? Bool ?? true
     // 1 = saw the 1.0 welcome, 2 = saw the one that asks about Claude Code alerts and AI summaries.
     private var welcomed = fresh ? 0 : max(UserDefaults.standard.integer(forKey: "welcomeSeen"), UserDefaults.standard.bool(forKey: "welcomed") ? 1 : 0)
-    private var aiSummaries = !fresh && UserDefaults.standard.bool(forKey: "aiSummaries")
+    // AI recaps and loop judging are on unless you turned them off (the 1.1 opt-in key is not carried over).
+    private var aiOn = fresh || UserDefaults.standard.object(forKey: "aiOn") as? Bool ?? true
+    private var dailyGoal = fresh ? 0 : UserDefaults.standard.integer(forKey: "dailyGoal")
     // The pricing switch: the robot's reactions, its Now line and summaries. On; the levels are never behind it.
     private let intelligence = fresh || UserDefaults.standard.object(forKey: "intelligence") as? Bool ?? true
     // Claude Code's settings. A first-launch test run works on a throwaway copy, never on yours.
@@ -362,7 +443,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         // The hooks run this script; it is rewritten each launch so it is always this version's.
         // Whether the hooks are in Claude Code's settings is up to you (the welcome, or the Robot menu).
         hooks.writeScript()
-        engine.setOptions(intelligence: intelligence, aiSummaries: aiSummaries)
+        engine.setOptions(intelligence: intelligence, aiOn: aiOn, dailyGoal: dailyGoal)
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         // Which app you are in decides whether the robot speaks up or just pulls a face.
         let workspace = NSWorkspace.shared
@@ -372,6 +453,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self?.engine.attention.setFront(app?.bundleIdentifier ?? "")
         }
         engine.onState = { [weak self] json in self?.push(json) }
+        engine.onFocus = { [weak self] in self?.bringBackWork() }
+        engine.onDeskKnocks = { [weak self] can, level in
+            self?.deskKnocks = can
+            self?.deskSensitivity = level
+        }
+        engine.setKnock(dismiss: knockDismiss)
         engine.onOlder = { [weak self] json in
             guard let self else { return }
             self.latestOlder = json
@@ -418,7 +505,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         engine.setMeta([
             "firstRun": welcomed < 2,
             "claudeAlerts": hooks.installed,
-            "aiSummaries": aiSummaries,
+            "aiOn": aiOn,
+            "dailyGoal": dailyGoal,
             "intelligence": intelligence,
             "openAtLogin": openAtLogin,
             "keepOnTop": keepOnTop,
@@ -492,9 +580,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             refreshMeta()
         case "claudeAlerts":
             setClaudeAlerts(body["on"] as? Bool ?? false)
-        case "aiSummaries":
-            // On the welcome the box is the consent: its words say what is sent.
-            setAISummaries(body["on"] as? Bool ?? false)
+        case "dailyGoal":
+            setDailyGoal(body["n"] as? Int ?? 0)
         case "openAtLogin":
             setOpenAtLogin(body["on"] as? Bool ?? false)
         case "keepOnTop":
@@ -523,6 +610,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     /// Brings forward the terminal or editor you were last working in. Through Launch Services,
     /// because the robot's panel never makes Burnbot the active app, so a plain activate is refused.
+    // ---------- the knock ----------
+    private var knockDismiss = !fresh && UserDefaults.standard.bool(forKey: "knockDismiss")
+    private var deskKnocks = false
+    private var deskSensitivity = 1
+
+    @objc func toggleKnockDismiss() {
+        knockDismiss.toggle()
+        if !fresh { UserDefaults.standard.set(knockDismiss, forKey: "knockDismiss") }
+        engine.setKnock(dismiss: knockDismiss)
+        log("Knock to Dismiss \(knockDismiss ? "on" : "off")")
+    }
+
+    @objc func pickKnockSensitivity(_ sender: NSMenuItem) {
+        deskSensitivity = sender.tag
+        engine.setKnockSensitivity(sender.tag)
+    }
+
+    /// 30 seconds in which every knock the desk feels shows on the desk and in the robot window,
+    /// so you can find a sensitivity that catches your knocks and not your typing.
+    @objc func testKnock() {
+        if !robotShown { showRobotLive() }
+        engine.testKnock()
+    }
+
     private func bringBackWork() {
         let id = engine.attention.workApp
         guard !id.isEmpty, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return }
@@ -552,29 +663,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc func toggleClaudeAlerts() { setClaudeAlerts(!hooks.installed) }
 
-    private func setAISummaries(_ on: Bool) {
-        aiSummaries = on
-        if !fresh { UserDefaults.standard.set(on, forKey: "aiSummaries") }
-        engine.setOptions(intelligence: intelligence, aiSummaries: on)
-        log("AI session summaries \(on ? "on" : "off")")
+    private func setAI(_ on: Bool) {
+        aiOn = on
+        if !fresh { UserDefaults.standard.set(on, forKey: "aiOn") }
+        engine.setOptions(intelligence: intelligence, aiOn: on, dailyGoal: dailyGoal)
+        log("AI recaps and loop checks \(on ? "on" : "off")")
         refreshMeta()
     }
 
-    @objc func toggleAISummaries() {
-        if aiSummaries { return setAISummaries(false) }
-        // Switching it on from the menu: say what leaves the Mac first.
-        let alert = NSAlert()
-        alert.messageText = "Send session summaries to Claude?"
-        alert.informativeText = """
-        When a session ends, Burnbot asks Claude for a short summary of it, through the claude command \
-        you already use, on your own plan. It sends the session's name, your prompts (shortened), the names \
-        of files edited and how test and build runs turned out. Never the contents of your files.
+    @objc func toggleAI() { setAI(!aiOn) }
 
-        At most 20 a day. Without it, the robot still sums up each session from what is on this Mac.
-        """
-        alert.addButton(withTitle: "Turn On")
-        alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn { setAISummaries(true) }
+    /// Wins a day to aim for; 0 goes back to working it out from your own days.
+    private func setDailyGoal(_ n: Int) {
+        dailyGoal = max(0, min(20, n))
+        if !fresh { UserDefaults.standard.set(dailyGoal, forKey: "dailyGoal") }
+        engine.setOptions(intelligence: intelligence, aiOn: aiOn, dailyGoal: dailyGoal)
+        refreshMeta()
     }
 
     private func setOpenAtLogin(_ on: Bool) {
@@ -897,7 +1001,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             item("Play Every Moment", #selector(playMoments), mine: true),
             .separator(),
             item("Claude Code Alerts", #selector(toggleClaudeAlerts), mine: true),
-            item("AI Session Summaries…", #selector(toggleAISummaries), mine: true),
+            item("AI Recaps and Loop Checks", #selector(toggleAI), mine: true),
+            .separator(),
+            item("Knock to Dismiss", #selector(toggleKnockDismiss), mine: true),
+            {
+                let holder = NSMenuItem(title: "Knock Sensitivity", action: nil, keyEquivalent: "")
+                let menu = NSMenu(title: "Knock Sensitivity")
+                for (tag, name) in ["Light", "Medium", "Firm"].enumerated() {
+                    let entry = item(name, #selector(pickKnockSensitivity(_:)), mine: true)
+                    entry.tag = tag
+                    menu.addItem(entry)
+                }
+                holder.submenu = menu
+                return holder
+            }(),
+            item("Test Knock", #selector(testKnock), mine: true),
         ])
         add("Window", [
             item("Minimize", #selector(NSWindow.performMiniaturize(_:)), "m"),
@@ -913,10 +1031,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if menuItem.action == #selector(toggleKeepOnTop) { menuItem.state = keepOnTop ? .on : .off }
         if menuItem.action == #selector(toggleOpenAtLogin) { menuItem.state = openAtLogin ? .on : .off }
         if menuItem.action == #selector(toggleClaudeAlerts) { menuItem.state = hooks.installed ? .on : .off }
-        if menuItem.action == #selector(toggleAISummaries) {
-            menuItem.state = aiSummaries ? .on : .off
-            menuItem.title = aiSummaries ? "AI Session Summaries" : "AI Session Summaries…"
-        }
+        if menuItem.action == #selector(toggleAI) { menuItem.state = aiOn ? .on : .off }
+        // The knock needs a desk screen with the motion sensor, on program 3 or later.
+        if menuItem.action == #selector(toggleKnockDismiss) { menuItem.state = knockDismiss ? .on : .off; return deskKnocks }
+        if menuItem.action == #selector(pickKnockSensitivity(_:)) { menuItem.state = menuItem.tag == deskSensitivity ? .on : .off; return deskKnocks }
+        if menuItem.action == #selector(testKnock) { return deskKnocks }
         return true
     }
 
@@ -956,8 +1075,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard let view = robotView, let window = view.window else { return }
         let original = window.frame
         let big = NSSize(width: 1120, height: 630)
-        var steps = (0..<5).map { (name: "robot-moment-\($0)", size: original.size, n: $0) }
-            + (0..<5).map { (name: "robot-moment-big-\($0)", size: big, n: $0) }
+        var steps = (0..<8).map { (name: "robot-moment-\($0)", size: original.size, n: $0) }
+            + (0..<8).map { (name: "robot-moment-big-\($0)", size: big, n: $0) }
         func next() {
             guard !steps.isEmpty else {
                 window.setFrame(original, display: true)

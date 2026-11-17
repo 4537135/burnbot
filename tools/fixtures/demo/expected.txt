@@ -1,5 +1,15 @@
 09:50:00  front app: com.apple.Terminal (work)
 09:50:00  NOW On: Fix checkout tax tests
+09:56:40  d3m0d3m0: you stopped Claude (1 without progress)
+09:56:50  d3m0d3m0: you asked for nearly the same again, same redo as a moment ago
+09:58:20  d3m0d3m0: you asked for nearly the same again (2 without progress)
+09:59:40  d3m0d3m0: you stopped Claude (3 without progress)
+09:59:40  d3m0d3m0 going round: 3 redos in 3 min, no progress: puzzled face, 6 s
+09:59:40  NOW Going round · 3 retries, no progress
+09:59:40  FACE puzzled
+09:59:46  FACE normal
+10:00:40  d3m0d3m0 no longer going round: Claude changed a file
+10:00:40  NOW On: Fix checkout tax tests
 10:01:20  NOW Claude running tests · 20s
 10:01:40  test failed (1 so far): worried face, 5 s
 10:01:40  NOW On: Fix checkout tax tests
@@ -12,13 +22,16 @@
 10:03:15  FACE normal
 10:04:20  NOW Claude running tests · 20s
 10:04:40  breakthrough:d3m0d3m0-0000-4000-8000-000000000001:test noticed (2 failures, then a clean pass: npm test)
-10:04:40  NOW On: Fix checkout tax tests
+10:04:40  daily goal hit: 2 of 2 wins, 1-day streak: happy face 8 s
+10:04:40  NOW Goal hit · 2 wins, goal 2
 10:04:40  SHOW breakthrough: FINALLY. ALL GREEN. / 3 tries. / 3 min in the red. / Commit it.
 10:04:40  FACE happy
 10:04:49  breakthrough:d3m0d3m0-0000-4000-8000-000000000001:test over (its time is up, or you are back)
 10:04:49  SHOW nothing
 10:04:49  FACE normal
+10:05:12  NOW Goal hit · 3 wins, goal 2
 10:06:30  front app: com.apple.Safari
+10:06:40  NOW On: Fix checkout tax tests
 10:07:01  waiting:d3m0d3m0-0000-4000-8000-000000000001 noticed (Bash needs a yes)
 10:07:01  NOW Waiting on you · shop
 10:07:01  SHOW waiting: NEED A YES / shop wants to run / rm -rf dist && npm run build
@@ -31,14 +44,26 @@
 10:09:20  NOW Claude building · 20s
 10:09:30  waiting:d3m0d3m0-0000-4000-8000-000000000001 over (the command it asked about has run)
 10:09:30  NOW On: Fix checkout tax tests
-10:10:30  front app: com.tinyspeck.slackmacgap
+10:10:30  front app: com.apple.Safari
 10:17:02  your-move:d3m0d3m0-0000-4000-8000-000000000001 noticed (stopped while you were away)
 10:17:02  SHOW your-move: OVER TO YOU / shop went quiet / after 7 min of work.
 10:18:03  your-move:d3m0d3m0-0000-4000-8000-000000000001 over (its time is up, or you are back)
 10:18:03  SHOW nothing
-10:19:00  front app: com.apple.Terminal (work)
-10:21:10  done:d3m0d3m0-0000-4000-8000-000000000001:29915180 noticed (session ended (prompt_input_exit))
-10:21:10  NOW -
-10:21:10  SHOW done: THAT IS A WRAP / 28 min on Fix checkout tax tests / Tests green after 3 tries / 1 commit
-10:23:11  done:d3m0d3m0-0000-4000-8000-000000000001:29915180 over (its time is up, or you are back)
-10:23:11  SHOW nothing
+10:22:02  drifted: shop has waited 5 min with com.apple.Safari in front (usual break 5 min): bored face
+10:22:02  NOW Drifted · 5 min · shop is waiting
+10:22:02  FACE bored
+10:27:02  drift:d3m0d3m0-0000-4000-8000-000000000001:1794910622000 noticed (still drifted after 10 min)
+10:27:02  SHOW drift: OVER HERE / shop handed you / the turn 10 min ago.
+10:28:20  front app: com.apple.Terminal (work)
+10:28:20  drift:d3m0d3m0-0000-4000-8000-000000000001:1794910622000 over (the drift is over)
+10:28:20  back at work after drifting: "Back to" for 60 s
+10:28:20  NOW Back to: Fix checkout tax tests
+10:28:20  SHOW nothing
+10:28:20  FACE normal
+10:28:40  back to prompting after a break of 18 min: learned
+10:29:20  NOW On: Fix checkout tax tests
+10:30:10  done:d3m0d3m0-0000-4000-8000-000000000001:29915190 noticed (session ended (prompt_input_exit))
+10:30:10  NOW -
+10:37:02  SHOW done: SESSION OVER / 28 min on Fix checkout tax tests / Tests green after 3 tries / 1 commit
+10:39:03  done:d3m0d3m0-0000-4000-8000-000000000001:29915190 over (its time is up, or you are back)
+10:39:03  SHOW nothing

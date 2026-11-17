@@ -51,7 +51,12 @@
     "commit": "1 commit",
     "commits": "{count} commits",
     "edited1": "1 file changed",
-    "edited": "{count} files changed"
+    "edited": "{count} files changed",
+    "red": {
+      "test": "tests",
+      "build": "the build",
+      "typecheck": "types"
+    }
   },
 
   "now": {
@@ -62,6 +67,22 @@
     "on": "On: {title}",
     "onMore": "On: {title} +{more}",
     "last": "Last time: {title}",
-    "lastNext": "Last time: {title} · next: {next}"
-  }
+    "lastNext": "Last time: {title} · next: {next}",
+    "drift": "Drifted · {waited} · {project} is waiting",
+    "loop": "Going round · {tries} retries, no progress",
+    "back": "Back to: {title}",
+    "goal": "Goal hit · {wins} wins, goal {target} · {streak}-day streak",
+    "goal1": "Goal hit · {wins} wins, goal {target}",
+    "lastRed": "Last time: {title} · {red} left red"
+  },
+
+  "loop": [
+    { "t": "Going round", "a": "{tries} goes at the same ask", "b": "in {minutes}, nothing changed.", "c": "Ask for something smaller." },
+    { "t": "Same ask again", "a": "{tries} retries, no edits.", "b": "Split it, or ask why", "c": "it keeps missing." }
+  ],
+
+  "drift": [
+    { "t": "Still there?", "a": "{project} has waited", "b": "{waited} on you." },
+    { "t": "Over here", "a": "{project} handed you", "b": "the turn {waited} ago." }
+  ]
 }

@@ -34,7 +34,7 @@ final class Memory {
         sessions.append([
             "id": recap.id, "project": recap.project, "title": recap.title, "branch": recap.branch,
             "start": recap.start, "end": recap.end, "minutes": recap.minutes, "edited": recap.edited,
-            "wins": recap.wins, "commits": recap.commits, "pr": recap.pr,
+            "wins": recap.wins, "commits": recap.commits, "pr": recap.pr, "red": recap.red,
         ])
         sessions = Array(sessions.suffix(keep))
         save()
@@ -47,12 +47,12 @@ final class Memory {
     }
 
     /// The last session, for "Last time: ..." when nothing is going on. Only for the next 18 hours.
-    func last(now: Double) -> (title: String, next: String)? {
+    func last(now: Double) -> (title: String, next: String, red: [String])? {
         guard let entry = sessions.last, now - number(entry["end"]) < 18 * 3_600_000 else { return nil }
         let title = (entry["title"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? entry["project"] as? String ?? ""
         guard !title.isEmpty else { return nil }
         let next = (entry["summary"] as? [String: Any])?["next"] as? String ?? ""
-        return (title, next)
+        return (title, next, entry["red"] as? [String] ?? [])
     }
 
     /// Takes one of today's summary runs, or says there are none left.
@@ -114,24 +114,8 @@ final class Summaries {
              done: @escaping (_ done: [String], _ next: String) -> Void) {
         let text = Summaries.prompt(recap, prompts: prompts)
         work.async {
-            guard let claude = self.locate() else {
-                self.log("AI summary skipped: no claude command found")
-                return
-            }
-            let (path, flags) = (claude.path, claude.flags)
-            var args = ["-p", "--no-session-persistence", "--model", self.model, "--output-format", "json",
-                        "--json-schema", Summaries.schema]
-            // Only flags this claude knows: an unknown one fails the whole run.
-            if flags.contains("--bare") { args.append("--bare") }
-            else if flags.contains("--setting-sources") { args += ["--setting-sources", ""] }
-            if flags.contains("--tools") { args += ["--tools", ""] }
-            if flags.contains("--max-budget-usd") { args += ["--max-budget-usd", self.budget] }
-            guard flags.contains("--json-schema"), flags.contains("--no-session-persistence") else {
-                self.log("AI summary skipped: this claude (\(path)) has no --json-schema / --no-session-persistence; update Claude Code")
-                return
-            }
             let started = Date()
-            guard let output = self.execute(path, args, input: text) else { return }
+            guard let output = self.ask(text, schema: Summaries.schema, timeout: self.timeout, what: "AI summary") else { return }
             guard let parsed = Summaries.parse(output) else {
                 self.log("AI summary did not match the schema; keeping the local recap")
                 return
@@ -139,6 +123,57 @@ final class Summaries {
             self.log(String(format: "AI summary in %.1f s", Date().timeIntervalSince(started)))
             queue.async { done(parsed.done, parsed.next) }
         }
+    }
+
+    static let loopSchema = """
+    {"type":"object","properties":{"loop":{"type":"boolean"},"why":{"type":"string","maxLength":60}},"required":["loop","why"],"additionalProperties":false}
+    """
+
+    static func loopPrompt(_ prompts: [String]) -> String {
+        (["My last prompts to a coding agent, oldest first:"] + prompts.map { "- \(shortened($0, 300))" }
+         + ["Between them the agent changed no files and no test or build got further. "
+            + "Am I going round in circles (the same ask again and again, getting nowhere), "
+            + "or is this real iteration (each prompt narrows, adds something new, or changes direction)? "
+            + "loop: true only for going round. why: a few plain words."]).joined(separator: "\n")
+    }
+
+    /// Going round or real iteration? `answer` gets true, false, or nil when there is no usable answer.
+    func judgeLoop(_ prompts: [String], then queue: DispatchQueue, answer: @escaping (Bool?) -> Void) {
+        let text = Summaries.loopPrompt(prompts)
+        work.async {
+            let started = Date()
+            var verdict: Bool?
+            if let output = self.ask(text, schema: Summaries.loopSchema, timeout: 30, what: "AI loop check"),
+               let raw = (try? JSONSerialization.jsonObject(with: output)) as? [String: Any], raw["is_error"] as? Bool != true,
+               let structured = raw["structured_output"] as? [String: Any], let loop = structured["loop"] as? Bool {
+                verdict = loop
+                self.log(String(format: "AI loop check in %.1f s: %@ (%@)", Date().timeIntervalSince(started),
+                                loop ? "a loop" : "real iteration", shortened(structured["why"] as? String ?? "", 60)))
+            } else {
+                self.log("AI loop check gave no usable answer")
+            }
+            queue.async { answer(verdict) }
+        }
+    }
+
+    /// One `claude -p` with a JSON schema, on the work queue. nil (and a log line) when it cannot run.
+    private func ask(_ text: String, schema: String, timeout: Double, what: String) -> Data? {
+        guard let claude = locate() else {
+            log("\(what) skipped: no claude command found")
+            return nil
+        }
+        let (path, flags) = (claude.path, claude.flags)
+        guard flags.contains("--json-schema"), flags.contains("--no-session-persistence") else {
+            log("\(what) skipped: this claude (\(path)) has no --json-schema / --no-session-persistence; update Claude Code")
+            return nil
+        }
+        var args = ["-p", "--no-session-persistence", "--model", model, "--output-format", "json", "--json-schema", schema]
+        // Only flags this claude knows: an unknown one fails the whole run.
+        if flags.contains("--bare") { args.append("--bare") }
+        else if flags.contains("--setting-sources") { args += ["--setting-sources", ""] }
+        if flags.contains("--tools") { args += ["--tools", ""] }
+        if flags.contains("--max-budget-usd") { args += ["--max-budget-usd", budget] }
+        return execute(path, args, input: text, timeout: timeout, what: what)
     }
 
     /// The answer, if it is what was asked for: up to 3 short strings and a next step.
@@ -152,7 +187,7 @@ final class Summaries {
         return (Array(items), clean(next))
     }
 
-    private func execute(_ path: String, _ args: [String], input: String) -> Data? {
+    private func execute(_ path: String, _ args: [String], input: String, timeout: Double, what: String) -> Data? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = args
@@ -178,24 +213,24 @@ final class Summaries {
         DispatchQueue.global(qos: .utility).async { output = stdout.fileHandleForReading.readDataToEndOfFile(); reading.leave() }
         reading.enter()
         DispatchQueue.global(qos: .utility).async { errors = stderr.fileHandleForReading.readDataToEndOfFile(); reading.leave() }
+        let finished = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in finished.signal() }     // before run: a quick exit is not missed
         do { try process.run() } catch {
-            log("AI summary could not start \(path): \(error.localizedDescription)")
+            log("\(what) could not start \(path): \(error.localizedDescription)")
             return nil
         }
         stdin.fileHandleForWriting.write(Data(input.utf8))
         try? stdin.fileHandleForWriting.close()
-        let finished = DispatchSemaphore(value: 0)
-        process.terminationHandler = { _ in finished.signal() }
         if finished.wait(timeout: .now() + timeout) == .timedOut {
             process.terminate()
             _ = finished.wait(timeout: .now() + 3)
-            log("AI summary took over \(Int(timeout)) s and was stopped")
+            log("\(what) took over \(Int(timeout)) s and was stopped")
             return nil
         }
         reading.wait()
         guard process.terminationStatus == 0 else {
             let reason = String(decoding: errors.prefix(300), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-            log("AI summary failed (exit \(process.terminationStatus)): \(reason)")
+            log("\(what) failed (exit \(process.terminationStatus)): \(reason)")
             return nil
         }
         return output

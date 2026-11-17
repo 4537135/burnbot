@@ -38,6 +38,8 @@ function lighten(hex, amount) {
  *   worried  a run just failed: raised brows, a wobbly mouth, a bead of sweat
  *   happy    it finally passed: arms up, a grin, sparks
  *   waiting  Claude needs a yes from you: eyes on you, a "!" over its head
+ *   puzzled  you are going round: one brow up, a lopsided mouth, a "?" over its head
+ *   bored    Claude handed you the turn and you wandered off: half-shut eyes looking away, a slow sway
  */
 export function drawRobot(ctx, cx, gy, state, t, expr = '') {
   const asleep = state === 'asleep' && !expr;
@@ -68,7 +70,8 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
 
   const pace = asleep ? 1.1 : idle ? 1.7 : auto ? 2 : state === 'warming' ? 3 : state === 'cruising' ? 4.2 : locked ? 6 : 9;
   const bob = Math.sin(t * pace) > 0.35 ? 1 : 0;
-  const x0 = cx + (over ? Math.round(Math.sin(t * 41)) : 0) + (auto ? Math.round(Math.sin(t * 1.3)) : 0);
+  const bored = expr === 'bored';
+  const x0 = cx + (over ? Math.round(Math.sin(t * 41)) : 0) + (auto || bored ? Math.round(Math.sin(t * (bored ? 0.8 : 1.3))) : 0);
   const hy = gy - 43 + bob + (asleep ? 2 : 0); // top of the head
 
   // legs and feet
@@ -92,7 +95,7 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
     R(x0 + 14, gy - 23, 4, 3, sh);
     R(x0 + 17, gy - 26 - wr, 4, 3, body);
     R(x0 + 17, gy - 29 - wr, 5, 3, hi);
-  } else if (working) {
+  } else if (working && !bored) {
     const l = beat % 2 ? 0 : 2;
     const r = beat % 2 ? 2 : 0;
     R(x0 - 15, gy - 18, 4, 6, sh);
@@ -168,6 +171,19 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
       R(lx, ey + 3, 4, 1, glow);
       R(rx, ey + 3, 4, 1, glow);
     }
+  } else if (expr === 'puzzled') {
+    // left brow up, right eye narrowed
+    R(lx, ey - 2, 4, 1, glow);
+    R(lx, ey, 4, 5, glow);
+    R(rx, ey + 1, 4, 1, glow);
+    R(rx, ey + 2, 4, 2, glow);
+  } else if (bored) {
+    // half shut, looking off to the side, now and then the other way
+    const away = Math.floor(t / 3.1) % 3 === 2 ? -1 : 1;
+    R(lx + away, ey + 2, 4, 1, sh);
+    R(rx + away, ey + 2, 4, 1, sh);
+    R(lx + away, ey + 3, 4, 2, glow);
+    R(rx + away, ey + 3, 4, 2, glow);
   } else if (asleep || blink) {
     R(lx, ey + 4, 4, 1, glow);
     R(rx, ey + 4, 4, 1, glow);
@@ -211,6 +227,11 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
     R(x0 - 3, my, 6, 1, glow);
   } else if (expr === 'waiting') {
     R(x0 - 1, my - 1, 2, 2, glow);
+  } else if (expr === 'puzzled') {
+    R(x0 - 2, my, 4, 1, glow);
+    R(x0 + 2, my - 1, 2, 1, glow);
+  } else if (bored) {
+    R(x0 - 3, my, 6, 1, glow);
   } else if (asleep) R(x0 - 1, my, 2, 1, glow);
   else if (auto) {
     R(x0 - 4, my - 1, 1, 1, glow);
@@ -286,6 +307,17 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
       R(bx, by, 2, 5, '#ffd25e');
       R(bx, by + 6, 2, 2, '#ffd25e');
     }
+  } else if (expr === 'puzzled') {
+    // "?" over its head, bobbing
+    const bx = x0 + 18;
+    const by = hy - 13 + (Math.floor(t * 1.6) % 2);
+    const q = '#c5cde4';
+    R(bx + 1, by, 2, 1, q);
+    R(bx, by + 1, 1, 1, q);
+    R(bx + 3, by + 1, 1, 2, q);
+    R(bx + 2, by + 3, 1, 1, q);
+    R(bx + 1, by + 4, 1, 1, q);
+    R(bx + 1, by + 6, 1, 1, q);
   }
 
   // asleep: z z z

@@ -123,6 +123,19 @@
   /* ---------- cards ---------- */
   .card { margin: 20px var(--px) 0; padding: 16px 18px 18px; background: var(--surface); min-width: 0; }
   .stats + .card { margin-top: 26px; }
+
+  /* Today's goal: wins (red to green, a session that shipped, a pull request, a plan you approved) */
+  .goal { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 28px; align-items: center; }
+  .goal .big { font-size: 40px; line-height: 1.1; white-space: nowrap; }
+  .goal .big small { color: var(--muted); font-size: 25px; }
+  .goal.hit .big { color: #4fc9a4; }
+  .goal .pips { display: flex; gap: 6px; margin-top: 8px; }
+  .goal .pips i { width: 14px; height: 14px; background: var(--surface-2); }
+  .goal .pips i.on { background: #4fc9a4; }
+  .goal .kinds { color: var(--ink-2); }
+  .goal .kinds small { display: block; margin-top: 4px; color: var(--muted); font-size: 15px; }
+  .goal .seg button { min-width: 40px; }
+  @media (max-width: 760px) { .goal { grid-template-columns: 1fr; } }
   .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
   .two.wide-left { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
   .head { display: flex; align-items: baseline; justify-content: space-between; gap: 2px 14px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -262,6 +275,19 @@
 
     <div class="stats" id="stats"></div>
 
+    <section class="card" id="goalCard" hidden>
+      <div class="head"><h2>Today's goal</h2><span class="hint" id="goalHint"></span></div>
+      <div class="goal" id="goalBody">
+        <div><div class="big" id="goalWins"></div><div class="pips" id="goalPips" aria-hidden="true"></div></div>
+        <div class="kinds" id="goalKinds"></div>
+        <div class="seg" role="group" aria-label="Daily goal">
+          <button type="button" id="goalLess" aria-label="One win fewer">−</button>
+          <button type="button" id="goalMore" aria-label="One win more">+</button>
+          <button type="button" id="goalAuto">Auto</button>
+        </div>
+      </div>
+    </section>
+
     <section class="card">
       <div class="head"><h2>Burn through the day</h2><span class="hint">Tokens every 5 minutes, coloured by the level you were on</span></div>
       <div class="chart" id="burnChart"></div>
@@ -373,14 +399,13 @@
       <li><b>Nothing to set up.</b> It reads the session logs that Claude Code already keeps on this Mac.</li>
       <li><b>Calibrated to you.</b> Levels are judged against your own last 30 days, so locked in means well above your normal.</li>
       <li><b>Mostly quiet.</b> A face when a test fails, a word when Claude needs you and you are not looking, a cheer when red turns green, a recap when you stop.</li>
-      <li><b>Private.</b> No account and no API key. Nothing leaves this Mac unless you switch on AI summaries below.</li>
+      <li><b>What leaves this Mac.</b> No account and no API key. For session recaps and to tell going round from real iteration, session names, your prompts, file names and test results (never file contents) go to Claude through your own <code>claude</code> command, at most 20 times a day. Turn it off any time: Robot menu, AI Recaps and Loop Checks.</li>
     </ul>
     <div class="chips" id="welcomeLadder" aria-label="The levels"></div>
     <p class="found" id="welcomeFound"></p>
     <label class="check"><input type="checkbox" id="optLogin"> Open Burnbot when I log in</label>
     <label class="check"><input type="checkbox" id="optTop" checked> Keep the robot on top of other windows</label>
     <label class="check"><input type="checkbox" id="optAlerts" checked> <span>Tell me when Claude needs me <span class="note">Adds three small hooks to Claude Code's settings. They only pass on what Claude Code reports and never change what it does. Off again from the Robot menu.</span></span></label>
-    <label class="check"><input type="checkbox" id="optSummaries"> <span>AI session summaries <span class="note">When a session ends, sends its name, your prompts, file names and test results (never file contents) to Claude through your own claude command, for a two-line recap.</span></span></label>
     <button class="btn go" id="welcomeGo">Start</button>
     <p class="small">Burnbot is an independent project. It is not made by, affiliated with, or endorsed by Anthropic. Claude and Claude Code are trademarks of Anthropic, PBC.</p>
   </div>

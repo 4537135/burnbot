@@ -12,102 +12,6 @@
 
 import Foundation
 
-// MARK: - Commands Claude runs
-
-enum Family: String { case test, build, typecheck }
-
-enum Verdict: String { case pass, fail, unknown }
-
-private func regex(_ pattern: String, _ options: NSRegularExpression.Options = []) -> NSRegularExpression {
-    try! NSRegularExpression(pattern: pattern, options: options)
-}
-
-private extension NSRegularExpression {
-    func found(in text: String) -> Bool { firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil }
-    func removed(from text: String, with replacement: String = "") -> String {
-        stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: replacement)
-    }
-}
-
-private let heredoc = regex("<<-?\\s*['\"]?(\\w+)['\"]?[\\s\\S]*?\\n\\s*\\1\\b")
-private let quoted = regex("'[^']*'|\"(?:[^\"\\\\]|\\\\.)*\"")
-private let separators = regex("&&|\\|\\||;|\\||\\n")
-private let envPrefix = regex("^(?:\\s*[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)+")
-// Segments that only look at things: a test command named inside them is not a run.
-private let lookers: Set<String> = ["git", "gh", "echo", "printf", "cat", "grep", "rg", "sed", "awk", "ls", "find", "head", "tail",
-                                    "wc", "open", "which", "command", "type", "man", "cd", "export", "source", "less", "more", "diff"]
-private let testCommand = regex(
-    "(?:^|[\\s/(])(?:pytest|py\\.test|jest|vitest|mocha|rspec|phpunit|ctest|tox|nox)(?:\\s|$)" +
-    "|(?:^|\\s)(?:npm|pnpm|yarn|bun)\\s+(?:run\\s+)?test(?::\\S+)?(?:\\s|$)" +
-    "|\\b(?:cargo\\s+(?:test|nextest)|go\\s+test|swift\\s+test|deno\\s+test|mix\\s+test|dotnet\\s+test|playwright\\s+test" +
-    "|python3?\\s+-m\\s+(?:pytest|unittest)|make\\s+(?:test|check)|bundle\\s+exec\\s+rspec|rails\\s+test)\\b" +
-    "|\\bxcodebuild\\b.*\\btest\\b|(?:^|\\s)(?:\\./)?(?:gradlew?|mvnw?)\\b.*\\b(?:test|check|verify)\\b")
-private let typecheckCommand = regex(
-    "(?:^|[\\s/])(?:tsc|vue-tsc|mypy|pyright|basedpyright)(?:\\s|$)" +
-    "|(?:^|\\s)(?:npm|pnpm|yarn|bun)\\s+(?:run\\s+)?(?:typecheck|type-check|check-types|types|tsc)(?:\\s|$)|\\bcargo\\s+check\\b")
-private let buildCommand = regex(
-    "(?:^|\\s)(?:npm|pnpm|yarn|bun)\\s+(?:run\\s+)?build(?::\\S+)?(?:\\s|$)" +
-    "|\\b(?:cargo|go|swift|dotnet|bazel)\\s+build\\b|(?:^|[\\s/])(?:swiftc|xcodebuild|ninja|webpack)(?:\\s|$)" +
-    "|\\bcmake\\s+--build\\b|\\b(?:next|vite|astro|nuxt)\\s+build\\b|^make(?:\\s+[\\w.=-]+)*$" +
-    "|(?:^|\\s)(?:\\./)?gradlew?\\b.*\\b(?:build|assemble)\\b|(?:^|\\s)mvnw?\\b.*\\b(?:package|compile|install)\\b" +
-    "|(?:^|[\\s/])build[\\w-]*\\.sh(?:\\s|$)")
-private let selector = regex("\\S+\\.(?:py|ts|tsx|js|jsx|mjs|cjs|go|rs|swift|rb|java|kt|php|exs?)\\b|::|\\s-k\\s|\\s-t\\s|--filter|\\s-run\\s|--grep|--testNamePattern|-only-testing|\\btests?/\\S+")
-private let noise = regex("\\s(?:2>&1|>\\s*/dev/null|-q|--quiet|-v+|--verbose|-s|--silent|--no-color|--color(?:=\\S+)?)(?=\\s|$)")
-private let filterPipe = regex("\\|\\s*(?:tail|head|grep|rg|less|more|cat|tee|sed|awk|cut|sort|uniq|wc|xcpretty|xcbeautify|jq)\\b")
-private let pipefail = regex("pipefail")
-private let swallowed = regex("\\|\\|\\s*(?:true|:|echo\\b|printf\\b|exit\\s+0)|;\\s*(?:true|:)\\s*$")
-private let failMarker = regex(
-    "\\b[1-9]\\d*\\s+(?:failed|failing|failures?|errors?)\\b|\\bFAIL(?:ED|URES?)?\\b|[✗✖❌]|(?:^|\\s)error(?:\\[E\\d+\\])?:" +
-    "|\\berror TS\\d+|\\bTests? failed\\b|\\bpanicked at\\b|Traceback \\(most recent call last\\)|\\bcommand not found\\b")
-private let passMarker = regex(
-    "\\b[1-9]\\d*\\s+(?:passed|passing)\\b|\\btests? passed\\b|\\ball tests passed\\b|\\btest result: ok\\b|(?:^|\\n)ok\\s+\\S+\\s+[\\d.]+s" +
-    "|(?:^|\\n)OK(?:\\s*\\(|\\s*$)|Executed \\d+ tests?, with 0 failures|Test Suite '.*' passed|\\bBUILD SUCCEEDED\\b|\\bBUILD SUCCESSFUL\\b" +
-    "|Build complete!|Compiled successfully|\\bFinished\\b.*\\bin [\\d.]+s|\\bbuilt in [\\d.]+\\s*m?s\\b|Found 0 errors|Success: no issues found",
-    [.caseInsensitive, .anchorsMatchLines])
-
-/// The command with heredocs and quoted text taken out, split into the commands it runs.
-private func segments(_ command: String) -> [String] {
-    let bare = quoted.removed(from: heredoc.removed(from: command), with: "''")
-    return separators.removed(from: bare, with: "\u{1}").split(separator: "\u{1}").map {
-        envPrefix.removed(from: String($0)).trimmingCharacters(in: .whitespaces)
-    }.filter { !$0.isEmpty }
-}
-
-/// What kind of run this is, and the part of the command that makes it so.
-func classify(_ command: String) -> (family: Family, core: String)? {
-    let parts = segments(command).filter { !lookers.contains(String($0.split(separator: " ").first ?? "")) }
-    for (family, pattern) in [(Family.test, testCommand), (.typecheck, typecheckCommand), (.build, buildCommand)] {
-        if let part = parts.first(where: { pattern.found(in: $0) }) {
-            let core = noise.removed(from: " " + part + " ").split(separator: " ").joined(separator: " ")
-            return (family, core)
-        }
-    }
-    return nil
-}
-
-/// Whether a git commit or a new pull request is what this runs.
-func gitAction(_ command: String) -> String? {
-    for part in segments(command) {
-        if part.hasPrefix("git commit") { return "commit" }
-        if part.hasPrefix("gh pr create") { return "pr" }
-    }
-    return nil
-}
-
-/// Did it pass? Only says so with evidence: anything unclear is .unknown, and the robot stays quiet.
-func verdict(_ command: String, _ result: RunResult) -> Verdict {
-    if result.denied || result.interrupted { return .unknown }
-    if let exit = result.exit, exit == 126 || exit == 127 { return .unknown }
-    let piped = filterPipe.found(in: command) && !pipefail.found(in: command)
-    let swallows = swallowed.found(in: command)
-    let failed = failMarker.found(in: result.output)
-    let bad = result.error || (result.exit ?? 0) != 0
-    if bad { return piped && !failed ? .unknown : .fail }       // a pipe's exit belongs to its last command
-    if failed { return piped || swallows ? .fail : .unknown }
-    if piped || swallows { return passMarker.found(in: result.output) ? .pass : .unknown }
-    return .pass
-}
-
 // MARK: - The robot's words
 
 /// Everything the robot says, from public/voice.json: lists of variations, with {blanks} the app fills in.
@@ -176,7 +80,8 @@ private func clock(_ ms: Double) -> String {
 extension LogSignal {
     var ms: Double {
         switch self {
-        case let .line(_, _, _, ms), let .prompt(_, ms), let .run(_, _, _, ms), let .result(_, _, _, _, ms): return ms
+        case let .line(_, _, _, ms), let .prompt(_, ms, _), let .ask(_, _, ms), let .decision(_, _, ms), let .edit(_, ms),
+             let .run(_, _, _, ms), let .result(_, _, _, _, ms): return ms
         }
     }
 }
@@ -198,7 +103,8 @@ struct MomentsOutput: Equatable {
     var now = ""                            // the Now line
 
     var json: [String: Any] {
-        var out: [String: Any] = ["expr": expr, "now": now]
+        // "nowLine", not "now": the state's own "now" is the time, which the dashboard reads.
+        var out: [String: Any] = ["expr": expr, "nowLine": now]
         if let card {
             out["moment"] = ["id": card.id, "kind": card.kind, "title": card.title, "lines": card.lines,
                              "action": card.action.map { $0 as Any } ?? NSNull(), "persistent": card.persistent] as [String: Any]
@@ -221,6 +127,23 @@ struct SessionRecap {
     let wins: [String]
     let commits: Int
     let pr: Bool
+    let red: [String]                       // run families still failing when it ended ("test", "build", "typecheck")
+}
+
+/// The day's goal as analyze() works it out ("goal"), for the moment it is hit.
+struct GoalState: Equatable {
+    var wins = 0, target = 0, streak = 0
+    var hit = false
+    var day = 0                             // which day it is about (local), so tomorrow starts fresh
+
+    init?(_ raw: Any?, now: Double) {
+        guard let goal = raw as? [String: Any], let target = (goal["target"] as? NSNumber)?.intValue, target > 0 else { return nil }
+        self.target = target
+        wins = Int(number(goal["wins"]))
+        streak = Int(number(goal["streak"]))
+        hit = goal["hitToday"] as? Bool ?? false
+        day = Calendar.current.ordinality(of: .day, in: .era, for: Date(timeIntervalSince1970: now / 1000)) ?? 0
+    }
 }
 
 // MARK: - Detectors, decide, queue
@@ -233,32 +156,35 @@ private struct Run {
     var ms: Double                          // when it started (or when the yes it waited for came)
 }
 
-private struct Streak {
-    var failing: [String: Int] = [:]        // command -> failures
-    var total = 0
-    var first = 0.0, last = 0.0
-}
-
 private final class LiveSession {
     let id: String
     var project = ""
     var lastLine = 0.0
     var lastPrompt = 0.0
     var running: [String: Run] = [:]
-    var streaks: [String: Streak] = [:]
+    var ledger = RunLedger()
     var wins: [String] = []
     var commits = 0
     var pr = false
     var doneMinute = 0                      // the last minute counted in a recap
     var checkedLine = 0.0                   // lastLine when it was last checked for being over
+    var lastYou = 0.0                       // your last prompt or answer here
+    var handedAt = 0.0                      // when Claude handed you the turn (a long turn ended, a question, a plan); 0 = it has not
+    var asked: [(ms: Double, words: Set<String>, text: String)] = []   // your last few prompts here
+    var redos: [Double] = []                // near-repeats, interrupts and turn-downs since the last progress
+    var loopSince = 0.0                     // when going round was noticed; 0 = it is not
+    var loopCount = 0                       // redos when it was noticed
+    /// Redos in this loop: the ones that started it, and every one since (some may be older than the window by now).
+    var tries: Int { loopSince > 0 ? loopCount + redos.filter { $0 > loopSince }.count : redos.count }
+    var loopSettled = false                 // said, or judged not a loop: once per loop
     var ended = 0.0                         // when Claude Code said it ended
     var isOver: Bool { ended > 0 && ended >= lastLine }
     init(id: String) { self.id = id }
 }
 
 private enum Kind: String {
-    case waiting, yourMove = "your-move", breakthrough, done
-    var priority: Int { [.waiting: 4, .breakthrough: 3, .yourMove: 2, .done: 2][self]! }
+    case waiting, yourMove = "your-move", breakthrough, done, loop, drift
+    var priority: Int { [.waiting: 4, .breakthrough: 3, .yourMove: 2, .done: 2, .drift: 2, .loop: 1][self]! }
 }
 
 private enum Presentation: Equatable {
@@ -290,9 +216,16 @@ final class Moments {
     /// (session, now, since minute) -> the session as the logs tell it
     var sessionInfo: (String, Double, Int) -> SessionInfo? = { _, _, _ in nil }
     /// now -> the last session remembered, for "Last time: ..."
-    var lastSession: (Double) -> (title: String, next: String)? = { _ in nil }
+    var lastSession: (Double) -> (title: String, next: String, red: [String])? = { _ in nil }
     var onSessionDone: ((SessionRecap) -> Void)?
     var trace: ((String) -> Void)?
+    /// How long you usually step away between bits of work, in ms (Attention learns it).
+    var usualBreak: () -> Double = { 5 * 60_000 }
+    /// A break just ended the way breaks do while working (back in a work app, then a prompt): its length in ms.
+    var onBreak: ((Double) -> Void)?
+    /// Asks Claude whether these prompts are going round (true) or real iteration (false); nil: no answer.
+    /// Unset when AI is off, and then the rule alone decides.
+    var judgeLoop: ((_ prompts: [String], _ answer: @escaping (Bool?) -> Void) -> Void)?
 
     // Tuning
     let awayAfterIdle = 120.0               // seconds without input: you are not looking at your work app
@@ -304,11 +237,16 @@ final class Moments {
     let doneAfterQuiet = 30 * 60_000.0
     let doneMinMinutes = 20
     let budgetGap = 10 * 60_000.0           // at most one bubble that is not urgent per 10 minutes
-    let stuckFor = 5 * 60_000.0
-    let streakForgotten = 2 * 3_600_000.0
     let runningShownAfter = 20_000.0
     let activeWithin = 10 * 60_000.0
     let nowHold = 20_000.0
+    let loopWindow = 20 * 60_000.0          // redos further apart than this are not one loop
+    let loopAt = 3                          // redos without progress before it counts as going round
+    let loopSayAfter = 15 * 60_000.0        // still going round this much later, with another redo: say so
+    let driftAfterPrompt = 30 * 60_000.0    // a session you have not touched for longer is not waiting on you
+    let backShown = 60_000.0
+    let goalShown = 2 * 60_000.0
+    static let burnbotApp = "local.burnbot.app"
 
     private var live: [String: LiveSession] = [:]
     private var observations: [Observation] = []
@@ -316,6 +254,13 @@ final class Moments {
     private var transient: (expr: String, until: Double) = ("", 0)
     private var nowShown: (key: String, text: String, priority: Int, since: Double) = ("", "", 0, 0)
     private var lastFront = ""
+    private var clockNow = 0.0              // the latest tick's time, for answers that come back later
+    private var offWorkSince = 0.0          // when something other than a work app came to the front, you at the Mac
+    private var breakEnded: (length: Double, at: Double)?   // the last such stretch, until a prompt says it was a break
+    private var drift: (session: String, since: Double, noted: Bool, bubbled: Bool)?
+    private var back: (title: String, until: Double) = ("", 0)
+    private var goalSeen: GoalState?
+    private var goalUntil = 0.0
     private(set) var output = MomentsOutput()
 
     private func note(_ now: Double, _ text: String) { trace?("\(clock(now))  \(text)") }
@@ -351,7 +296,9 @@ final class Moments {
 
     /// One step. Returns whether what the robot shows changed.
     @discardableResult
-    func tick(signals: [LogSignal], hooks: [HookEvent], front: String, idle: Double, level: String, now: Double) -> Bool {
+    func tick(signals: [LogSignal], hooks: [HookEvent], front: String, idle: Double, level: String,
+              goal: GoalState? = nil, now: Double) -> Bool {
+        clockNow = now
         let atWork = isWork(front) && idle < awayAfterIdle
         if front != lastFront {
             note(now, "front app: \(front.isEmpty ? "none" : front)\(isWork(front) ? " (work)" : "")")
@@ -363,6 +310,9 @@ final class Moments {
         // A log seen for the first time can be old: only what happened in the last 10 minutes is news.
         for signal in signals where signal.ms >= now - 600_000 { take(signal, atWork: atWork, topGear: topGear, now: now) }
         quietSessions(now)
+        loops(atWork: atWork, now: now)
+        drifting(front: front, idle: idle, now: now)
+        goals(goal, now: now)
         expire(atWork: atWork, idle: idle, now: now)
 
         let next = present(atWork: atWork, now: now)
@@ -398,6 +348,7 @@ final class Moments {
                 note(now, "Claude stopped in \(s.id.prefix(8)): short turn, nothing to say")
                 return
             }
+            s.handedAt = max(s.handedAt, hook.ms)
             if atWork {
                 note(now, "Claude stopped after \(minutesText(hook.ms - started)): silence, you are at your work app")
                 return
@@ -408,6 +359,9 @@ final class Moments {
         case "SessionEnd":
             s.ended = max(s.ended, hook.ms)
             s.running = [:]
+            s.handedAt = 0
+            s.redos = []
+            s.loopSince = 0
             drop(now, where: { ($0.kind == .waiting || $0.kind == .yourMove) && $0.session == s.id }, because: "session ended")
             finish(s, now: now, because: "session ended (\(hook.reason.isEmpty ? "closed" : hook.reason))")
         default:
@@ -422,10 +376,35 @@ final class Moments {
             s.lastLine = max(s.lastLine, ms)
             // Claude only writes again once the question is answered.
             if assistant { drop(now, where: { $0.kind == .waiting && $0.session == id && $0.agent == agent && ms > $0.at }, because: "Claude carried on") }
-        case let .prompt(id, ms):
+            // Claude carrying on by itself: the turn is not yours any more.
+            if assistant, agent.isEmpty, s.handedAt > 0, ms > s.handedAt + 1000 { s.handedAt = 0 }
+        case let .prompt(id, ms, text):
             let s = session(id)
             s.lastPrompt = max(s.lastPrompt, ms)
+            s.lastYou = max(s.lastYou, ms)
+            if s.handedAt > 0, ms >= s.handedAt { s.handedAt = 0 }
             drop(now, where: { ($0.kind == .waiting || $0.kind == .yourMove) && $0.session == id && ms > $0.at }, because: "you replied")
+            heard(s, text, ms, now)
+            if let ended = breakEnded, ms >= ended.at, ms - ended.at <= 5 * 60_000 {
+                breakEnded = nil
+                note(now, "back to prompting after a break of \(minutesText(ended.length)): learned")
+                onBreak?(ended.length)
+            }
+        case let .ask(id, _, ms):
+            let s = session(id)
+            s.handedAt = max(s.handedAt, ms)
+        case let .decision(id, kind, ms):
+            let s = session(id)
+            s.lastYou = max(s.lastYou, ms)
+            if s.handedAt > 0, ms >= s.handedAt { s.handedAt = 0 }
+            switch kind {
+            case .interrupt: redo(s, "you stopped Claude", ms, now)
+            case .reject: redo(s, "you turned down what Claude proposed", ms, now)
+            case .approve: progress(s, "you approved a plan", now)
+            case .answer, .permission: break
+            }
+        case let .edit(id, _):
+            progress(session(id), "Claude changed a file", now)
         case let .run(id, tool, command, ms):
             let kind = classify(command)
             let git = gitAction(command)
@@ -439,42 +418,33 @@ final class Moments {
             let result = verdict(command, outcome)
             if let git = run.git, result != .fail, !outcome.error, !outcome.denied {
                 if git == "commit" { s.commits += 1 } else { s.pr = true }
+                progress(s, git == "commit" ? "a commit" : "a pull request", now)
             }
             guard let family = run.family else { return }
-            switch result {
-            case .unknown:
+            let event = s.ledger.record(family, core: run.core, verdict: result, ms: ms)
+            switch event {
+            case .passed, .narrowed, .shrugged, .green: progress(s, "\(family.rawValue) passed", now)
+            default: break
+            }
+            switch event {
+            case .unclear:
                 note(now, "\(family.rawValue) run in \(id.prefix(8)): unclear outcome, ignored (\(run.core))")
-            case .fail:
-                var streak = s.streaks[family.rawValue] ?? Streak()
-                if streak.total > 0, ms - streak.last > streakForgotten { streak = Streak() }
-                streak.failing[run.core, default: 0] += 1
-                streak.total += 1
-                streak.last = ms
-                if streak.first == 0 { streak.first = ms }
-                s.streaks[family.rawValue] = streak
+            case let .failed(total):
                 if atWork {
                     transient = ("worried", now + 5000)
-                    note(now, "\(family.rawValue) failed (\(streak.total) so far): worried face, 5 s")
+                    note(now, "\(family.rawValue) failed (\(total) so far): worried face, 5 s")
                 } else {
-                    note(now, "\(family.rawValue) failed (\(streak.total) so far): silence, you are away")
+                    note(now, "\(family.rawValue) failed (\(total) so far): silence, you are away")
                 }
-            case .pass:
-                guard var streak = s.streaks[family.rawValue], !streak.failing.isEmpty else { return }
-                let whole = family != .test || !selector.found(in: " " + run.core + " ")
-                if whole { streak.failing = [:] } else { streak.failing[run.core] = nil }
-                guard streak.failing.isEmpty else {
-                    s.streaks[family.rawValue] = streak
-                    note(now, "\(family.rawValue) passed for \(run.core), others still failing")
-                    return
-                }
-                s.streaks[family.rawValue] = nil
-                let stuck = ms - streak.first
-                guard streak.total >= 2 || stuck >= stuckFor else {
-                    note(now, "\(family.rawValue) passed after one quick failure: nothing to celebrate")
-                    return
-                }
-                let tries = streak.total + 1
-                let facts = ["project": project(s, now), "tries": "\(tries) tries", "fails": "\(streak.total)", "stuck": minutesText(stuck)]
+            case .passed:
+                return
+            case .narrowed:
+                note(now, "\(family.rawValue) passed for \(run.core), others still failing")
+            case .shrugged:
+                note(now, "\(family.rawValue) passed after one quick failure: nothing to celebrate")
+            case let .green(fails, stuck):
+                let tries = fails + 1
+                let facts = ["project": project(s, now), "tries": "\(tries) tries", "fails": "\(fails)", "stuck": minutesText(stuck)]
                 if let win = voice.line(["facts", "win", family.rawValue], facts) { s.wins.append(win) }
                 var observation = Observation(kind: .breakthrough, session: id, key: "breakthrough:\(id):\(family.rawValue)", at: ms,
                                               facts: facts, path: ["breakthrough", family.rawValue], happy: true)
@@ -486,7 +456,7 @@ final class Moments {
                     observation.deadline = now + keptUntilBackMax
                 }
                 transient = ("happy", now + 5000)
-                add(observation, now, because: "\(streak.total) failures, then a clean pass: \(run.core)")
+                add(observation, now, because: "\(fails) failures, then a clean pass: \(run.core)")
             }
         }
     }
@@ -506,7 +476,8 @@ final class Moments {
         s.doneMinute = lastMinute
         let recap = SessionRecap(id: s.id, project: info.project, title: info.title, branch: info.branch,
                                  start: Double(info.firstMinute) * 60_000, end: Double(info.lastMinute + 1) * 60_000, minutes: fresh,
-                                 edited: info.edited.map { ($0 as NSString).lastPathComponent }.sorted(), wins: s.wins, commits: s.commits, pr: s.pr)
+                                 edited: info.edited.map { ($0 as NSString).lastPathComponent }.sorted(), wins: s.wins, commits: s.commits, pr: s.pr,
+                                 red: s.ledger.red(now: now).map { $0.rawValue })
         s.wins = []
         s.commits = 0
         s.pr = false
@@ -524,6 +495,167 @@ final class Moments {
         for (index, extra) in extras.prefix(2).enumerated() { facts["fact\(index + 1)"] = extra }
         add(Observation(kind: .done, session: s.id, key: "done:\(s.id):\(lastMinute)", at: now, facts: facts, path: ["done"],
                         ttl: doneTTL, deadline: now + budgetGap), now, because: reason)
+    }
+
+    // MARK: Going round
+
+    private static let stopWords: Set<String> = [
+        "the", "and", "you", "for", "this", "that", "with", "are", "can", "not", "but", "now", "then", "just", "please",
+        "was", "have", "has", "from", "into", "out", "all", "any", "get", "let", "use", "make", "also", "what", "why",
+        "how", "there", "here", "them", "they", "your", "our", "one", "again", "still", "should", "would", "could",
+    ]
+
+    /// The words that carry a prompt's meaning: 3+ letters, minus the glue.
+    static func words(_ text: String) -> Set<String> {
+        Set(text.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
+            .filter { $0.count >= 3 && !stopWords.contains($0) })
+    }
+
+    /// A prompt you typed: a near-repeat of one of your last three here is a redo.
+    private func heard(_ s: LiveSession, _ text: String, _ ms: Double, _ now: Double) {
+        let words = Moments.words(text)
+        if words.count >= 3, s.asked.suffix(3).contains(where: { earlier in
+            earlier.words.count >= 3 && Double(earlier.words.intersection(words).count) / Double(earlier.words.union(words).count) >= 0.6
+        }) {
+            redo(s, "you asked for nearly the same again", ms, now)
+        }
+        s.asked.append((ms, words, String(text.prefix(300))))
+        if s.asked.count > 6 { s.asked.removeFirst(s.asked.count - 6) }
+    }
+
+    private func redo(_ s: LiveSession, _ what: String, _ ms: Double, _ now: Double) {
+        // Stopping Claude and typing the ask again, or turning down a plan and the stop it causes,
+        // are one redo, not two.
+        if let last = s.redos.last, ms - last < 60_000 { note(now, "\(s.id.prefix(8)): \(what), same redo as a moment ago"); return }
+        s.redos.removeAll { ms - $0 > loopWindow }
+        s.redos.append(ms)
+        note(now, "\(s.id.prefix(8)): \(what) (\(s.redos.count) without progress)")
+    }
+
+    private func progress(_ s: LiveSession, _ what: String, _ now: Double) {
+        guard !s.redos.isEmpty || s.loopSince > 0 else { return }
+        if s.loopSince > 0 { note(now, "\(s.id.prefix(8)) no longer going round: \(what)") }
+        s.redos = []
+        s.loopSince = 0
+        s.loopCount = 0
+        s.loopSettled = false
+        drop(now, where: { $0.kind == .loop && $0.session == s.id }, because: what)
+    }
+
+    /// Three redos without progress: a puzzled face and a line. Still at it 15 minutes and another
+    /// redo later: one bubble, if Claude (when AI is on) agrees it is a loop and not real iteration.
+    private func loops(atWork: Bool, now: Double) {
+        for s in live.values {
+            if s.loopSince == 0 {
+                s.redos.removeAll { now - $0 > loopWindow }
+                guard s.redos.count >= loopAt else { continue }
+                s.loopSince = now
+                s.loopCount = s.redos.count
+                if atWork { transient = ("puzzled", now + 6000) }
+                note(now, "\(s.id.prefix(8)) going round: \(s.redos.count) redos in \(minutesText(now - s.redos[0])), no progress\(atWork ? ": puzzled face, 6 s" : "")")
+                continue
+            }
+            guard let last = s.redos.last else { continue }
+            if now - last > loopWindow {
+                note(now, "\(s.id.prefix(8)): no redo for \(minutesText(now - last)), no longer going round")
+                s.redos = []
+                s.loopSince = 0
+                s.loopSettled = false
+                drop(now, where: { $0.kind == .loop && $0.session == s.id }, because: "quiet")
+                continue
+            }
+            // Fifteen minutes on and you are still at it: another redo since it was noticed.
+            guard !s.loopSettled, now - s.loopSince >= loopSayAfter, last > s.loopSince else { continue }
+            s.loopSettled = true
+            guard let judge = judgeLoop else {
+                sayLoop(s, now)
+                continue
+            }
+            let since = s.loopSince
+            note(now, "\(s.id.prefix(8)) still going round after \(minutesText(now - since)): asking Claude whether it is a loop")
+            judge(s.asked.map { $0.text }) { [weak self, weak s] verdict in
+                guard let self, let s, s.loopSince == since else { return }
+                let at = self.clockNow
+                switch verdict {
+                case true?: self.sayLoop(s, at)
+                case false?: self.note(at, "\(s.id.prefix(8)): Claude reads it as real iteration, nothing said")
+                case nil: self.note(at, "\(s.id.prefix(8)): no answer from Claude, nothing said")
+                }
+            }
+        }
+    }
+
+    private func sayLoop(_ s: LiveSession, _ now: Double) {
+        add(Observation(kind: .loop, session: s.id, key: "loop:\(s.id):\(Int(s.loopSince))", at: now,
+                        facts: ["project": project(s, now), "tries": "\(s.tries)",
+                                "minutes": minutesText(now - (s.redos.first ?? now))],
+                        path: ["loop"], ttl: yourMoveTTL, deadline: now + budgetGap),
+            now, because: "still going round \(minutesText(now - s.loopSince)) after it was noticed")
+    }
+
+    // MARK: Drift
+
+    /// Claude handed you the turn, you are at the Mac, and something else is in front: past your
+    /// usual break a bored face and a line; past twice that, one bubble. Back at work: "Back to".
+    private func drifting(front: String, idle: Double, now: Double) {
+        if !front.isEmpty, front != Moments.burnbotApp {
+            if isWork(front) || idle >= awayAfterIdle {                         // at work, or away from the Mac altogether
+                if offWorkSince > 0, isWork(front), now - offWorkSince >= 30_000 { breakEnded = (now - offWorkSince, now) }
+                offWorkSince = 0
+            } else if offWorkSince == 0 { offWorkSince = now }
+        }
+        var waitingOn: (s: LiveSession, since: Double)?
+        if offWorkSince > 0 {
+            for s in live.values where !s.isOver && s.lastYou > 0 && now - s.lastYou < driftAfterPrompt {
+                var handed = s.handedAt
+                if let asked = observations.filter({ $0.kind == .waiting && $0.session == s.id }).map({ $0.at }).min() {
+                    handed = handed > 0 ? min(handed, asked) : asked
+                }
+                guard handed > 0 else { continue }
+                let since = max(offWorkSince, handed)
+                if waitingOn == nil || since < waitingOn!.since { waitingOn = (s, since) }
+            }
+        }
+        let usual = usualBreak()
+        if let (s, since) = waitingOn {
+            if drift?.session != s.id { drift = (s.id, since, false, false) }
+            drift!.since = since
+            let drifted = now - since
+            if drifted >= usual, !drift!.noted {
+                drift!.noted = true
+                note(now, "drifted: \(project(s, now)) has waited \(minutesText(drifted)) with \(front) in front (usual break \(minutesText(usual))): bored face")
+            }
+            if drifted >= 2 * usual, !drift!.bubbled {
+                drift!.bubbled = true
+                if observations.contains(where: { $0.kind == .waiting && $0.session == s.id && !$0.handled }) {
+                    note(now, "still drifted, but its own question is already asking")
+                } else {
+                    add(Observation(kind: .drift, session: s.id, key: "drift:\(s.id):\(Int(since))", at: now,
+                                    facts: ["project": project(s, now), "waited": minutesText(drifted)],
+                                    path: ["drift"], ttl: 2 * 60_000, deadline: now + budgetGap),
+                        now, because: "still drifted after \(minutesText(drifted))")
+                }
+            }
+        } else if let d = drift {
+            drift = nil
+            drop(now, where: { $0.kind == .drift }, because: "the drift is over")
+            if d.noted, offWorkSince == 0, isWork(front), let s = live[d.session] {
+                let title = (sessionInfo(s.id, now, 0)?.title).flatMap { $0.isEmpty ? nil : $0 } ?? project(s, now)
+                back = (title, now + backShown)
+                note(now, "back at work after drifting: \"Back to\" for 60 s")
+            }
+        }
+    }
+
+    // MARK: Goal
+
+    private func goals(_ goal: GoalState?, now: Double) {
+        guard let goal else { return }
+        defer { goalSeen = goal }
+        guard let seen = goalSeen, seen.day == goal.day, !seen.hit, goal.hit else { return }
+        goalUntil = now + goalShown
+        transient = ("happy", now + 8000)
+        note(now, "daily goal hit: \(goal.wins) of \(goal.target) wins, \(goal.streak)-day streak: happy face 8 s")
     }
 
     // MARK: Decide
@@ -557,7 +689,7 @@ final class Moments {
             return atWork ? .expression("waiting") : .bubble(urgent: true, exempt: true)
         case .yourMove:
             return .bubble(urgent: false, exempt: true)
-        case .breakthrough, .done:
+        case .breakthrough, .done, .loop, .drift:
             return .bubble(urgent: false, exempt: false)
         }
     }
@@ -598,11 +730,12 @@ final class Moments {
             }
             let words = voice.card(o.path, seed: o.key, facts: o.facts)
             out.card = Card(id: "\(o.key)@\(Int(o.at))", kind: o.kind.rawValue, title: words.title, lines: words.lines,
-                            action: o.kind == .waiting || o.kind == .yourMove ? "focus" : nil, persistent: o.kind == .waiting)
+                            action: [.waiting, .yourMove, .drift].contains(o.kind) ? "focus" : nil, persistent: o.kind == .waiting)
             if o.kind == .waiting { faces.insert("waiting", at: 0) }
             if o.happy { faces.insert("happy", at: 0) }
         }
         if now < transient.until { faces.append(transient.expr) }
+        if drift?.noted == true { faces.append("bored") }
         out.expr = faces.first ?? ""
         out.now = nowLine(now)
         return out
@@ -612,17 +745,30 @@ final class Moments {
 
     private func nowLine(_ now: Double) -> String {
         var key = "", text = "", priority = 0
+        func offer(_ k: String, _ p: Int, _ t: String?) {
+            guard let t, !t.isEmpty, p > priority else { return }
+            (key, priority, text) = (k, p, t)
+        }
         let words = ["test": "running_test", "build": "running_build", "typecheck": "running_typecheck"]
         let waiting = observations.filter { $0.kind == .waiting && !$0.handled }
         let asking = Set(waiting.map { $0.session })
-        if let o = waiting.max(by: { $0.at < $1.at }) {
-            (key, priority) = ("waiting", 4)
-            text = voice.line(["now", "waiting"], o.facts) ?? ""
-        } else if let run = live.values.filter({ !asking.contains($0.id) }).flatMap({ $0.running.values })
-                    .filter({ $0.family != nil && now - $0.ms >= runningShownAfter }).min(by: { $0.ms < $1.ms }) {
-            (key, priority) = ("running", 3)
-            text = voice.line(["now", words[run.family!.rawValue]!], ["elapsed": elapsedText(now - run.ms)]) ?? ""
-        } else {
+        if let d = drift, d.noted, let s = live[d.session] {
+            offer("drift", 6, voice.line(["now", "drift"], ["project": project(s, now), "waited": minutesText(now - d.since)]))
+        }
+        if let o = waiting.max(by: { $0.at < $1.at }) { offer("waiting", 5, voice.line(["now", "waiting"], o.facts)) }
+        if let run = live.values.filter({ !asking.contains($0.id) }).flatMap({ $0.running.values })
+            .filter({ $0.family != nil && now - $0.ms >= runningShownAfter }).min(by: { $0.ms < $1.ms }) {
+            offer("running", 4, voice.line(["now", words[run.family!.rawValue]!], ["elapsed": elapsedText(now - run.ms)]))
+        }
+        if now < back.until { offer("back", 3, voice.line(["now", "back"], ["title": shortened(back.title, 40)])) }
+        if now < goalUntil, let g = goalSeen {
+            offer("goal", 3, voice.line(["now", g.streak >= 2 ? "goal" : "goal1"],
+                                        ["wins": "\(g.wins)", "target": "\(g.target)", "streak": "\(g.streak)"]))
+        }
+        if let s = live.values.filter({ $0.loopSince > 0 }).min(by: { $0.loopSince < $1.loopSince }) {
+            offer("loop", 3, voice.line(["now", "loop"], ["tries": "\(s.tries)"]))
+        }
+        if priority < 2 {
             // The session you are on is the one you last typed into; one Claude is busy in on its own
             // does not take the line from it every time it writes something.
             let active = live.values.filter { $0.lastLine > 0 && now - $0.lastLine < activeWithin && !$0.isOver }
@@ -630,13 +776,13 @@ final class Moments {
             if let first = active.first {
                 let info = sessionInfo(first.id, now, 0)
                 let title = (info?.title).flatMap { $0.isEmpty ? nil : $0 } ?? project(first, now)
-                (key, priority) = ("on", 2)
-                text = (active.count > 1 ? voice.line(["now", "onMore"], ["title": shortened(title, 40), "more": "\(active.count - 1)"])
-                                         : voice.line(["now", "on"], ["title": shortened(title, 40)])) ?? ""
+                offer("on", 2, active.count > 1 ? voice.line(["now", "onMore"], ["title": shortened(title, 40), "more": "\(active.count - 1)"])
+                                                 : voice.line(["now", "on"], ["title": shortened(title, 40)]))
             } else if let last = lastSession(now) {
-                (key, priority) = ("last", 1)
-                text = (voice.line(["now", "lastNext"], ["title": shortened(last.title, 34), "next": shortened(last.next, 40)])
-                        ?? voice.line(["now", "last"], ["title": shortened(last.title, 40)])) ?? ""
+                let red = last.red.compactMap { voice.line(["facts", "red", $0]) }.joined(separator: " and ")
+                offer("last", 1, (red.isEmpty ? nil : voice.line(["now", "lastRed"], ["title": shortened(last.title, 34), "red": red]))
+                        ?? voice.line(["now", "lastNext"], ["title": shortened(last.title, 34), "next": shortened(last.next, 40)])
+                        ?? voice.line(["now", "last"], ["title": shortened(last.title, 40)]))
             }
         }
         // One line, held at least 20 s. Something more important replaces it at once; so does
@@ -645,11 +791,13 @@ final class Moments {
         let switching = key != nowShown.key
         let allowed: Bool
         if nowShown.text.isEmpty { allowed = true }
-        else if switching { allowed = priority > nowShown.priority || nowShown.key == "waiting" || nowShown.key == "running" || held >= nowHold }
-        else { allowed = key == "running" || key == "waiting" || text == nowShown.text || held >= nowHold }
+        // A line gives way to a lower one only when it is over, and every line but "On" and "Last time"
+        // is over the moment its reason is; those two hold their 20 s.
+        else if switching { allowed = priority > nowShown.priority || !["on", "last"].contains(nowShown.key) || held >= nowHold }
+        else { allowed = !["on", "last"].contains(key) || text == nowShown.text || held >= nowHold }
         if allowed && (switching || text != nowShown.text) {
             if switching || key == "on" { nowShown.since = now }
-            if switching || key != "running" { note(now, "NOW \(text.isEmpty ? "-" : text)") }
+            if switching || !["running", "drift"].contains(key) { note(now, "NOW \(text.isEmpty ? "-" : text)") }
             nowShown = (key, text, priority, nowShown.since)
         }
         return nowShown.text
