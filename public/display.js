@@ -1,5 +1,7 @@
-// The robot window: the robot, the fire, the level you are on, and the token burn.
-// Add ?demo=locked (or any state, or ?demo=cycle) to preview a level.
+// The robot window: the robot, the fire, the level you are on, and the token burn,
+// plus what the robot noticed: a face, a line under it, and now and then a speech bubble.
+// Add ?demo=locked (or any state, or ?demo=cycle) to preview a level, and
+// ?demo=moments (with &n=0..4 to hold one) to preview the reactions.
 
 import { Scene, drawLogo, STATE_META, STATE_ORDER, LADDER } from './robot.js';
 import { compact, ticker, clock, subline, levelLine, nextLine } from './format.js';
@@ -20,6 +22,8 @@ let shownRate = 0;
 let shownToday = -1;
 let lastFrame = 0;
 let logoState = '';
+let momentId = null; // the speech bubble showing
+const closed = new Set(); // bubbles closed here, before the app has heard about it
 
 // The ladder, top level first. Autopilot only shows while you are on it.
 $('ladder').innerHTML = [...LADDER]
@@ -43,6 +47,20 @@ const DEMO = {
   autopilot: { flame: 0.6, rate: 33e6, pct: [70, 0, 66] },
 };
 const DEMO_NEXT = { warming: ['cruising', 30, 0], cruising: ['locked', 75, 30], locked: ['overdrive', 93, 75] };
+
+// What the reactions look like, one after another. The app plays the real thing (Robot > Play Every Moment).
+const card = (kind, title, lines, more = {}) => ({ id: kind, kind, title, lines, action: null, persistent: false, ...more });
+const DEMO_MOMENTS = [
+  { expr: 'worried', now: 'Claude running tests · 1m 40s', moment: null },
+  { expr: 'happy', now: 'On: Fix checkout tax tests', moment: card('breakthrough', 'Finally. All green.', ['3 tries.', '5 min in the red.', 'Commit it.']) },
+  {
+    expr: 'waiting',
+    now: 'Waiting on you · shop',
+    moment: card('waiting', 'Your call', ['shop is stuck', 'until you say yes to', 'rm -rf dist && npm run build'], { action: 'focus', persistent: true }),
+  },
+  { expr: '', now: 'On: Fix checkout tax tests', moment: card('your-move', 'Your move', ['shop stopped', 'after 12 min.', 'It is waiting on you.']) },
+  { expr: '', now: 'Last time: Fix checkout tax tests', moment: card('done', 'Session over', ['27 min on Fix checkout tax tests', 'Tests green after 3 tries', '1 commit']) },
+];
 
 function demoState(name, now) {
   const d = DEMO[name];
@@ -75,7 +93,16 @@ function demoState(name, now) {
 
 // ---------- live data ----------
 
-if (demo) {
+if (demo === 'moments') {
+  const held = new URLSearchParams(location.search).get('n');
+  const tick = () => {
+    const now = Date.now();
+    const n = held !== null ? Number(held) % DEMO_MOMENTS.length : Math.floor(now / 7000) % DEMO_MOMENTS.length;
+    receive({ ...demoState('cruising', now), ...DEMO_MOMENTS[n] });
+  };
+  tick();
+  setInterval(tick, 1000);
+} else if (demo) {
   const pick = () => (demo === 'cycle' ? STATE_ORDER[Math.floor(Date.now() / 7000) % STATE_ORDER.length] : demo);
   const tick = () => DEMO[pick()] && receive(demoState(pick(), Date.now()));
   tick();
@@ -95,7 +122,8 @@ function receive(next) {
 function render() {
   const { live, today, scan, baseline } = data;
   const meta = STATE_META[live.state];
-  document.body.className = `s-${live.state}` + (document.body.classList.contains('quiet') ? ' quiet' : '');
+  const kept = ['quiet', 'speaking'].filter((c) => document.body.classList.contains(c));
+  document.body.className = [`s-${live.state}`, ...kept].join(' ');
   document.documentElement.style.setProperty('--state', meta.color);
 
   // which level, and why
@@ -126,6 +154,14 @@ function render() {
 
   // More burn, more tokens falling into the fire.
   scene.setLive({ state: live.state, flame: live.flame, dropRate: live.flame > 0.1 ? 0.25 + 4.5 * live.flame ** 2 : 0 });
+
+  // What the robot noticed.
+  scene.setExpr(data.expr);
+  const now = data.now || '';
+  if ($('now').textContent !== now && now) $('now').textContent = now;
+  $('now').classList.toggle('on', Boolean(now));
+  showMoment(data.moment);
+  place();
 
   if (logoState !== live.state) {
     logoState = live.state;
@@ -167,6 +203,102 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// ---------- the speech bubble and the line under the robot ----------
+
+function showMoment(moment) {
+  const bubble = $('bubble');
+  const id = moment && !closed.has(moment.id) ? moment.id : null;
+  if (id === momentId) return;
+  momentId = id;
+  if (!id) {
+    bubble.classList.remove('on');
+    document.body.classList.remove('speaking');
+    return;
+  }
+  $('bubbleTitle').textContent = moment.title;
+  $('bubbleLines').replaceChildren(
+    ...moment.lines.map((text) => {
+      const p = document.createElement('p');
+      p.textContent = text;
+      return p;
+    }),
+  );
+  $('bubbleHint').textContent = moment.action === 'focus' ? 'Click to go to it' : '';
+  bubble.classList.toggle('urgent', moment.kind === 'waiting');
+  bubble.classList.toggle('happy', moment.kind === 'breakthrough');
+  bubble.dataset.action = moment.action || '';
+  bubble.classList.add('on');
+  place();
+}
+
+$('bubble').addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (!momentId) return;
+  closed.add(momentId);
+  // In Play Every Moment a click only skips ahead; it does not pull your terminal forward.
+  tell('moment', { id: momentId, action: data?.demo ? null : $('bubble').dataset.action || null });
+  momentId = null;
+  $('bubble').classList.remove('on');
+  document.body.classList.remove('speaking');
+});
+$('bubble').addEventListener('dblclick', (event) => event.stopPropagation());
+
+/**
+ * Puts the bubble over the robot's head when there is room, otherwise beside it, with its
+ * tail pointing at the head; and the Now line just under the robot's platform.
+ */
+function place() {
+  const a = scene.anchor();
+  if (!a) return;
+  const margin = 16;
+  const W = innerWidth;
+  const H = innerHeight;
+
+  const line = $('now');
+  const reach = Math.min(a.x, W - a.x) * 2 - 2 * margin;
+  line.style.maxWidth = `${Math.max(160, reach)}px`;
+  line.style.left = `${Math.min(Math.max(a.x, margin + line.offsetWidth / 2), W - margin - line.offsetWidth / 2)}px`;
+  line.style.top = `${Math.min(a.feet + 5 * a.unit, H - margin - line.offsetHeight)}px`;
+
+  const bubble = $('bubble');
+  if (!bubble.classList.contains('on')) {
+    document.body.classList.remove('speaking');
+    return;
+  }
+  const p = parseFloat(getComputedStyle(bubble).getPropertyValue('--p')) || 4;
+  const tail = bubble.querySelector('.tail');
+  bubble.style.maxWidth = '';
+  let bw = bubble.offsetWidth;
+  let bh = bubble.offsetHeight;
+  let x;
+  let y;
+  const side = a.top - 4 * p - bh < margin;
+  if (!side) {
+    x = Math.min(Math.max(a.x - bw * 0.3, margin), W - margin - bw);
+    y = a.top - 4 * p - bh;
+    tail.style.left = `${Math.min(Math.max(a.x - x - p / 2, p), bw - 4 * p)}px`;
+    tail.style.top = `${bh + p}px`;
+  } else {
+    // No room above (a small window): to the right of the head instead.
+    x = a.x + 26 * a.unit;
+    bubble.style.maxWidth = `${Math.max(140, W - margin - x)}px`;
+    bw = bubble.offsetWidth;
+    bh = bubble.offsetHeight;
+    x = Math.min(x, W - margin - bw);
+    const headMiddle = a.top + 22 * a.unit;
+    y = Math.min(Math.max(headMiddle - bh * 0.35, margin), H - margin - bh);
+    tail.style.left = `${-2 * p}px`;
+    tail.style.top = `${Math.min(Math.max(headMiddle - y - p, p), bh - 4 * p)}px`;
+  }
+  bubble.classList.toggle('side', side);
+  // Beside the robot the bubble sits where the level is: the level steps back until it goes.
+  document.body.classList.toggle('speaking', side);
+  bubble.style.left = `${Math.round(x)}px`;
+  bubble.style.top = `${Math.round(y)}px`;
+}
+addEventListener('resize', place);
+document.fonts?.ready.then(place);
 
 // ---------- window manners ----------
 

@@ -1,0 +1,21 @@
+10:00:00  front app: com.apple.Terminal (work)
+10:00:00  NOW On: Cart rounding
+10:00:50  test failed (1 so far): worried face, 5 s
+10:00:50  FACE worried
+10:00:55  FACE normal
+10:01:50  test passed after one quick failure: nothing to celebrate
+10:03:40  test failed (1 so far): worried face, 5 s
+10:03:40  FACE worried
+10:03:45  FACE normal
+10:04:40  test failed (2 so far): worried face, 5 s
+10:04:40  FACE worried
+10:04:45  FACE normal
+10:05:40  test run in a1b2c3d4: unclear outcome, ignored (npm test -- tax)
+10:06:40  test run in a1b2c3d4: unclear outcome, ignored (npm test -- tax)
+10:07:22  test run in a1b2c3d4: unclear outcome, ignored (npm test -- tax)
+10:08:50  breakthrough:a1b2c3d4-0003-4000-8000-000000000003:test noticed (2 failures, then a clean pass: npm test -- tax)
+10:08:50  SHOW breakthrough: FINALLY. ALL GREEN. / 3 tries. / 5 min in the red. / Commit it.
+10:08:50  FACE happy
+10:08:59  breakthrough:a1b2c3d4-0003-4000-8000-000000000003:test over (its time is up, or you are back)
+10:08:59  SHOW nothing
+10:08:59  FACE normal

@@ -1,0 +1,15 @@
+10:00:00  front app: com.apple.Terminal (work)
+10:00:00  NOW On: Clean rebuild
+10:00:30  front app: com.apple.Safari
+10:01:01  waiting:a1b2c3d4-0004-4000-8000-000000000004 noticed (Bash needs a yes)
+10:01:01  NOW Waiting on you · shop
+10:01:01  SHOW waiting: YOUR CALL / shop is stuck / until you say yes to / rm -rf dist && npm run build
+10:01:01  FACE waiting
+10:04:00  front app: com.apple.Terminal (work)
+10:04:00  waiting:a1b2c3d4-0004-4000-8000-000000000004: you have been at your work app since it asked, so it is handled
+10:04:00  NOW On: Clean rebuild
+10:04:00  SHOW nothing
+10:04:00  FACE normal
+10:04:20  NOW Claude building · 20s
+10:04:30  waiting:a1b2c3d4-0004-4000-8000-000000000004 over (the command it asked about has run)
+10:04:30  NOW On: Clean rebuild

@@ -1,0 +1,11 @@
+2026-11-17T09:59:40.000Z com.apple.Terminal 0
+2026-11-17T10:00:00.000Z com.apple.Terminal 0
+2026-11-17T10:00:20.000Z com.apple.Terminal 0
+2026-11-17T10:00:30.000Z com.apple.Safari 0
+2026-11-17T10:04:00.000Z com.apple.Terminal 0
+2026-11-17T10:04:20.000Z com.apple.Terminal 0
+2026-11-17T10:04:40.000Z com.apple.Terminal 0
+2026-11-17T10:05:00.000Z com.apple.Terminal 0
+2026-11-17T10:05:20.000Z com.apple.Terminal 0
+2026-11-17T10:05:40.000Z com.apple.Terminal 0
+2026-11-17T10:06:00.000Z com.apple.Terminal 0

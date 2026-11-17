@@ -18,10 +18,18 @@ final class DeskScreen {
     private(set) var state = "absent"       // absent, connected, other (another program), silent (a port that does not answer)
     private(set) var port: String?
     private(set) var program: String?
+    private var said = ""                   // the last M line sent (what the robot is saying)
+    private var saidAt = 0.0
     var log: (String) -> Void = { _ in }
 
+    /// The board's program can show the robot's faces and speech bubbles: "BURNBOT 2" or later.
+    /// One on "BURNBOT 1" still shows the levels, and the dashboard says its program is out of date.
+    var speaks: Bool { state == "connected" && version >= 2 }
+    private var version: Int { program.flatMap { Int($0.split(separator: " ").last ?? "") } ?? 0 }
+
     var status: [String: Any] {
-        ["state": state, "port": port ?? NSNull(), "program": program ?? NSNull(), "answering": Date().timeIntervalSince1970 - heardAt < 5]
+        ["state": state, "port": port ?? NSNull(), "program": program ?? NSNull(), "answering": Date().timeIntervalSince1970 - heardAt < 5,
+         "outdated": state == "connected" && version < 2]
     }
 
     private func ports() -> [String] {
@@ -96,6 +104,7 @@ final class DeskScreen {
     private func disconnect() {
         if fd >= 0 { close(fd) }
         fd = -1
+        said = ""
     }
 
     private func connect() {
@@ -128,7 +137,9 @@ final class DeskScreen {
     }
 
     /// Call once a second with the line to show. Finds the board, sends, and notices when it is unplugged.
-    func send(_ line: String) {
+    /// `moment`: the M line, for a board that speaks. It goes when it changes and again every
+    /// few seconds, so a board that restarted, or missed it, catches up.
+    func send(_ line: String, moment: String? = nil) {
         let now = Date().timeIntervalSince1970
         if fd < 0 {
             if now - lookedAt < retryAfter { return }
@@ -140,7 +151,13 @@ final class DeskScreen {
         if pending.contains("OK") { heardAt = now }
         if let match = pending.range(of: "Q\\|o=[0-9]", options: .regularExpression) { rotation = Int(String(pending[match].last!)) ?? rotation }
         pending = String(pending.suffix(64))
-        if !write(fd, line + "\n") {
+        var out = line + "\n"
+        if speaks, let moment, moment != said || now - saidAt >= 5 {
+            out += moment + "\n"
+            said = moment
+            saidAt = now
+        }
+        if !write(fd, out) {
             disconnect()
             lookedAt = 0
             return set("absent")
@@ -165,7 +182,8 @@ final class DeskScreen {
 }
 
 /// The line for the board, from the app's state. `names` maps a state to what it is called on screen.
-func deskLine(_ state: [String: Any], names: [String: String]) -> String {
+/// `expr`: the robot's reaction (worried, happy, waiting), for a board that speaks; "" for none.
+func deskLine(_ state: [String: Any], names: [String: String], expr: String = "") -> String {
     guard let live = state["live"] as? [String: Any] else { return "" }
     func int(_ value: Any?) -> Int { (value as? NSNumber)?.intValue ?? 0 }
     func clean(_ text: String) -> String {
@@ -196,5 +214,49 @@ func deskLine(_ state: [String: Any], names: [String: String]) -> String {
         "cp=\(level < 0 ? "OFF LADDER" : "LEVEL \(level) OF \(top)")",
         "rt=\(tokens((live["tokensPerHour"] as? NSNumber)?.doubleValue ?? 0))",
         String(format: "tm=%02d:%02d", clock.hour ?? 0, clock.minute ?? 0),
-    ].joined(separator: "|")
+    ].joined(separator: "|") + (expr.isEmpty ? "" : "|ex=" + (["worried": "w", "happy": "h", "waiting": "a"][expr] ?? "-"))
+}
+
+/// What the robot is saying, as the desk draws it: capitals, the board's own letters, the words
+/// wrapped to its 18 columns and four rows. A long first line (a session's name) gets two rows and
+/// "..", so the rest still shows; later lines that do not fit are left off whole, so the bubble
+/// never ends mid-thought. "M|" when it is saying nothing.
+func deskMoment(_ card: Card?) -> String {
+    guard let card else { return "M|" }
+    func clean(_ text: String) -> String {
+        var swapped = text
+        for (from, to) in [("·", "-"), ("…", "..."), ("—", "-"), ("–", "-"), ("’", "'"), ("‘", "'"), ("“", "\""), ("”", "\""), ("→", "-")] {
+            swapped = swapped.replacingOccurrences(of: from, with: to)
+        }
+        let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,!%/:+-&'\"()?=_*#;<>@$[]~"
+        return String(swapped.uppercased().filter { letters.contains($0) })
+    }
+    func wrap(_ text: String) -> [String] {
+        var rows: [String] = [], row = ""
+        for word in clean(text).split(separator: " ").map({ String($0.prefix(18)) }) {
+            if row.isEmpty { row = word } else if row.count + 1 + word.count <= 18 { row += " " + word } else { rows.append(row); row = word }
+        }
+        return row.isEmpty ? rows : rows + [row]
+    }
+    func cut(_ text: String, _ limit: Int) -> String {
+        guard text.count > limit else { return text }
+        let start = String(text.prefix(limit - 2))
+        let words = start.contains(" ") ? String(start[..<start.lastIndex(of: " ")!]) : start
+        return words + ".."
+    }
+    var rows: [String] = [], head = 0
+    for (i, line) in card.lines.enumerated() {
+        var wrapped = wrap(line)
+        if i == 0, wrapped.count > 2, card.lines.count > 1 { wrapped = [wrapped[0], cut(wrapped[1...].joined(separator: " "), 18)] }
+        if rows.count + wrapped.count > 4 {
+            if i == 0 { rows = Array(wrapped.prefix(4)); head = rows.count }
+            break
+        }
+        rows += wrapped
+        if i == 0 { head = wrapped.count }
+    }
+    let kind = ["waiting": "w", "breakthrough": "b", "your-move": "m", "done": "d"][card.kind] ?? "m"
+    var fields = ["M", "k=\(kind)", "h=\(max(1, head))", "t=" + cut(clean(card.title), 19)]
+    for (i, row) in rows.enumerated() { fields.append("\(["a", "b", "c", "d"][i])=\(row)") }
+    return fields.joined(separator: "|")
 }

@@ -1,0 +1,16 @@
+10:00:00  front app: com.apple.Terminal (work)
+10:00:00  NOW On: Migrate orders table
+10:00:30  NOW On: Paginate the orders endpoint +1
+10:01:00  front app: com.apple.Safari
+10:03:01  waiting:a1b2c3d4-0007-4000-8000-00000000000a noticed (Bash needs a yes)
+10:03:01  NOW Waiting on you · shop
+10:03:01  SHOW waiting: YOUR CALL / shop is stuck / until you say yes to / npm run migrate
+10:03:01  FACE waiting
+10:04:02  your-move:a1b2c3d4-0007-4000-8000-00000000000b noticed (stopped while you were away)
+10:05:03  your-move:a1b2c3d4-0007-4000-8000-00000000000b over (its time is up, or you are back)
+10:06:00  front app: com.apple.Terminal (work)
+10:06:00  waiting:a1b2c3d4-0007-4000-8000-00000000000a: you have been at your work app since it asked, so it is handled
+10:06:00  NOW On: Paginate the orders endpoint +1
+10:06:00  SHOW nothing
+10:06:00  FACE normal
+10:06:30  waiting:a1b2c3d4-0007-4000-8000-00000000000a over (the command it asked about has run)

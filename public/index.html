@@ -187,8 +187,8 @@
   #tip i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; }
 
   /* ---------- welcome ---------- */
-  .welcome { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: rgba(5, 7, 10, .82); overflow: auto; }
-  .sheet { width: min(600px, 100%); padding: 26px 30px 24px; background: var(--surface); }
+  .welcome { position: fixed; inset: 0; z-index: 60; display: grid; padding: 24px; background: rgba(5, 7, 10, .82); overflow: auto; }
+  .sheet { margin: auto; width: min(600px, 100%); padding: 26px 30px 24px; background: var(--surface); }
   #welcomeRobot { width: 84px; height: 72px; image-rendering: pixelated; display: block; }
   .sheet h1 { font-size: 30px; line-height: 1.2; text-transform: uppercase; margin: 14px 0 8px; }
   .sheet .lead { color: var(--ink-2); }
@@ -197,6 +197,9 @@
   .sheet .found { margin: 18px var(--px) 0; padding: 8px 12px; background: var(--surface-2); color: var(--ink-2); }
   .check { display: flex; align-items: center; gap: 10px; margin-top: 10px; cursor: pointer; }
   .found + .check { margin-top: 18px; }
+  .check .note { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.8; }
+  .check:has(.note) { align-items: flex-start; }
+  .check:has(.note) input { margin-top: 3px; }
   .check input { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; margin: 0; background: var(--page); box-shadow: 0 0 0 var(--px) var(--muted); flex: none; }
   .check input:checked { background: var(--ink); box-shadow: 0 0 0 var(--px) var(--ink), inset 0 0 0 4px var(--page); }
   #welcomeGo { margin: 22px var(--px) 0; padding: 6px 26px; font-size: 20px; }
@@ -365,16 +368,19 @@
   <div class="sheet">
     <canvas id="welcomeRobot" aria-hidden="true"></canvas>
     <h1 id="welcomeTitle">Welcome to Burnbot</h1>
-    <p class="lead">Burnbot turns how hard you work with your AI coding agent into a level. The robot shows the level you are on.</p>
+    <p class="lead">Burnbot turns how hard you work with your AI coding agent into a level. The robot shows the level you are on, and now and then it speaks up.</p>
     <ul>
       <li><b>Nothing to set up.</b> It reads the session logs that Claude Code already keeps on this Mac.</li>
-      <li><b>Private.</b> No account and no API key. Nothing leaves this Mac.</li>
       <li><b>Calibrated to you.</b> Levels are judged against your own last 30 days, so locked in means well above your normal.</li>
+      <li><b>Mostly quiet.</b> A face when a test fails, a word when Claude needs you and you are not looking, a cheer when red turns green, a recap when you stop.</li>
+      <li><b>Private.</b> No account and no API key. Nothing leaves this Mac unless you switch on AI summaries below.</li>
     </ul>
     <div class="chips" id="welcomeLadder" aria-label="The levels"></div>
     <p class="found" id="welcomeFound"></p>
     <label class="check"><input type="checkbox" id="optLogin"> Open Burnbot when I log in</label>
     <label class="check"><input type="checkbox" id="optTop" checked> Keep the robot on top of other windows</label>
+    <label class="check"><input type="checkbox" id="optAlerts" checked> <span>Tell me when Claude needs me <span class="note">Adds three small hooks to Claude Code's settings. They only pass on what Claude Code reports and never change what it does. Off again from the Robot menu.</span></span></label>
+    <label class="check"><input type="checkbox" id="optSummaries"> <span>AI session summaries <span class="note">When a session ends, sends its name, your prompts, file names and test results (never file contents) to Claude through your own claude command, for a two-line recap.</span></span></label>
     <button class="btn go" id="welcomeGo">Start</button>
     <p class="small">Burnbot is an independent project. It is not made by, affiliated with, or endorsed by Anthropic. Claude and Claude Code are trademarks of Anthropic, PBC.</p>
   </div>

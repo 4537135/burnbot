@@ -2,9 +2,10 @@
 // level calibrated to you, and shows it on two windows of its own (the
 // dashboard and the robot) and, if one is plugged in, a desk screen.
 //
-// Everything runs inside the app: there is nothing to install and nothing is
-// sent anywhere. The screens are the pages in public/; the tracker is
-// Tracker.swift and Metrics.swift.
+// Everything runs inside the app, and nothing is sent anywhere unless you switch
+// on AI session summaries (Summaries.swift). The screens are the pages in public/;
+// the tracker is Tracker.swift and Metrics.swift; what the robot notices and how it
+// reacts is Signals.swift and Moments.swift.
 //
 // Options, for testing and for working on the screens:
 //   --pages <folder>      serve the screens from a folder instead of the app (edit, then ⌘R)
@@ -14,6 +15,9 @@
 //   --background          start without taking the focus (pair with `open -g`)
 //   --snapshot <folder>   write a picture of each window a few seconds after start
 //   --dump-state <file>   print what the tracker sees as JSON and quit (add --now <ms>)
+//   --dump-timeline <fixture folder>   replay a recorded session and print what the robot
+//                         noticed, decided and showed (tools/check-moments.sh)
+//   --demo                play every moment once the robot is up (Robot > Play Every Moment)
 
 import Cocoa
 import ServiceManagement
@@ -51,8 +55,20 @@ let dataFolder: String = {
     if fresh { return NSTemporaryDirectory() + "burnbot-fresh-\(ProcessInfo.processInfo.processIdentifier)" }
     return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Burnbot").path
 }()
+let pagesFolder = argument("--pages").map { URL(fileURLWithPath: $0) } ?? Bundle.main.resourceURL!.appendingPathComponent("public")
+/// The session Play Every Moment replays: in the app, or next to the pages when working on them.
+let demoFolder: String = {
+    let packed = Bundle.main.resourceURL!.appendingPathComponent("demo").path
+    if argument("--pages") == nil, FileManager.default.fileExists(atPath: packed) { return packed }
+    return pagesFolder.deletingLastPathComponent().appendingPathComponent("tools/fixtures/demo").path
+}()
 
 // MARK: - Headless: what does the tracker see?
+
+if let fixture = argument("--dump-timeline") {
+    print(replayTimeline(fixture, voice: Voice(file: pagesFolder.appendingPathComponent("voice.json"))), terminator: "")
+    exit(0)
+}
 
 if let out = argument("--dump-state") {
     let tracker = Tracker(root: logsRoot, storePath: "/nonexistent/store.json")
@@ -68,6 +84,14 @@ if let out = argument("--dump-state") {
 
 final class Engine {
     let tracker: Tracker
+    let attention = Attention(remember: !fresh)
+    private let moments = Moments()
+    private let inbox = HookInbox(dataFolder: dataFolder)
+    private let memory = Memory(dataFolder: dataFolder)
+    private let summaries = Summaries()
+    // Set from the main thread through setOptions.
+    private var intelligence = true         // the pricing switch: the robot's reactions, Now line and summaries
+    private var aiSummaries = false         // you switch these on yourself
     private let desk = DeskScreen()
     private let queue = DispatchQueue(label: "burnbot.engine", qos: .utility)
     private var timer: DispatchSourceTimer?
@@ -89,10 +113,43 @@ final class Engine {
     init(root: String, storePath: String) {
         tracker = Tracker(root: root, storePath: storePath)
         desk.log = { log($0) }
+        moments.voice = Voice(file: pagesFolder.appendingPathComponent("voice.json"))
+        moments.isWork = { [attention] in attention.isWork($0) }
+        moments.sessionInfo = { [tracker] id, now, since in tracker.session(id, now: now, since: since) }
+        moments.trace = { log("moment " + $0) }
+        summaries.log = { log($0) }
+        moments.lastSession = { [memory] now in memory.last(now: now) }
+        moments.onSessionDone = { [weak self] recap in self?.remember(recap) }
+    }
+
+    /// A session ended: keep its recap, and if you switched AI summaries on, ask your claude for one.
+    private func remember(_ recap: SessionRecap) {
+        memory.add(recap)
+        guard intelligence, aiSummaries else { return }
+        guard memory.takeRun(now: Date().timeIntervalSince1970 * 1000, limit: summaries.perDay) else {
+            log("AI summary skipped: \(summaries.perDay) already today")
+            return
+        }
+        let prompts = tracker.prompts(session: recap.id, from: recap.start, to: recap.end + 60_000)
+        summaries.run(recap, prompts: prompts, then: queue) { [memory] done, next in
+            memory.attach(id: recap.id, end: recap.end, done: done, next: next)
+            log("AI summary kept: \(done.joined(separator: " / ")) · next: \(next)")
+        }
+    }
+
+    /// Settings from the menu and the welcome screen.
+    func setOptions(intelligence: Bool, aiSummaries: Bool) {
+        queue.async {
+            self.intelligence = intelligence
+            self.aiSummaries = aiSummaries
+            self.encode()
+            self.deliver()
+        }
     }
 
     func start() {
         queue.async {
+            self.inbox.open()
             let restored = self.tracker.load()
             let began = Date()
             // Publish once as soon as today's logs are in, then again when all of history is.
@@ -115,13 +172,22 @@ final class Engine {
         tick += 1
         let changed = tick % 2 == 0 ? tracker.poll() : false
         let now = Date().timeIntervalSince1970 * 1000
+        let signals = tracker.takeSignals()
+        if signals.contains(where: { if case .prompt = $0 { return true } else { return false } }) { attention.learn() }
+        let place = attention.now
+        let moved = moments.tick(signals: signals, hooks: inbox.drain(), front: place.front, idle: place.idle,
+                                 level: state?["state"] as? String ?? "", now: now)
         if changed || state == nil || Int(now / 60000) != analyzedMinute || now - analyzedAt >= 10_000 {
             refresh()
-        } else if tick % 2 == 0 {
+        } else if moved || tick % 2 == 0 {
             encode()                    // the desk screen may have come or gone
         }
-        if tick % 2 == 0 { deliver() }
-        if let state { desk.send(deskLine(state, names: names)) }
+        if !demo.isEmpty { encode() }           // the demo moves on its own clock
+        if moved || tick % 2 == 0 || !demo.isEmpty { deliver() }
+        if let state {
+            let speaks = desk.speaks
+            desk.send(deskLine(state, names: names, expr: speaks ? shown.expr : ""), moment: speaks ? deskMoment(shown.card) : nil)
+        }
         if tick % 300 == 0 { tracker.save() }
         if tick % 60 == 0 { refreshOlder() }
     }
@@ -155,6 +221,15 @@ final class Engine {
         extra["foundLogs"] = tracker.foundLogs
         extra["desk"] = desk.status
         whole["meta"] = extra
+        // The robot's reactions come with Burnbot's paid tier; the levels never do.
+        // Play Every Moment shows them either way: it is how you see what they are.
+        if let played = demoOutput(Date().timeIntervalSince1970 * 1000) {
+            shown = played
+            whole["demo"] = true
+        } else {
+            shown = intelligence ? moments.output : MomentsOutput()
+        }
+        if whole["demo"] != nil || intelligence { for (key, value) in shown.json { whole[key] = value } }
         if let data = try? JSONSerialization.data(withJSONObject: whole), let text = String(data: data, encoding: .utf8) { json = text }
     }
 
@@ -176,11 +251,68 @@ final class Engine {
     func setNames(_ value: [String: String]) { queue.async { self.names = value } }
     func flipDesk() { queue.async { self.desk.flip() } }
 
+    /// You closed or clicked a speech bubble.
+    // ---------- Play Every Moment ----------
+    // A recorded session (tools/fixtures/demo) goes through the same tracker, detectors and
+    // decisions as your own, then plays back with the quiet stretches cut short.
+    private var demo: [(at: Double, output: MomentsOutput)] = []    // at: ms after demoStart
+    private var demoStart = 0.0
+    private var shown = MomentsOutput()     // what the robot shows now: the demo, your own, or nothing
+
+    func playDemo(_ folder: String) {
+        let voice = moments.voice
+        DispatchQueue.global(qos: .userInitiated).async {
+            var frames: [(Double, MomentsOutput)] = []
+            _ = replayTimeline(folder, voice: voice) { now, output in frames.append((now, output)) }
+            let schedule = squeeze(frames)
+            log("Play Every Moment: \(frames.count) s of a session in \(Int((schedule.last?.at ?? 0) / 1000)) s")
+            self.queue.async {
+                self.demo = schedule
+                self.demoStart = 0              // starts once there is a robot to show it on
+                self.encode()
+                self.deliver()
+            }
+        }
+    }
+
+    /// What the demo shows now, or nil when none is playing (and it is forgotten once over).
+    private func demoOutput(_ now: Double) -> MomentsOutput? {
+        guard !demo.isEmpty else { return nil }
+        if demoStart == 0 { demoStart = now }
+        let elapsed = now - demoStart
+        guard let last = demo.last, elapsed < last.at + 1500 else {
+            demo = []
+            log("Play Every Moment: over")
+            return nil
+        }
+        return demo.last(where: { $0.at <= elapsed })?.output ?? MomentsOutput()
+    }
+
+    func dismissMoment(_ id: String) {
+        queue.async {
+            let now = Date().timeIntervalSince1970 * 1000
+            if let shown = self.demoOutput(now), shown.card?.id == id {
+                // Clicking a bubble in the demo skips ahead to whatever comes after it.
+                let elapsed = now - self.demoStart
+                if let next = self.demo.first(where: { $0.at > elapsed && $0.output.card?.id != id }) {
+                    self.demoStart = now - next.at
+                }
+                self.encode()
+                self.deliver()
+                return
+            }
+            self.moments.dismiss(id, now: now)
+            self.encode()
+            self.deliver()
+        }
+    }
+
     func stop() {
         queue.sync {
             timer?.cancel()
             tracker.save()
             desk.shutDown()
+            inbox.close()
         }
     }
 }
@@ -196,7 +328,7 @@ extension NSScreen {
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     private let engine = Engine(root: logsRoot, storePath: dataFolder + "/store.json")
-    private let pages = Pages(folder: argument("--pages").map { URL(fileURLWithPath: $0) } ?? Bundle.main.resourceURL!.appendingPathComponent("public"))
+    private let pages = Pages(folder: pagesFolder)
     private var dashboard: NSWindow?
     private var dashboardView: WKWebView?
     private var robotPanel: NSPanel?                // the small robot, floating over everything
@@ -211,7 +343,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var followSecondScreen = true
     /// In a window, float the robot above everything so it is always in view.
     private var keepOnTop = fresh ? true : UserDefaults.standard.object(forKey: "keepRobotOnTop") as? Bool ?? true
-    private var welcomed = !fresh && UserDefaults.standard.bool(forKey: "welcomed")
+    // 1 = saw the 1.0 welcome, 2 = saw the one that asks about Claude Code alerts and AI summaries.
+    private var welcomed = fresh ? 0 : max(UserDefaults.standard.integer(forKey: "welcomeSeen"), UserDefaults.standard.bool(forKey: "welcomed") ? 1 : 0)
+    private var aiSummaries = !fresh && UserDefaults.standard.bool(forKey: "aiSummaries")
+    // The pricing switch: the robot's reactions, its Now line and summaries. On; the levels are never behind it.
+    private let intelligence = fresh || UserDefaults.standard.object(forKey: "intelligence") as? Bool ?? true
+    // Claude Code's settings. A first-launch test run works on a throwaway copy, never on yours.
+    private let hooks = ClaudeHooks(dataFolder: dataFolder,
+                                    settingsPath: fresh ? dataFolder + "/claude-settings.json" : NSHomeDirectory() + "/.claude/settings.json")
     private var afterExitFullScreen: (() -> Void)?
     private var awake: NSObjectProtocol?
 
@@ -220,7 +359,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
         log("Burnbot \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "") starting\(fresh ? " (as a first launch)" : "")")
+        // The hooks run this script; it is rewritten each launch so it is always this version's.
+        // Whether the hooks are in Claude Code's settings is up to you (the welcome, or the Robot menu).
+        hooks.writeScript()
+        engine.setOptions(intelligence: intelligence, aiSummaries: aiSummaries)
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
+        // Which app you are in decides whether the robot speaks up or just pulls a face.
+        let workspace = NSWorkspace.shared
+        engine.attention.setFront(workspace.frontmostApplication?.bundleIdentifier ?? "")
+        workspace.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] note in
+            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            self?.engine.attention.setFront(app?.bundleIdentifier ?? "")
+        }
         engine.onState = { [weak self] json in self?.push(json) }
         engine.onOlder = { [weak self] json in
             guard let self else { return }
@@ -242,6 +392,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if let folder = argument("--snapshot") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 9) { self.snapshot(to: folder) }
         }
+        if CommandLine.arguments.contains("--demo") { playMoments() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -265,7 +416,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             ["index": index, "name": screen.localizedName, "width": screen.frame.width, "height": screen.frame.height, "primary": index == 0] as [String: Any]
         }
         engine.setMeta([
-            "firstRun": !welcomed,
+            "firstRun": welcomed < 2,
+            "claudeAlerts": hooks.installed,
+            "aiSummaries": aiSummaries,
+            "intelligence": intelligence,
             "openAtLogin": openAtLogin,
             "keepOnTop": keepOnTop,
             "screens": screens,
@@ -333,9 +487,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         case "error":
             log("Page error: \(body["text"] ?? "")")
         case "welcomed":
-            welcomed = true
-            if !fresh { UserDefaults.standard.set(true, forKey: "welcomed") }
+            welcomed = 2
+            if !fresh { UserDefaults.standard.set(2, forKey: "welcomeSeen") }
             refreshMeta()
+        case "claudeAlerts":
+            setClaudeAlerts(body["on"] as? Bool ?? false)
+        case "aiSummaries":
+            // On the welcome the box is the consent: its words say what is sent.
+            setAISummaries(body["on"] as? Bool ?? false)
         case "openAtLogin":
             setOpenAtLogin(body["on"] as? Bool ?? false)
         case "keepOnTop":
@@ -352,12 +511,71 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             hideRobot()
         case "flipDesk":
             engine.flipDesk()
+        case "moment":
+            // A speech bubble was clicked: it goes, and if it was asking for you, so do you.
+            guard let id = body["id"] as? String else { return }
+            if body["action"] as? String == "focus" { bringBackWork() }
+            engine.dismissMoment(id)
         default:
             break
         }
     }
 
+    /// Brings forward the terminal or editor you were last working in. Through Launch Services,
+    /// because the robot's panel never makes Burnbot the active app, so a plain activate is refused.
+    private func bringBackWork() {
+        let id = engine.attention.workApp
+        guard !id.isEmpty, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        configuration.addsToRecentItems = false
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, error in
+            if let error { log("Could not bring \(id) forward: \(error.localizedDescription)") }
+        }
+    }
+
     // MARK: Preferences
+
+    private func setClaudeAlerts(_ on: Bool) {
+        guard on != hooks.installed else { return }
+        do {
+            if on { try hooks.install() } else { try hooks.remove() }
+        } catch {
+            log("Claude Code alerts: \(error)")
+            let alert = NSAlert()
+            alert.messageText = on ? "Burnbot could not add its hooks" : "Burnbot could not remove its hooks"
+            alert.informativeText = "\(error)\n\nClaude Code's settings file was left as it was."
+            alert.runModal()
+        }
+        refreshMeta()
+    }
+
+    @objc func toggleClaudeAlerts() { setClaudeAlerts(!hooks.installed) }
+
+    private func setAISummaries(_ on: Bool) {
+        aiSummaries = on
+        if !fresh { UserDefaults.standard.set(on, forKey: "aiSummaries") }
+        engine.setOptions(intelligence: intelligence, aiSummaries: on)
+        log("AI session summaries \(on ? "on" : "off")")
+        refreshMeta()
+    }
+
+    @objc func toggleAISummaries() {
+        if aiSummaries { return setAISummaries(false) }
+        // Switching it on from the menu: say what leaves the Mac first.
+        let alert = NSAlert()
+        alert.messageText = "Send session summaries to Claude?"
+        alert.informativeText = """
+        When a session ends, Burnbot asks Claude for a short summary of it, through the claude command \
+        you already use, on your own plan. It sends the session's name, your prompts (shortened), the names \
+        of files edited and how test and build runs turned out. Never the contents of your files.
+
+        At most 20 a day. Without it, the robot still sums up each session from what is on this Mac.
+        """
+        alert.addButton(withTitle: "Turn On")
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn { setAISummaries(true) }
+    }
 
     private func setOpenAtLogin(_ on: Bool) {
         guard on != openAtLogin else { return }
@@ -562,6 +780,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         robotView?.load(URLRequest(url: URL(string: Pages.home + "display?demo=cycle")!))
     }
 
+    /// A recorded session through the robot's real reactions, about a minute long, on the
+    /// robot window and the desk screen; then back to your own.
+    @objc func playMoments() {
+        if !robotShown { robotToWindow() }
+        if robotView?.url?.query != nil { robotView?.load(URLRequest(url: URL(string: Pages.home + "display")!)) }
+        engine.playDemo(demoFolder)
+    }
+
     @objc func hideRobot() {
         followSecondScreen = false
         robotPanel?.orderOut(nil)
@@ -668,6 +894,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             item("Hide Robot", #selector(hideRobot), mine: true),
             .separator(),
             item("Preview Every Level", #selector(previewLevels), mine: true),
+            item("Play Every Moment", #selector(playMoments), mine: true),
+            .separator(),
+            item("Claude Code Alerts", #selector(toggleClaudeAlerts), mine: true),
+            item("AI Session Summaries…", #selector(toggleAISummaries), mine: true),
         ])
         add("Window", [
             item("Minimize", #selector(NSWindow.performMiniaturize(_:)), "m"),
@@ -682,6 +912,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if menuItem.action == #selector(hideRobot) { return robotShown }
         if menuItem.action == #selector(toggleKeepOnTop) { menuItem.state = keepOnTop ? .on : .off }
         if menuItem.action == #selector(toggleOpenAtLogin) { menuItem.state = openAtLogin ? .on : .off }
+        if menuItem.action == #selector(toggleClaudeAlerts) { menuItem.state = hooks.installed ? .on : .off }
+        if menuItem.action == #selector(toggleAISummaries) {
+            menuItem.state = aiSummaries ? .on : .off
+            menuItem.title = aiSummaries ? "AI Session Summaries" : "AI Session Summaries…"
+        }
         return true
     }
 
@@ -715,6 +950,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
 
+    /// The robot's reactions (display?demo=moments), at the robot window's size and at a big one,
+    /// then back to the live robot.
+    private func snapshotMoments(in directory: URL) {
+        guard let view = robotView, let window = view.window else { return }
+        let original = window.frame
+        let big = NSSize(width: 1120, height: 630)
+        var steps = (0..<5).map { (name: "robot-moment-\($0)", size: original.size, n: $0) }
+            + (0..<5).map { (name: "robot-moment-big-\($0)", size: big, n: $0) }
+        func next() {
+            guard !steps.isEmpty else {
+                window.setFrame(original, display: true)
+                view.load(URLRequest(url: URL(string: Pages.home + "display")!))
+                return
+            }
+            let step = steps.removeFirst()
+            if window.frame.size != step.size, !window.styleMask.contains(.fullScreen) {
+                window.setFrame(NSRect(origin: original.origin, size: step.size), display: true)
+            }
+            view.load(URLRequest(url: URL(string: Pages.home + "display?demo=moments&n=\(step.n)")!))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.capture(view, as: step.name, in: directory) { next() } }
+        }
+        next()
+    }
+
     /// Writes pictures of the windows, and what the pages say, so a build can be checked without looking at the screen.
     /// As a first launch it also presses Start on the welcome and checks that it goes away for good.
     private func snapshot(to folder: String) {
@@ -724,7 +983,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             "\($0.title) \(Int($0.frame.width))x\(Int($0.frame.height)) on \($0.screen?.localizedName ?? "no screen") inView=\($0.occlusionState.contains(.visible)) level=\($0.level.rawValue)"
         }
         log("Windows: \(frames.joined(separator: "; "))")
-        capture(robotView, as: "robot", in: directory)
+        capture(robotView, as: "robot", in: directory) { self.snapshotMoments(in: directory) }
 
         // Today from the top and further down, then History the same way.
         var shots: [(name: String, script: String)] = [

@@ -1,0 +1,67 @@
+{
+  "_about": "Everything the robot says. Each moment has a few variations; one is picked per moment and kept. t is the bubble's title, a b c its lines. {blanks} are filled by the app; a line whose blank has nothing to go in it is left out. Keep titles under 20 characters and lines short: the desk screen fits about 20 per line.",
+
+  "waiting": {
+    "Bash": [
+      { "t": "Need a yes", "a": "{project} wants to run", "b": "{detail}" },
+      { "t": "Your call", "a": "{project} is stuck", "b": "until you say yes to", "c": "{detail}" }
+    ],
+    "edit": [
+      { "t": "Need a yes", "a": "{project} wants to edit", "b": "{detail}" },
+      { "t": "Your call", "a": "{project} is stuck", "b": "until you let it edit", "c": "{detail}" }
+    ],
+    "other": [
+      { "t": "Need a yes", "a": "{project} wants {tool}", "b": "{detail}" }
+    ]
+  },
+
+  "yourMove": [
+    { "t": "Your move", "a": "{project} stopped", "b": "after {duration}.", "c": "It is waiting on you." },
+    { "t": "Over to you", "a": "{project} went quiet", "b": "after {duration} of work." }
+  ],
+
+  "breakthrough": {
+    "test": [
+      { "t": "Finally. All green.", "a": "{tries}.", "b": "{stuck} in the red.", "c": "Commit it." },
+      { "t": "All green", "a": "{fails} failed runs,", "b": "then this.", "c": "Commit before it changes its mind." },
+      { "t": "Green. Finally.", "a": "Took {tries}.", "b": "Commit it while it lasts." }
+    ],
+    "build": [
+      { "t": "It builds.", "a": "After {tries}.", "b": "Nobody touch anything." },
+      { "t": "Build is back", "a": "{stuck} broken,", "b": "fixed in {tries}." }
+    ],
+    "typecheck": [
+      { "t": "Types check out", "a": "After {tries}.", "b": "The compiler has no notes." },
+      { "t": "Zero type errors", "a": "{stuck} to get here.", "b": "Enjoy it." }
+    ]
+  },
+
+  "done": [
+    { "t": "Session over", "a": "{duration} on {title}", "b": "{fact1}", "c": "{fact2}" },
+    { "t": "That is a wrap", "a": "{duration} on {title}", "b": "{fact1}", "c": "{fact2}" }
+  ],
+
+  "facts": {
+    "win": {
+      "test": "Tests green after {tries}",
+      "build": "Build fixed after {tries}",
+      "typecheck": "Types clean after {tries}"
+    },
+    "pr": "Opened a pull request",
+    "commit": "1 commit",
+    "commits": "{count} commits",
+    "edited1": "1 file changed",
+    "edited": "{count} files changed"
+  },
+
+  "now": {
+    "waiting": "Waiting on you · {project}",
+    "running_test": "Claude running tests · {elapsed}",
+    "running_build": "Claude building · {elapsed}",
+    "running_typecheck": "Claude checking types · {elapsed}",
+    "on": "On: {title}",
+    "onMore": "On: {title} +{more}",
+    "last": "Last time: {title}",
+    "lastNext": "Last time: {title} · next: {next}"
+  }
+}

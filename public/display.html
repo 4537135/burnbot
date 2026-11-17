@@ -97,6 +97,46 @@
   }
   #toast.on { opacity: 1; }
 
+  /* What is going on right now, under the robot. On a plate so it reads over the fire. */
+  #now {
+    position: fixed; left: 0; top: 0; transform: translateX(-50%);
+    max-width: calc(100vw - 32px); padding: .35em .8em;
+    background: rgba(7, 9, 13, .8); color: var(--ink-2);
+    font-size: max(10px, round(calc(1.5 * var(--u)), 5px)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    opacity: 0; transition: opacity .6s steps(4); pointer-events: none;
+  }
+  #now.on { opacity: 1; }
+
+  /* The robot speaking: a pixel speech bubble with a stepped tail pointing at its head. */
+  #bubble {
+    --p: max(3px, round(calc(.5 * var(--u)), 1px));         /* one pixel of the bubble's border */
+    --line: var(--state);
+    position: fixed; left: 0; top: 0; z-index: 5;
+    width: max-content; max-width: min(calc(46 * var(--u)), calc(100vw - 32px));
+    padding: calc(1.3 * var(--u)) calc(1.8 * var(--u)) calc(1.5 * var(--u));
+    background: #0b0f15; color: var(--ink);
+    box-shadow: 0 calc(-1 * var(--p)) 0 0 var(--line), 0 var(--p) 0 0 var(--line), calc(-1 * var(--p)) 0 0 0 var(--line), var(--p) 0 0 0 var(--line),
+      0 0 0 calc(2 * var(--p)) rgba(0, 0, 0, .35);
+    visibility: hidden; opacity: 0; transform: translateY(calc(2 * var(--p)));
+    transition: opacity .25s steps(3), transform .25s steps(3), visibility 0s .25s;
+    cursor: pointer; text-shadow: none;
+  }
+  .hud { transition: opacity .4s steps(3); }
+  body.speaking .hud { opacity: 0; }
+  #bubble.on { visibility: visible; opacity: 1; transform: none; transition: opacity .25s steps(3), transform .25s steps(3); }
+  #bubble.urgent { --line: #ffd25e; }
+  #bubble.happy { --line: #4fc9a4; }
+  #bubble h2 { margin: 0 0 .7em; font-size: max(10px, round(calc(1.5 * var(--u)), 5px)); font-weight: 400; letter-spacing: .2em; text-transform: uppercase; color: var(--line); }
+  #bubble p { font-size: max(10px, round(calc(1.9 * var(--u)), 5px)); line-height: 1.45; }
+  #bubble p + p { color: var(--ink-2); }
+  #bubble small { display: block; margin-top: 1em; font-size: max(10px, round(calc(1.2 * var(--u)), 5px)); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  #bubble small:empty { display: none; }
+  /* The tail: three steps, drawn in the border's colour. Below the bubble, or to its left. */
+  #bubble .tail { position: absolute; width: var(--p); height: var(--p); background: var(--line);
+    box-shadow: var(--p) 0 var(--line), calc(2 * var(--p)) 0 var(--line), 0 var(--p) var(--line), var(--p) var(--p) var(--line), 0 calc(2 * var(--p)) var(--line); }
+  #bubble.side .tail {
+    box-shadow: 0 var(--p) var(--line), 0 calc(2 * var(--p)) var(--line), calc(-1 * var(--p)) 0 var(--line), calc(-1 * var(--p)) var(--p) var(--line), calc(-2 * var(--p)) 0 var(--line); }
+
   /* Tall or square windows: robot below, level above. */
   @media (max-aspect-ratio: 5/4) {
     :root { --u: min(1.9vw, 1.05vh); }
@@ -115,7 +155,7 @@
   }
   /* On a screen that is not Retina half pixels cannot be drawn: let them soften instead of wobble. */
   @media (-webkit-max-device-pixel-ratio: 1.5), (max-resolution: 1.5dppx) { body { -webkit-font-smoothing: auto; font-smooth: auto; } }
-  @media (prefers-reduced-motion: reduce) { .track i, .rung, .rung i { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .track i, .rung, .rung i, #bubble, #now { transition: none; } }
 </style>
 </head>
 <body class="s-asleep">
@@ -141,6 +181,9 @@
       <div class="ladder" id="ladder" role="list" aria-label="Levels"></div>
     </div>
   </main>
+
+  <p id="now" aria-live="polite"></p>
+  <div id="bubble" role="status" aria-live="assertive"><h2 id="bubbleTitle"></h2><div id="bubbleLines"></div><small id="bubbleHint"></small><i class="tail"></i></div>
 
   <div id="toast"></div>
   <script type="module" src="/display.js"></script>

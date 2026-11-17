@@ -38,11 +38,52 @@ final class LogFile {
     var gone = false                        // Claude Code deleted it; its history is kept
     var minutes: [Int: [Double]] = [:]      // minute -> bucket
     var seen: [String: [Double]] = [:]      // response id -> [minute, input, output, cacheWrite, cacheRead, thinking]
+    // What the robot needs to know about the session, besides tokens.
+    var session = ""                        // Claude Code's session id; a subagent's log carries its parent's
+    var title = ""                          // what Claude Code named the session
+    var renamed = false                     // you named it yourself, so Claude Code's own name does not replace it
+    var branch = ""
+    var edited: Set<String> = []            // files written to
+    var lastPrompt = 0.0                    // ms of the last prompt you typed here
+    var runs: [String: (command: String, ms: Double)] = [:]   // Bash runs still waiting for their result (live only)
+    let agent: String                       // a subagent's id, "" for the main log
 
     init(path: String) {
         self.path = path
         side = path.contains("/subagents/")
+        // <session>.jsonl, or <session>/subagents/agent-<id>.jsonl
+        let url = URL(fileURLWithPath: path)
+        session = side ? url.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent : url.deletingPathExtension().lastPathComponent
+        let name = url.deletingPathExtension().lastPathComponent
+        agent = side ? (name.hasPrefix("agent-") ? String(name.dropFirst(6)) : name) : ""
     }
+}
+
+/// How a Bash run ended, as the log tells it.
+struct RunResult {
+    let error: Bool                         // Claude Code marked the result as an error
+    let exit: Int?                          // from "Exit code N", when it says
+    let denied: Bool                        // never ran: permission refused
+    let interrupted: Bool
+    let output: String                      // the last 2 KB of what it printed
+}
+
+/// One session as a whole (Tracker.session).
+struct SessionInfo {
+    let id: String
+    var project = "", title = "", branch = ""
+    var edited: Set<String> = []
+    var lastPrompt = 0.0                    // ms
+    var activeMinutes = 0                   // minutes with a prompt or a response
+    var firstMinute = 0, lastMinute = 0     // minutes since 1970
+}
+
+/// Something that just happened in a session, seen in a live log (never during the first read of history).
+enum LogSignal {
+    case line(session: String, agent: String, assistant: Bool, ms: Double)   // Claude or you did something; agent "" = main log
+    case prompt(session: String, ms: Double)                // you typed a prompt
+    case run(session: String, id: String, command: String, ms: Double)
+    case result(session: String, id: String, command: String, outcome: RunResult, ms: Double)
 }
 
 private func bytes(_ text: String) -> UnsafeRawBufferPointer {
@@ -53,6 +94,8 @@ private func bytes(_ text: String) -> UnsafeRawBufferPointer {
 private let needleAssistant = bytes("\"type\":\"assistant\"")
 private let needleUser = bytes("\"type\":\"user\"")
 private let needleToolResult = bytes("\"tool_use_id\"")
+private let needleTitle = bytes("-title\"")           // "ai-title" and "custom-title" lines
+private let exitCode = try! NSRegularExpression(pattern: "^(?:Error: )?Exit code (-?[0-9]+)")
 
 private func has(_ needle: UnsafeRawBufferPointer, _ line: UnsafeRawPointer, _ length: Int) -> Bool {
     memmem(line, length, needle.baseAddress, needle.count) != nil
@@ -69,6 +112,34 @@ private let pastedBlock = try! NSRegularExpression(pattern: "<pasted_content\\b[
 private let keptTags = try! NSRegularExpression(pattern: "</?(bash-input|command-name)>")
 
 /// Splits a user turn into what was typed and what was pasted (lengths as JavaScript counts them).
+/// The raw text of a prompt you sent, or nil when a "user" line is something else
+/// (a tool result, a subagent's brief, a command's output, a compacted summary).
+func promptText(_ object: [String: Any]) -> String? {
+    for flag in ["isSidechain", "isMeta", "isCompactSummary", "isVisibleInTranscriptOnly"] where (object[flag] as? Bool) == true { return nil }
+    if object["toolUseResult"] != nil { return nil }
+    var kind = (object["origin"] as? [String: Any])?["kind"] as? String ?? ""
+    if kind.isEmpty { kind = object["turnOrigin"] as? String ?? "" }
+    if !kind.isEmpty, kind != "human" { return nil }
+    let content = (object["message"] as? [String: Any])?["content"]
+    if let whole = content as? String { return whole }
+    guard let blocks = content as? [[String: Any]] else { return nil }
+    var text = ""
+    for block in blocks {
+        let type = block["type"] as? String
+        if type == "tool_result" { return nil }
+        if type == "text" { text += (block["text"] as? String ?? "") + "\n" }
+    }
+    return text
+}
+
+/// What you typed, with pasted blocks, injected context and wrapper tags taken out.
+func typedOnly(_ text: String) -> String {
+    var rest = pastedBlock.stringByReplacingMatches(in: text, range: NSRange(location: 0, length: (text as NSString).length), withTemplate: " [pasted] ")
+    rest = injected.stringByReplacingMatches(in: rest, range: NSRange(location: 0, length: (rest as NSString).length), withTemplate: "")
+    rest = keptTags.stringByReplacingMatches(in: rest, range: NSRange(location: 0, length: (rest as NSString).length), withTemplate: "")
+    return rest.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
 func measurePrompt(_ text: String) -> (typed: Int, pasted: Int) {
     let whole = NSRange(location: 0, length: (text as NSString).length)
     var pasted = 0
@@ -79,7 +150,7 @@ func measurePrompt(_ text: String) -> (typed: Int, pasted: Int) {
     return (rest.trimmingCharacters(in: .whitespacesAndNewlines).utf16.count, pasted)
 }
 
-private func number(_ value: Any?) -> Double { (value as? NSNumber)?.doubleValue ?? 0 }
+func number(_ value: Any?) -> Double { (value as? NSNumber)?.doubleValue ?? 0 }
 
 private func lineCount(_ value: Any?) -> Double {
     guard let text = value as? String, !text.isEmpty else { return 0 }
@@ -140,6 +211,7 @@ final class Tracker {
     private(set) var files: [String: LogFile] = [:]
     private(set) var lastCallMs = 0.0
     private(set) var lastPromptMs = 0.0
+    private var signals: [LogSignal] = []
     private var dirty = false
     private var lastWalk = 0.0
     private let lock = NSLock()
@@ -158,6 +230,66 @@ final class Tracker {
 
     var foundLogs: Bool { !files.isEmpty }
 
+    /// The prompts you typed in a session (its main log only) between two times, oldest first,
+    /// each cut to `each` characters, the last `limit` of them. Read from disk: only used for
+    /// AI summaries, which you switch on yourself.
+    func prompts(session id: String, from: Double, to: Double, limit: Int = 12, each: Int = 200) -> [String] {
+        var found: [(ms: Double, text: String)] = []
+        for file in files.values where file.session == id && !file.side {
+            guard let data = try? Data(contentsOf: URL(fileURLWithPath: file.path), options: .alwaysMapped) else { continue }
+            data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+                guard let base = raw.baseAddress else { return }
+                var start = 0
+                while start < raw.count, let newline = memchr(base + start, 10, raw.count - start) {
+                    let end = base.distance(to: UnsafeRawPointer(newline))
+                    let line = base + start, length = end - start
+                    if length > 20, has(needleUser, line, length), !has(needleToolResult, line, length) {
+                        let slice = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: line), count: length, deallocator: .none)
+                        if let object = (try? JSONSerialization.jsonObject(with: slice)) as? [String: Any],
+                           let stamp = object["timestamp"] as? String, let ms = milliseconds(stamp), ms >= from, ms <= to,
+                           let text = promptText(object) {
+                            let typed = shortened(typedOnly(text), each)
+                            if !typed.isEmpty { found.append((ms, typed)) }
+                        }
+                    }
+                    start = end + 1
+                }
+            }
+        }
+        return found.sorted { $0.ms < $1.ms }.suffix(limit).map { $0.text }
+    }
+
+    /// What happened in live logs since the last call.
+    func takeSignals() -> [LogSignal] {
+        defer { signals = [] }
+        return signals
+    }
+
+    /// One session as a whole, its main log and its subagents' together, over the last `hours`
+    /// (and after minute `since`, when given).
+    func session(_ id: String, now: Double, hours: Double = 12, since: Int = 0) -> SessionInfo? {
+        let cutoff = max(since + 1, Int((now - hours * 3_600_000) / 60000))
+        var info = SessionInfo(id: id)
+        var active = Set<Int>()
+        var found = false
+        for file in files.values where file.session == id {
+            found = true
+            if !file.side || info.project.isEmpty {
+                if !file.project.isEmpty { info.project = file.project }
+                if !file.title.isEmpty { info.title = file.title }
+                if !file.branch.isEmpty { info.branch = file.branch }
+            }
+            info.edited.formUnion(file.edited)
+            info.lastPrompt = max(info.lastPrompt, file.lastPrompt)
+            for (minute, bucket) in file.minutes where minute >= cutoff && bucket[F.calls] + bucket[F.prompts] > 0 { active.insert(minute) }
+        }
+        guard found else { return nil }
+        info.activeMinutes = active.count
+        info.firstMinute = active.min() ?? 0
+        info.lastMinute = active.max() ?? 0
+        return info
+    }
+
     // MARK: Parsing
 
     private func bump(_ file: LogFile, _ minute: Int, _ field: Int, _ value: Double) {
@@ -165,7 +297,7 @@ final class Tracker {
         file.minutes[minute, default: [Double](repeating: 0, count: F.count)][field] += value
     }
 
-    private func assistant(_ file: LogFile, _ object: [String: Any], _ ms: Double) -> Double {
+    private func assistant(_ file: LogFile, _ object: [String: Any], _ ms: Double, live: Bool) -> Double {
         guard let message = object["message"] as? [String: Any], let usage = message["usage"] as? [String: Any] else { return 0 }
         let model = message["model"] as? String ?? ""
         if model == "<synthetic>" { return 0 }
@@ -177,7 +309,15 @@ final class Tracker {
         if let content = message["content"] as? [[String: Any]] {
             for block in content where block["type"] as? String == "tool_use" {
                 tools += 1
-                guard let name = block["name"] as? String, writeTools.contains(name), let input = block["input"] as? [String: Any] else { continue }
+                let name = block["name"] as? String ?? ""
+                let input = block["input"] as? [String: Any] ?? [:]
+                if live, name == "Bash", input["run_in_background"] as? Bool != true,
+                   let id = block["id"] as? String, let command = input["command"] as? String {
+                    file.runs[id] = (command, ms)
+                    signals.append(.run(session: file.session, id: id, command: command, ms: ms))
+                }
+                guard writeTools.contains(name) else { continue }
+                if let target = (input["file_path"] ?? input["notebook_path"]) as? String, file.edited.count < 500 { file.edited.insert(target) }
                 lines += lineCount(input["new_string"] ?? input["content"] ?? input["new_source"])
                 if let edits = input["edits"] as? [[String: Any]] { for edit in edits { lines += lineCount(edit["new_string"]) } }
             }
@@ -213,24 +353,7 @@ final class Tracker {
     }
 
     private func user(_ file: LogFile, _ object: [String: Any], _ ms: Double) -> Double {
-        for flag in ["isSidechain", "isMeta", "isCompactSummary", "isVisibleInTranscriptOnly"] where (object[flag] as? Bool) == true { return 0 }
-        if object["toolUseResult"] != nil { return 0 }
-        var kind = (object["origin"] as? [String: Any])?["kind"] as? String ?? ""
-        if kind.isEmpty { kind = object["turnOrigin"] as? String ?? "" }
-        if !kind.isEmpty, kind != "human" { return 0 }
-        let content = (object["message"] as? [String: Any])?["content"]
-        var text = ""
-        if let whole = content as? String {
-            text = whole
-        } else if let blocks = content as? [[String: Any]] {
-            for block in blocks {
-                let type = block["type"] as? String
-                if type == "tool_result" { return 0 }
-                if type == "text" { text += (block["text"] as? String ?? "") + "\n" }
-            }
-        } else {
-            return 0
-        }
+        guard let text = promptText(object) else { return 0 }
         let measured = measurePrompt(text)
         if measured.typed == 0, measured.pasted == 0 { return 0 }
         let minute = Int((ms / 60000).rounded(.down))
@@ -240,13 +363,39 @@ final class Tracker {
         return ms
     }
 
+    /// The results of Bash runs this log is waiting for.
+    private func results(_ file: LogFile, _ object: [String: Any], _ ms: Double) {
+        guard let blocks = (object["message"] as? [String: Any])?["content"] as? [[String: Any]] else { return }
+        for block in blocks where block["type"] as? String == "tool_result" {
+            guard let id = block["tool_use_id"] as? String, let run = file.runs.removeValue(forKey: id) else { continue }
+            var text = ""
+            if let whole = block["content"] as? String { text = whole }
+            else if let parts = block["content"] as? [[String: Any]] { text = parts.compactMap { $0["text"] as? String }.joined(separator: "\n") }
+            var output = text
+            var interrupted = false
+            if let result = object["toolUseResult"] as? [String: Any] {
+                output = [result["stdout"] as? String ?? "", result["stderr"] as? String ?? ""].filter { !$0.isEmpty }.joined(separator: "\n")
+                interrupted = result["interrupted"] as? Bool ?? false
+            }
+            let head = String(text.prefix(40))
+            let code = exitCode.firstMatch(in: head, range: NSRange(location: 0, length: (head as NSString).length))
+                .flatMap { Int((head as NSString).substring(with: $0.range(at: 1))) }
+            let denied = object["toolDenialKind"] != nil || head.hasPrefix("Permission ") || head.hasPrefix("The user doesn't want")
+            let outcome = RunResult(error: block["is_error"] as? Bool ?? false, exit: code, denied: denied, interrupted: interrupted,
+                                    output: String(output.suffix(2000)))
+            signals.append(.result(session: file.session, id: id, command: run.command, outcome: outcome, ms: ms))
+        }
+    }
+
     /// Reads whatever was appended to a log since the last look. Touches only that log, so logs can be read in parallel.
     /// Returns the newest response and prompt times it saw.
+    /// `live`: this is news, not history, so it also becomes signals for the robot.
     @discardableResult
-    private func read(_ file: LogFile, size: Int, modified: Double) -> (changed: Bool, call: Double, prompt: Double) {
+    private func read(_ file: LogFile, size: Int, modified: Double, live: Bool = false) -> (changed: Bool, call: Double, prompt: Double) {
         if size < file.offset {                         // truncated or replaced: start over
             file.minutes = [:]
             file.seen = [:]
+            file.runs = [:]
             file.offset = 0
         }
         file.modified = modified
@@ -268,17 +417,38 @@ final class Tracker {
                 if length > 20 {
                     let line = base + start
                     // Cheap byte-level filter first: most lines are tool output and bookkeeping.
+                    // Tool output is only opened when it is news and a Bash run is waiting for it.
                     let isAssistant = has(needleAssistant, line, length)
-                    if isAssistant || (has(needleUser, line, length) && !has(needleToolResult, line, length)) {
+                    let isUser = !isAssistant && has(needleUser, line, length)
+                    let isResult = isUser && has(needleToolResult, line, length)
+                    let isTitle = !isAssistant && !isUser && length < 4000 && has(needleTitle, line, length)
+                    if isAssistant || (isUser && (!isResult || (live && !file.runs.isEmpty))) || isTitle {
                         let slice = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: line), count: length, deallocator: .none)
-                        if let object = (try? JSONSerialization.jsonObject(with: slice)) as? [String: Any],
-                           let stamp = object["timestamp"] as? String, let ms = milliseconds(stamp) {
+                        let object = (try? JSONSerialization.jsonObject(with: slice)) as? [String: Any] ?? [:]
+                        if let id = object["sessionId"] as? String, !id.isEmpty { file.session = id }
+                        if isTitle {
+                            if let named = object["customTitle"] as? String, !named.isEmpty {
+                                file.title = named
+                                file.renamed = true
+                            } else if let named = object["aiTitle"] as? String, !named.isEmpty, !file.renamed {
+                                file.title = named
+                            }
+                        } else if let stamp = object["timestamp"] as? String, let ms = milliseconds(stamp) {
                             if file.project.isEmpty, let cwd = object["cwd"] as? String { file.project = projectName(cwd) }
+                            if let branch = object["gitBranch"] as? String, !branch.isEmpty { file.branch = branch }
                             switch object["type"] as? String {
-                            case "assistant": call = max(call, assistant(file, object, ms))
-                            case "user": prompt = max(prompt, user(file, object, ms))
+                            case "assistant":
+                                call = max(call, assistant(file, object, ms, live: live))
+                            case "user" where isResult:
+                                results(file, object, ms)
+                            case "user":
+                                let typed = user(file, object, ms)
+                                prompt = max(prompt, typed)
+                                if typed > 0 { file.lastPrompt = max(file.lastPrompt, typed) }
+                                if live, typed > 0 { signals.append(.prompt(session: file.session, ms: ms)) }
                             default: break
                             }
+                            if live { signals.append(.line(session: file.session, agent: file.agent, assistant: isAssistant, ms: ms)) }
                         }
                     }
                 }
@@ -358,18 +528,19 @@ final class Tracker {
     }
 
     /// Cheap periodic check: tail recently active logs, rediscover now and then. Returns whether anything changed.
+    /// What it reads is news, so it also becomes signals (see takeSignals).
     @discardableResult
-    func poll() -> Bool {
+    func poll(walkNow: Bool = false) -> Bool {
         guard scan.phase == "live" else { return false }
         let now = Date().timeIntervalSince1970
         var changed = false
-        if now - lastWalk > 20 {
+        if walkNow || now - lastWalk > 20 {
             lastWalk = now
             for entry in walk() {
                 let file = files[entry.path] ?? LogFile(path: entry.path)
                 files[entry.path] = file
                 if entry.size != file.offset || file.gone {
-                    let result = read(file, size: entry.size, modified: entry.modified)
+                    let result = read(file, size: entry.size, modified: entry.modified, live: true)
                     note(result)
                     changed = changed || result.changed
                 }
@@ -383,7 +554,7 @@ final class Tracker {
                 }
                 if size != file.offset {
                     let modified = (attributes[.modificationDate] as? Date)?.timeIntervalSince1970 ?? now
-                    let result = read(file, size: size, modified: modified)
+                    let result = read(file, size: size, modified: modified, live: true)
                     note(result)
                     changed = changed || result.changed
                 }
@@ -399,14 +570,28 @@ final class Tracker {
     func load() -> Bool {
         guard let data = FileManager.default.contents(atPath: storePath),
               let raw = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              (raw["version"] as? Int) == 4, (raw["root"] as? String) == root,
+              let version = raw["version"] as? Int, version == 4 || version == 5, (raw["root"] as? String) == root,
               let saved = raw["files"] as? [[String: Any]] else { return false }
+        // Version 4 (Burnbot 1.0) kept no session titles or details. Logs from the last day are read
+        // again from the start to get them; older ones keep their counts, including deleted logs.
+        let rereadAfter = Date().timeIntervalSince1970 - 86400
         for entry in saved {
             guard let path = entry["p"] as? String else { continue }
             let file = LogFile(path: path)
             file.offset = (entry["o"] as? NSNumber)?.intValue ?? 0
             file.modified = number(entry["t"]) / 1000
             file.project = entry["j"] as? String ?? ""
+            if let session = entry["s"] as? String, !session.isEmpty { file.session = session }
+            file.title = entry["n"] as? String ?? ""
+            file.renamed = entry["r"] as? Bool ?? false
+            file.branch = entry["b"] as? String ?? ""
+            file.edited = Set(entry["e"] as? [String] ?? [])
+            file.lastPrompt = number(entry["lp"])
+            if version == 4, file.modified > rereadAfter, FileManager.default.fileExists(atPath: path) {
+                file.offset = 0
+                files[path] = file
+                continue
+            }
             for row in entry["m"] as? [[NSNumber]] ?? [] where row.count == F.count + 1 {
                 file.minutes[row[0].intValue] = row.dropFirst().map { $0.doubleValue }
             }
@@ -430,10 +615,17 @@ final class Tracker {
                 "m": file.minutes.map { [Double($0.key)] + $0.value },
             ]
             if !file.seen.isEmpty { entry["i"] = file.seen.map { [$0.key as Any] + $0.value.map { $0 as Any } } }
+            entry["s"] = file.session
+            if !file.title.isEmpty { entry["n"] = file.title }
+            if file.renamed { entry["r"] = true }
+            if !file.branch.isEmpty { entry["b"] = file.branch }
+            if file.lastPrompt > 0 { entry["lp"] = file.lastPrompt }
+            // Which files a session touched only matters while it might still be recapped.
+            if !file.edited.isEmpty, Date().timeIntervalSince1970 - file.modified < 2 * 86400 { entry["e"] = Array(file.edited) }
             saved.append(entry)
         }
         let body: [String: Any] = [
-            "version": 4, "root": root, "savedAt": Date().timeIntervalSince1970 * 1000,
+            "version": 5, "root": root, "savedAt": Date().timeIntervalSince1970 * 1000,
             "lastCallMs": lastCallMs, "lastPromptMs": lastPromptMs, "files": saved,
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: body) else { return }

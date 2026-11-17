@@ -33,8 +33,14 @@ function lighten(hex, amount) {
  * Draws the robot standing with its feet at (cx, gy). `t` is seconds; the
  * state picks the face, the posture and how fast it moves.
  */
-export function drawRobot(ctx, cx, gy, state, t) {
-  const asleep = state === 'asleep';
+/**
+ * expr: a reaction drawn over the level's face for a few seconds, or '' for none.
+ *   worried  a run just failed: raised brows, a wobbly mouth, a bead of sweat
+ *   happy    it finally passed: arms up, a grin, sparks
+ *   waiting  Claude needs a yes from you: eyes on you, a "!" over its head
+ */
+export function drawRobot(ctx, cx, gy, state, t, expr = '') {
+  const asleep = state === 'asleep' && !expr;
   const idle = state === 'idle';
   const locked = state === 'locked';
   const over = state === 'overdrive';
@@ -74,7 +80,19 @@ export function drawRobot(ctx, cx, gy, state, t) {
   // arms: resting at the sides, or raised and tapping while working
   const tapHz = state === 'warming' ? 3 : state === 'cruising' ? 6 : locked ? 10 : 15;
   const beat = Math.floor(t * tapHz);
-  if (working) {
+  if (expr === 'happy') {
+    // both arms thrown up, waving out of step
+    const wl = Math.floor(t * 5) % 2;
+    const wr = Math.floor(t * 5 + 1) % 2;
+    R(x0 - 15, gy - 20, 4, 3, sh);
+    R(x0 - 18, gy - 23, 4, 3, sh);
+    R(x0 - 21, gy - 26 - wl, 4, 3, body);
+    R(x0 - 22, gy - 29 - wl, 5, 3, hi);
+    R(x0 + 11, gy - 20, 4, 3, sh);
+    R(x0 + 14, gy - 23, 4, 3, sh);
+    R(x0 + 17, gy - 26 - wr, 4, 3, body);
+    R(x0 + 17, gy - 29 - wr, 5, 3, hi);
+  } else if (working) {
     const l = beat % 2 ? 0 : 2;
     const r = beat % 2 ? 2 : 0;
     R(x0 - 15, gy - 18, 4, 6, sh);
@@ -124,7 +142,33 @@ export function drawRobot(ctx, cx, gy, state, t) {
   const rx = x0 + 4;
   const look = idle ? [-1, 0, 0, 1, 0, 0][Math.floor(t / 1.3) % 6] : 0;
   const blink = !asleep && !over && !auto && t % (locked ? 6.3 : 3.7) < 0.13;
-  if (asleep || blink) {
+  if (expr === 'worried') {
+    // brows up in the middle, small eyes
+    R(lx, ey - 1, 2, 1, glow);
+    R(lx + 2, ey - 2, 2, 1, glow);
+    R(rx, ey - 2, 2, 1, glow);
+    R(rx + 2, ey - 1, 2, 1, glow);
+    R(lx + 1, ey + 1, 2, 3, glow);
+    R(rx + 1, ey + 1, 2, 3, glow);
+  } else if (expr === 'happy') {
+    for (const ex of [lx, rx]) {
+      R(ex, ey + 2, 1, 2, glow);
+      R(ex + 1, ey + 1, 2, 1, glow);
+      R(ex + 3, ey + 2, 1, 2, glow);
+    }
+  } else if (expr === 'waiting') {
+    // wide awake, looking out at you
+    R(lx, ey - 1, 4, 6, glow);
+    R(rx, ey - 1, 4, 6, glow);
+    R(lx + 1, ey + 1, 2, 2, screen);
+    R(rx + 1, ey + 1, 2, 2, screen);
+    if (t % 2.9 < 0.12) {
+      R(lx, ey - 1, 4, 6, screen);
+      R(rx, ey - 1, 4, 6, screen);
+      R(lx, ey + 3, 4, 1, glow);
+      R(rx, ey + 3, 4, 1, glow);
+    }
+  } else if (asleep || blink) {
     R(lx, ey + 4, 4, 1, glow);
     R(rx, ey + 4, 4, 1, glow);
   } else if (auto) {
@@ -158,7 +202,16 @@ export function drawRobot(ctx, cx, gy, state, t) {
 
   // mouth
   const my = hy + 14;
-  if (asleep) R(x0 - 1, my, 2, 1, glow);
+  if (expr === 'worried') {
+    for (let k = 0; k < 4; k++) R(x0 - 4 + k * 2, my - (k % 2), 2, 1, glow);
+  } else if (expr === 'happy') {
+    R(x0 - 5, my - 2, 1, 1, glow);
+    R(x0 + 4, my - 2, 1, 1, glow);
+    R(x0 - 4, my - 1, 8, 1, '#ffffff');
+    R(x0 - 3, my, 6, 1, glow);
+  } else if (expr === 'waiting') {
+    R(x0 - 1, my - 1, 2, 2, glow);
+  } else if (asleep) R(x0 - 1, my, 2, 1, glow);
   else if (auto) {
     R(x0 - 4, my - 1, 1, 1, glow);
     R(x0 - 3, my, 6, 1, glow);
@@ -207,6 +260,31 @@ export function drawRobot(ctx, cx, gy, state, t) {
       const fh = 3 + Math.floor((Math.sin(t * 13 + k * 2.1) + 1) * 2.4);
       R(fx, hy - fh, 2, fh, '#ff8a2e');
       if (fh > 4) R(fx, hy - fh + 2, 1, fh - 3, '#ffe08a');
+    }
+  }
+
+  // reactions that reach past the face
+  if (expr === 'worried') {
+    // a bead of sweat sliding down the side of the head
+    const s = Math.floor((t * 2.5) % 5);
+    R(x0 + 13, hy + 2 + s, 1, 1, '#bfe3ff');
+    R(x0 + 12, hy + 3 + s, 3, 2, '#8cc8f5');
+  } else if (expr === 'happy') {
+    for (let k = 0; k < 4; k++) {
+      if (Math.floor(t * 6 + k * 1.7) % 3 === 0) continue;
+      const sx = x0 + [-24, 21, -19, 25][k];
+      const sy = hy + [-6, -9, 4, 2][k];
+      const c = k % 2 ? '#fff6d2' : accent;
+      R(sx, sy - 1, 1, 3, c);
+      R(sx - 1, sy, 3, 1, c);
+    }
+  } else if (expr === 'waiting') {
+    // "!" over its head, pulsing
+    if (t % 1.2 < 0.85) {
+      const bx = x0 + 19;
+      const by = hy - 12;
+      R(bx, by, 2, 5, '#ffd25e');
+      R(bx, by + 6, 2, 2, '#ffd25e');
     }
   }
 
@@ -278,6 +356,7 @@ export class Scene {
     this.fctx = this.fireCanvas.getContext('2d');
     this.palette = firePalette();
     this.state = 'asleep';
+    this.expr = '';
     this.flame = 0;
     this.flameTarget = 0;
     this.dropRate = 0;
@@ -328,6 +407,19 @@ export class Scene {
     this.state = state;
     this.flameTarget = flame;
     this.dropRate = dropRate;
+  }
+
+  /** A reaction over the level's face ('worried', 'happy', 'waiting'), or '' for none. */
+  setExpr(expr) {
+    this.expr = expr || '';
+  }
+
+  /** Where the robot is, in CSS pixels: centre line, top of its antenna, top of its platform. */
+  anchor() {
+    if (!this.W) return null;
+    const sx = this.canvas.clientWidth / this.W;
+    const sy = this.canvas.clientHeight / this.H;
+    return { x: (this.cx + 0.5) * sx, top: (this.gy - 54) * sy, feet: (this.gy + 3) * sy, unit: sy };
   }
 
   #stepFire() {
@@ -447,7 +539,7 @@ export class Scene {
     ctx.fillStyle = '#2f3846';
     ctx.fillRect(cx - 24, gy, 48, 1);
 
-    drawRobot(ctx, cx, gy, state, t);
+    drawRobot(ctx, cx, gy, state, t, this.expr);
 
     // tokens fall in and burn
     this.dropAcc += this.dropRate * dt;

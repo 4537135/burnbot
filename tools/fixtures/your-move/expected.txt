@@ -1,0 +1,16 @@
+10:00:00  front app: com.apple.Terminal (work)
+10:00:00  NOW On: Refactor the cart
+10:00:30  front app: com.apple.Safari
+10:05:02  your-move:a1b2c3d4-0006-4000-8000-000000000006 noticed (stopped while you were away)
+10:05:02  SHOW your-move: YOUR MOVE / shop stopped / after 5 min. / It is waiting on you.
+10:06:03  your-move:a1b2c3d4-0006-4000-8000-000000000006 over (its time is up, or you are back)
+10:06:03  SHOW nothing
+10:09:40  front app: com.apple.Terminal (work)
+10:10:40  Claude stopped in a1b2c3d4: short turn, nothing to say
+10:16:02  Claude stopped after 4 min: silence, you are at your work app
+10:20:30  front app: com.tinyspeck.slackmacgap
+10:24:02  your-move:a1b2c3d4-0006-4000-8000-000000000006 noticed (stopped while you were away)
+10:24:02  SHOW your-move: YOUR MOVE / shop stopped / after 4 min. / It is waiting on you.
+10:24:20  front app: com.apple.Terminal (work)
+10:24:20  your-move:a1b2c3d4-0006-4000-8000-000000000006 over (its time is up, or you are back)
+10:24:20  SHOW nothing

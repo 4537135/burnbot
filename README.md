@@ -9,10 +9,17 @@ down to the letters.
 The levels are calibrated to you. "Locked in" means well above your own
 normal, whatever your normal is.
 
+The robot also notices a few things worth knowing, and keeps quiet about the
+rest: a worried face when a test run fails, a cheer when it finally passes, a
+word when Claude needs you and you are not looking, and a short recap when a
+session is over.
+
 It works with Claude Code. Burnbot is an independent project: it is not made
 by, affiliated with, or endorsed by Anthropic.
 
 ![The robot window](preview/robot.png)
+
+![The robot, when Claude needs a yes](preview/robot-speaking.png)
 
 ![The dashboard: today](preview/dashboard.png)
 
@@ -110,12 +117,68 @@ Old days fall out of the 30-day window, so the levels drift with you. Until
 Burnbot has seen two hours of your work it uses starter values and says it is
 still calibrating.
 
+## What the robot notices
+
+Most of the time the robot just shows your level. Now and then it reacts,
+and only when there is good reason to:
+
+| Moment | What it sees | What it does |
+|---|---|---|
+| A run failed | A test, build or type check Claude ran came back failing | A worried face for a few seconds, if you are at your terminal or editor |
+| Breakthrough | The same kind of run passes after failing twice, or after five minutes in the red, with a clean exit and nothing in the output that says it failed | A happy face and "Finally. All green." (or "It builds", "Types check") |
+| Waiting on you | Claude Code asks permission for something | If you are in your terminal or editor, a face; if you are elsewhere, a bubble that stays until you are back. Click it to go to your terminal |
+| Your move | Claude stops after working for two minutes or more | A bubble, only if you are elsewhere |
+| Session over | The session ends, or goes quiet for 30 minutes after at least 20 minutes of work | A recap: how long, what went green, commits and pull requests |
+
+It decides how loud to be from where you are: which app is in front, and
+how long since you touched the Mac. One bubble at a time, the most important
+first, never the same one twice, gone as soon as it no longer applies, and
+no more than one of the less urgent ones every ten minutes. A run that is
+piped into `tail` or ends in `|| true` proves nothing, so it never gets a
+cheer. "Stopped" is never called "done": the robot can see that Claude
+stopped, not whether it succeeded.
+
+Under the robot, one line says what is going on: "Waiting on you · shop",
+"Claude running tests · 1m 40s", the session you are on, or what you did
+last time. It changes when something matters more, not every few seconds.
+
+**Robot → Play Every Moment** plays a recorded session through all of it in
+about a minute, on the robot window and the desk screen.
+
+### Claude Code alerts
+
+Knowing that Claude is waiting for a yes, or has stopped, needs Claude Code
+to say so. With **Robot → Claude Code Alerts** on (the welcome asks), Burnbot
+adds three hooks to `~/.claude/settings.json`: `PermissionRequest`, `Stop`
+and `SessionEnd`. Each runs a short script that copies what Claude Code
+reports into a folder Burnbot reads. They run in the background, print
+nothing and never change what Claude does. Burnbot keeps a copy of the file
+as `settings.json.burnbot-backup` before changing it, leaves your own hooks
+alone, and takes its three out again when you switch the alerts off.
+
+Without them the robot still has its faces, the breakthrough and the
+session recap, all read from the logs.
+
+### AI session summaries
+
+Off unless you switch it on (the welcome, or **Robot → AI Session
+Summaries**). When a session ends, Burnbot asks Claude for a short recap
+through the `claude` command you already use, on your own plan: what got
+done and what is next, shown as "Last time: … · next: …" when you come back.
+It sends the session's name, your prompts (shortened), the names of files
+edited and how runs turned out, never the contents of your files. At most
+20 a day, a minute at most each, with a small model; an answer that does not
+fit the expected shape is thrown away and the recap from the logs stays.
+
 ## Privacy
 
 Burnbot reads the session logs Claude Code already writes on your Mac, in
-`~/.claude/projects`. It makes no network connections. Its own history is
-kept in `~/Library/Application Support/Burnbot`, so it survives when Claude
-Code clears old logs, and a log in `~/Library/Logs/Burnbot.log`.
+`~/.claude/projects`. It makes no network connections of its own, and
+nothing leaves the Mac unless you switch on AI session summaries (above),
+which go through your own `claude` command. Its own history is kept in
+`~/Library/Application Support/Burnbot` (with the last 50 sessions in
+`sessions.json`), so it survives when Claude Code clears old logs, and a log
+in `~/Library/Logs/Burnbot.log`.
 
 ## How accurate it is
 
@@ -149,12 +212,18 @@ Sense Plus) with a 2.4" 240 × 320 SPI display (ILI9341), plugged in by USB.
 
 It shows the level and its number, tokens per hour, an intensity bar with a
 notch where each level begins, and the robot in its fire with the level
-ladder beside it.
+ladder beside it. The robot makes the same faces as on the Mac, and when it
+has something to say, a speech bubble takes the place of the words at the
+top.
+
+![The desk screen with a speech bubble, from the simulator](preview/desk-speaking.png)
 
 Burnbot finds the board by itself and tells it your level once a second; the
 board keeps the fire and the robot moving in between. The dashboard shows
 "Desk screen on" when it is answering, with a **Flip** link if the picture is
-upside down. A board running another program is left alone.
+upside down. A board running another program is left alone. A board still
+on Burnbot 1.0's program keeps showing the levels; the dashboard says
+"old program" until you upload the new one.
 
 To put the program on the board: quit Burnbot, plug the board in, and
 double-click `desk/Upload to the screen.command`. It needs `arduino-cli`
@@ -166,6 +235,13 @@ To see a screen without the board:
 c++ -std=c++11 -O2 -I desk/burnbot_screen desk/tools/sim.cpp -o /tmp/burnbot-sim
 /tmp/burnbot-sim /tmp/screen.bmp 'B|s=4|lv=4|tp=5|u=3|i=81|f=78|nm=LOCKED IN|cp=LEVEL 4 OF 5|rt=71.2M|tm=17:29'
 open /tmp/screen.bmp
+```
+
+Add `|ex=w`, `|ex=h` or `|ex=a` to the line for the worried, happy or
+waiting face, and a speech bubble after the seconds:
+
+```bash
+/tmp/burnbot-sim /tmp/screen.bmp 'B|s=3|lv=3|tp=5|u=3|i=54|f=55|nm=COOKING|cp=LEVEL 3 OF 5|rt=21.4M|ex=h' 6 'M|k=b|h=1|t=FINALLY. ALL GREEN.|a=3 TRIES.|b=COMMIT IT.'
 ```
 
 ## Building it yourself
@@ -196,6 +272,17 @@ font: the capitals and digits are the 5 × 7 letters the desk screen uses, and
 in `public/pixel.css`. Change a letter there and run it again. One pixel of a
 letter is a tenth of the font size, so keep text sizes to multiples of 5px.
 
+Everything the robot says is in `public/voice.json`, a few variations of
+each line. What it notices and when it speaks are the detectors and
+`decide` in `app/Moments.swift`, with the timings at the top of `Moments`.
+Every change there can be checked against recorded sessions:
+
+```bash
+tools/check-moments.sh              # replays tools/fixtures/*, compares with expected.txt
+tools/check-moments.sh --update     # accept the new output
+python3 tools/make-fixtures.py      # rewrite the recorded sessions from their scripts
+```
+
 Level names and colours are in `STATE_META` at the top of `public/robot.js`,
 and the robot is drawn by `drawRobot` in the same file. The desk screen picks
 the names up from there, and has its own copy of the robot and colours in
@@ -211,6 +298,11 @@ Other options, mostly for testing:
 | `--background` | Start without taking the focus (use with `open -g`) |
 | `--snapshot <folder>` | Write a picture of each window a few seconds after start |
 | `--dump-state <file>` | Write what the tracker sees as JSON and quit. Served as `state.json` next to the pages, it lets you open the dashboard in a browser |
+| `--dump-timeline <folder>` | Replay a recorded session (`tools/fixtures/<name>`) and print what the robot noticed and why, second by second |
+| `--demo` | Play Every Moment as soon as the robot is up |
+
+`--fresh` never touches your Claude Code settings: the alerts go into a
+throwaway copy.
 
 A window that is completely covered is not animated by macOS, so its picture
 comes out without the robot, the fire and the big numbers.
@@ -221,11 +313,17 @@ comes out without the robot, the fire and the big numbers.
 app/main.swift        windows, menus, second screen, talking to the pages
 app/Tracker.swift     reads and tails Claude Code's session logs
 app/Metrics.swift     baseline, intensity, levels
+app/Signals.swift     Claude Code's hooks, and which app you are in
+app/Moments.swift     what the robot notices, and whether to say anything
+app/Summaries.swift   remembered sessions and the optional AI summary
+app/Replay.swift      replays a recorded session (tests, Play Every Moment)
 app/DeskScreen.swift  finds the desk screen on USB and feeds it
 app/Pages.swift       serves the pages to the app's own windows
 public/               the dashboard and the robot window
 desk/                 the desk screen's own program, its simulator and upload command
 tools/audit.py        independent recount of the tokens
+tools/fixtures/       recorded sessions and what the robot should do in each
+tools/check-moments.sh replays them all
 tools/make-icon.mjs   redraws the app icon from the robot (needs Node.js)
 tools/make-font.py    draws the pixel font into public/pixel.css
 ```

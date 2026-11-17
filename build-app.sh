@@ -32,6 +32,8 @@ lipo -create "$BUILD/Burnbot-arm64" "$BUILD/Burnbot-x86_64" -output "$APP/Conten
 echo "Packing the screens…"
 cp app/Info.plist "$APP/Contents/Info.plist"
 cp -R public "$APP/Contents/Resources/public"
+cp -R tools/fixtures/demo "$APP/Contents/Resources/demo"   # Play Every Moment
+rm -f "$APP/Contents/Resources/demo/expected.txt" "$APP/Contents/Resources/demo/README.txt"
 
 # The icon is drawn from the same robot as the screens. Redrawing it needs
 # Node.js; without it the icon already in app/ is used.

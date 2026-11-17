@@ -1,0 +1,2 @@
+{"at": "2026-11-17T10:03:01.000Z", "hook_event_name": "PermissionRequest", "session_id": "a1b2c3d4-0007-4000-8000-00000000000a", "cwd": "/Users/dev/shop", "transcript_path": "-Users-dev-shop/a1b2c3d4-0007-4000-8000-00000000000a.jsonl", "tool_name": "Bash", "tool_input": {"command": "npm run migrate"}}
+{"at": "2026-11-17T10:04:02.000Z", "hook_event_name": "Stop", "session_id": "a1b2c3d4-0007-4000-8000-00000000000b", "cwd": "/Users/dev/api", "transcript_path": "-Users-dev-api/a1b2c3d4-0007-4000-8000-00000000000b.jsonl"}

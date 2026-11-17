@@ -388,9 +388,12 @@ function renderChrome() {
   if (desk && desk.state !== 'absent') {
     $('desk').classList.toggle('on', desk.state === 'connected' && desk.answering);
     $('deskFlip').hidden = desk.state !== 'connected';
+    $('desk').title = desk.outdated
+      ? 'It shows the levels but not the robot\'s faces and speech bubbles. To update it, double-click "Upload to the screen" in the desk folder.'
+      : '';
     $('deskText').textContent =
       desk.state === 'connected'
-        ? desk.answering ? 'Desk screen on' : 'Desk screen not answering'
+        ? !desk.answering ? 'Desk screen not answering' : desk.outdated ? 'Desk screen on · old program' : 'Desk screen on'
         : desk.state === 'other'
           ? `Desk screen runs ${desk.program}, not Burnbot's program`
           : 'A board is plugged in but does not answer';
@@ -843,11 +846,15 @@ function renderTable(days) {
 }
 
 function renderFoot() {
-  if (renderFoot.done) return;
-  renderFoot.done = true;
+  const key = `${data.meta.source}|${Boolean(data.meta.aiSummaries)}`;
+  if (renderFoot.done === key) return;
+  renderFoot.done = key;
   $('foot').innerHTML =
     `Burnbot reads the Claude Code session logs in <code>${esc(data.meta.source)}</code> and keeps its own history, so nothing is lost when old logs are cleared. ` +
-    'Nothing leaves this Mac. Tokens count everything read and written, cached context included. ' +
+    (data.meta.aiSummaries
+      ? 'AI session summaries are on: when a session ends, its name, your prompts, file names and test results go to Claude through your own <code>claude</code> command. Nothing else leaves this Mac. '
+      : 'Nothing leaves this Mac. ') +
+    'Tokens count everything read and written, cached context included. ' +
     '<a href="/display?demo=cycle" target="_blank" rel="noopener">Preview every level</a>.<br>' +
     'Burnbot is an independent project. It is not made by, affiliated with, or endorsed by Anthropic. Claude and Claude Code are trademarks of Anthropic, PBC.';
 }
@@ -987,14 +994,19 @@ function welcome(force = false) {
   welcomeShown = true;
   $('optLogin').checked = Boolean(data.meta.openAtLogin);
   $('optTop').checked = data.meta.keepOnTop !== false;
+  // Asked for the first time (new, or coming from 1.0): alerts default on, summaries off.
+  $('optAlerts').checked = data.meta.firstRun ? true : Boolean(data.meta.claudeAlerts);
+  $('optSummaries').checked = Boolean(data.meta.aiSummaries);
   fillWelcome();
   $('welcome').hidden = false;
-  $('welcomeGo').focus();
+  $('welcomeGo').focus({ preventScroll: true }); $('welcome').scrollTop = 0;
 }
 window.burnbotWelcome = () => welcome(true);
 $('welcomeGo').addEventListener('click', () => {
   tell('openAtLogin', { on: $('optLogin').checked });
   tell('keepOnTop', { on: $('optTop').checked });
+  tell('claudeAlerts', { on: $('optAlerts').checked });
+  tell('aiSummaries', { on: $('optSummaries').checked });
   tell('welcomed');
   $('welcome').hidden = true;
 });

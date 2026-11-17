@@ -2,10 +2,12 @@
 // written to a picture.
 //
 //   c++ -std=c++11 -O2 -I desk/burnbot_screen desk/tools/sim.cpp -o /tmp/burnbot-sim
-//   /tmp/burnbot-sim out.bmp 'B|s=4|lv=4|tp=5|u=3|i=81|f=78|nm=LOCKED IN|cp=LEVEL 4 OF 5|rt=71.2M|tm=17:29' [seconds]
+//   /tmp/burnbot-sim out.bmp 'B|s=4|lv=4|tp=5|u=3|i=81|f=78|nm=LOCKED IN|cp=LEVEL 4 OF 5|rt=71.2M|tm=17:29' [seconds] ['M|...']
 //
 // The third argument is how long the scene has been running (default 6), so the
 // fire has had time to rise. Pass 'wait' as the line for "Waiting for the Mac".
+// A last 'M|...' line puts a speech bubble up, as the Mac's M line does; add
+// ex=w, ex=h or ex=a to the B line for the robot's worried, happy or waiting face.
 
 #include <stdio.h>
 
@@ -13,7 +15,7 @@
 
 int main(int argc, char **argv) {
   if (argc < 3) {
-    fprintf(stderr, "usage: sim out.bmp 'B|...' [seconds]\n");
+    fprintf(stderr, "usage: sim out.bmp 'B|...' [seconds] ['M|...']\n");
     return 2;
   }
   bb::State state;
@@ -23,6 +25,11 @@ int main(int argc, char **argv) {
     return 1;
   }
   float seconds = argc > 3 ? (float)atof(argv[3]) : 6;
+  bb::Moment moment;
+  if (argc > 4 && !bb::parseMoment(argv[4], moment)) {
+    fprintf(stderr, "could not read the M line\n");
+    return 1;
+  }
 
   static bb::Scene scene;
   static uint16_t art[bb::AW * bb::AH];
@@ -33,7 +40,7 @@ int main(int argc, char **argv) {
   // the words, a band at a time as the board does it
   for (int y = 0; y < bb::HUD_H; y += 36) {
     bb::Band band = {screen + y * bb::W, y, 36};
-    bb::drawHud(band, state, waiting);
+    bb::drawHud(band, state, waiting, moment);
   }
   // the scene, three times the size
   for (int y = bb::HUD_H; y < bb::H; y++)

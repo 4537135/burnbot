@@ -11,15 +11,17 @@
 // the Mac shares.
 //
 // Lines from the Mac (115200, each ends with a new line):
-//   V        answers "BURNBOT 1"
+//   V        answers "BURNBOT 2" (1 was the program before the robot could react and speak)
 //   P        answers "OK"
 //   R        starts the display again, answers "OK"
 //   O0 / O2  which way up (pins at the bottom / at the top), answers "OK"; remembered
 //   B|...    what to show (see render.h), answers "OK"
+//   M|...    what the robot is saying, a speech bubble over the words at the top;
+//            a bare "M|" takes it away (see render.h), answers "OK"
 //   Q        answers what it is showing, for example "Q|o=0|s=4|w=0"
 //
 // With nothing from the Mac for 15 seconds the robot goes to sleep and the
-// screen says it is waiting; after ten minutes of that the light goes out
+// screen says it is waiting (anything the robot was saying goes); after ten minutes of that the light goes out
 // until the Mac is back.
 #include <SPI.h>
 #include <Adafruit_GFX.h>
@@ -52,6 +54,7 @@ static uint16_t shown[bb::AW * bb::AH];    // what the display has now
 static bb::Scene scene;
 
 bb::State state;
+bb::Moment moment;
 uint32_t heardAt = 0;                      // when the last line came
 uint32_t frameAt = 0;
 bool waiting = true, lit = true;
@@ -111,7 +114,7 @@ void send(int top, int rows) {
 void showWords() {
   for (int y = 0; y < bb::HUD_H; y += HUD_BAND) {
     bb::Band b = {band, y, HUD_BAND};
-    bb::drawHud(b, state, waiting);
+    bb::drawHud(b, state, waiting, moment);
     send(y, HUD_BAND);
   }
 }
@@ -153,7 +156,7 @@ bool sameWords(const bb::State &a, const bb::State &b) {
 
 void handle(char *text) {
   if (!text[0]) return;
-  if (text[0] == 'V') { Serial.println("BURNBOT 1"); return; }
+  if (text[0] == 'V') { Serial.println("BURNBOT 2"); return; }
   if (text[0] == 'P') { Serial.println("OK"); return; }
   if (text[0] == 'R') { startDisplay(); Serial.println("OK"); return; }
   if (text[0] == 'O' && (text[1] == '0' || text[1] == '2')) {
@@ -173,6 +176,14 @@ void handle(char *text) {
     Serial.print(state.look);
     Serial.print("|w=");
     Serial.println(waiting ? 1 : 0);
+    return;
+  }
+  if (text[0] == 'M') {
+    bb::Moment said;
+    if (!bb::parseMoment(text, said)) { Serial.println("ERR"); return; }
+    if (!bb::sameMoment(moment, said)) wordsStale = true;
+    moment = said;
+    Serial.println("OK");
     return;
   }
   bb::State next;
@@ -209,6 +220,7 @@ void loop() {
   if (!waiting && now - heardAt > QUIET_MS) {   // the Mac went quiet (asleep, or Burnbot quit)
     waiting = true;
     wordsStale = true;
+    moment = bb::Moment();
   }
   if (lit && waiting && now - heardAt > DARK_MS) light(false);
 

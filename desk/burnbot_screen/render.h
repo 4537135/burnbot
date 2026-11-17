@@ -23,6 +23,7 @@ const int PX = 3;                           // one art pixel is 3 x 3 on the dis
 const int AW = W / PX;                      // 80
 const int AH = (H - HUD_H + PX - 1) / PX;   // 71 (the last row is cut short)
 const int FH = 36;                          // rows the fire can reach
+const int ROBOT_X = 45;                     // the art column the robot stands on
 
 // 0xRRGGBB -> the display's 16 bits.
 constexpr uint16_t rgb(uint32_t c) { return (uint16_t)(((c >> 8) & 0xF800) | ((c >> 5) & 0x07E0) | ((c >> 3) & 0x001F)); }
@@ -42,6 +43,9 @@ inline uint16_t mix(uint16_t under, uint16_t over, int a) {      // a: 0 nothing
 // off the ladder (the AI working while the person is away).
 enum Look { ASLEEP, IDLE, WARMING, CRUISING, LOCKED, OVERDRIVE, AUTOPILOT };
 
+// A reaction drawn over the level's face for a few seconds (the same three as on the Mac).
+enum Expr { EX_NONE, EX_WORRIED, EX_HAPPY, EX_WAITING };
+
 // One colour per level, cold to hot like a temperature scale (the same as on the Mac).
 const uint16_t ACCENT[7] = {rgb(0x6f83ad), rgb(0x62a8f5), rgb(0x4fc9a4), rgb(0xf4c542), rgb(0xff8030), rgb(0xf43f6b), rgb(0xa78bfa)};
 const uint16_t GROUND[7] = {rgb(0x0a0f1a), rgb(0x0b0d12), rgb(0x0b0d12), rgb(0x0b0d12), rgb(0x120e0b), rgb(0x170b0c), rgb(0x0e0c18)};
@@ -60,10 +64,22 @@ struct State {
   char caption[20] = "LEVEL 0 OF 5";
   char rate[12] = "0";                      // tokens per hour, already shortened ("94.3M")
   char clock[8] = "";
+  int expr = EX_NONE;                       // a reaction over the face
+};
+
+// What the robot is saying: a speech bubble that takes the place of the words at
+// the top while it shows. The Mac fits the words to the screen before sending them.
+struct Moment {
+  bool on = false;
+  char kind = 0;                            // w waiting on you, b a breakthrough, m your move, d session over
+  char title[24] = "";
+  char lines[4][20] = {"", "", "", ""};
+  int count = 0;                            // lines in use
+  int head = 1;                             // how many of them are the first, brighter line wrapped
 };
 
 // ---------------------------------------------------------------- reading a line
-// "B|s=3|lv=3|tp=5|u=1|i=34|f=62|c=30,75,93|nm=COOKING|cp=LEVEL 3 OF 5|rt=94.3M|tm=17:58"
+// "B|s=3|lv=3|tp=5|u=1|i=34|f=62|c=30,75,93|nm=COOKING|cp=LEVEL 3 OF 5|rt=94.3M|tm=17:58|ex=w"
 
 inline void copyText(char *to, size_t size, const char *from, size_t length) {
   size_t n = length < size - 1 ? length : size - 1;
@@ -96,6 +112,7 @@ inline bool parse(const char *line, State &s) {
     else if (is("cp")) copyText(s.caption, sizeof(s.caption), v, vlen);
     else if (is("rt")) copyText(s.rate, sizeof(s.rate), v, vlen);
     else if (is("tm")) copyText(s.clock, sizeof(s.clock), v, vlen);
+    else if (is("ex")) s.expr = *v == 'w' ? EX_WORRIED : *v == 'h' ? EX_HAPPY : *v == 'a' ? EX_WAITING : EX_NONE;
     p = *end ? end + 1 : end;
   }
   if (s.look < 0 || s.look > AUTOPILOT) s.look = ASLEEP;
@@ -103,6 +120,43 @@ inline bool parse(const char *line, State &s) {
   if (s.intensity > 100) s.intensity = 100;
   if (s.flame < 0) s.flame = 0;
   if (s.flame > 100) s.flame = 100;
+  return true;
+}
+
+// "M|k=w|h=1|t=YOUR CALL|a=SHOP IS STUCK|b=UNTIL YOU SAY YES|c=TO RM -RF DIST &&|d=NPM RUN BUILD"
+// k: w waiting on you, b a breakthrough, m your move, d session over. h: how many of the lines
+// are the first one (it is brighter), wrapped. The Mac wraps the words to 18 columns.
+// A bare "M|" takes the bubble away. Lines a to d, in order; the title alone is fine too.
+inline bool parseMoment(const char *line, Moment &m) {
+  if (line[0] != 'M' || line[1] != '|') return false;
+  Moment next;
+  const char *p = line + 2;
+  while (*p) {
+    const char *eq = strchr(p, '=');
+    if (!eq) return false;
+    const char *end = strchr(eq, '|');
+    if (!end) end = eq + strlen(eq);
+    size_t klen = (size_t)(eq - p), vlen = (size_t)(end - eq - 1);
+    const char *v = eq + 1;
+    if (klen == 1 && *p == 'k') next.kind = *v;
+    else if (klen == 1 && *p == 'h') next.head = atoi(v);
+    else if (klen == 1 && *p == 't') copyText(next.title, sizeof(next.title), v, vlen);
+    else if (klen == 1 && *p >= 'a' && *p <= 'd') {
+      int i = *p - 'a';
+      copyText(next.lines[i], sizeof(next.lines[i]), v, vlen);
+      if (i + 1 > next.count) next.count = i + 1;
+    }
+    p = *end ? end + 1 : end;
+  }
+  next.on = next.title[0] != 0;
+  m = next;
+  return true;
+}
+
+inline bool sameMoment(const Moment &a, const Moment &b) {
+  if (a.on != b.on || a.kind != b.kind || a.count != b.count || a.head != b.head || strcmp(a.title, b.title)) return false;
+  for (int i = 0; i < a.count; i++)
+    if (strcmp(a.lines[i], b.lines[i])) return false;
   return true;
 }
 
@@ -127,6 +181,14 @@ const Glyph FONT[] = {
     {'-', {0, 0, 0, 31, 0, 0, 0}}, {'.', {0, 0, 0, 0, 0, 12, 12}}, {',', {0, 0, 0, 0, 12, 4, 8}},
     {'!', {4, 4, 4, 4, 4, 0, 4}}, {'%', {24, 25, 2, 4, 8, 19, 3}}, {'/', {0, 1, 2, 4, 8, 16, 0}},
     {':', {0, 12, 12, 0, 12, 12, 0}}, {'+', {0, 4, 4, 31, 4, 4, 0}},
+    // for what the robot says: commands, file names, questions
+    {'&', {12, 18, 20, 8, 21, 18, 13}}, {'\'', {4, 4, 8, 0, 0, 0, 0}}, {'"', {10, 10, 0, 0, 0, 0, 0}},
+    {'(', {2, 4, 4, 4, 4, 4, 2}}, {')', {8, 4, 4, 4, 4, 4, 8}}, {'?', {14, 17, 1, 2, 4, 0, 4}},
+    {'=', {0, 0, 31, 0, 31, 0, 0}}, {'_', {0, 0, 0, 0, 0, 0, 31}}, {'*', {0, 10, 4, 10, 0, 0, 0}},
+    {'#', {10, 10, 31, 10, 31, 10, 10}}, {';', {0, 12, 12, 0, 12, 4, 8}}, {'<', {0, 2, 4, 8, 4, 2, 0}},
+    {'>', {0, 8, 4, 2, 4, 8, 0}}, {'@', {14, 17, 23, 21, 23, 16, 14}}, {'$', {4, 15, 20, 14, 5, 30, 4}},
+    {'|', {4, 4, 4, 4, 4, 4, 4}}, {'[', {6, 4, 4, 4, 4, 4, 6}}, {']', {12, 4, 4, 4, 4, 4, 12}},
+    {'~', {0, 0, 8, 21, 2, 0, 0}},
 };
 
 inline const uint8_t *glyph(char c) {
@@ -172,8 +234,46 @@ inline void bandCentered(Band &b, int y, const char *text, int scale, uint16_t c
   bandText(b, (W - textWidth(text, scale, gap)) / 2, y, text, scale, c, gap);
 }
 
-/** The top of the screen: which level, its name, the token burn, and how far up the intensity scale. */
-inline void drawHud(Band &b, const State &s, bool waiting) {
+/** What the robot is saying, in a box with a tail down to its antenna, where the words
+ *  at the top usually are (on the Mac, too, the level steps back while it speaks).
+ *  Pixel-style like the Mac's: notched corners, a 3-pixel border in the bubble's colour. */
+inline void drawBubble(Band &b, const State &s, const Moment &m) {
+  const uint16_t paper = rgb(0x0b0f15), ink2 = rgb(0xaab3c1);
+  uint16_t ground = GROUND[s.look];
+  uint16_t line = m.kind == 'w' ? rgb(0xffd25e) : m.kind == 'b' ? rgb(0x4fc9a4) : ACCENT[s.look];
+  bandRect(b, 0, b.y0, W, b.rows, ground);
+
+  const int x = 2, y = 0, w = W - 4, h = 102, k = 3;   // k: the border, one art pixel
+  bandRect(b, x + k, y, w - 2 * k, k, line);
+  bandRect(b, x + k, y + h - k, w - 2 * k, k, line);
+  bandRect(b, x, y + k, k, h - 2 * k, line);
+  bandRect(b, x + w - k, y + k, k, h - 2 * k, line);
+  bandRect(b, x + k, y + k, w - 2 * k, h - 2 * k, paper);
+  // the tail, stepping down to the robot's antenna below (art x 45 is display x 135)
+  const int tip = ROBOT_X * PX;             // the middle of the antenna's bulb
+  bandRect(b, tip - 6, y + h, 12, 3, line);
+  bandRect(b, tip - 3, y + h + 3, 6, 3, line);
+
+  // Title, then up to four lines (the first brighter), centred in the box from top to bottom.
+  const int scale = 2, pitch = 7 * scale + 4, inner = h - 2 * k;
+  int n = m.count < 0 ? 0 : m.count > 4 ? 4 : m.count;
+  int content = 7 * scale + (n ? 6 + n * pitch - 4 : 0);
+  int ty = y + k + (inner - content) / 2, tx = x + k + 7, room = w - 2 * k - 14;
+  int gap = textWidth(m.title, scale) <= room ? scale : 1;
+  bandText(b, tx, ty, m.title, scale, line, gap);
+  for (int i = 0; i < n; i++) {
+    int lg = textWidth(m.lines[i], scale) <= room ? scale : 1;
+    bandText(b, tx, ty + 7 * scale + 6 + i * pitch, m.lines[i], scale, i < m.head ? INK : ink2, lg);
+  }
+}
+
+/** The top of the screen: which level, its name, the token burn, and how far up the intensity scale,
+ *  or what the robot is saying when it says something. */
+inline void drawHud(Band &b, const State &s, bool waiting, const Moment &m) {
+  if (!waiting && m.on) {
+    drawBubble(b, s, m);
+    return;
+  }
   int look = waiting ? ASLEEP : s.look;
   uint16_t ground = GROUND[look], accent = ACCENT[look];
   bandRect(b, 0, b.y0, W, b.rows, ground);
@@ -217,9 +317,9 @@ inline void rect(uint16_t *fb, float fx, float fy, int w, int h, uint16_t c, int
 }
 
 /** The robot, standing with its feet at (cx, gy): steel grey, with a face that glows in the level's colour.
- *  The same drawing as on the Mac, look for look. */
-inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
-  bool asleep = look == ASLEEP, idle = look == IDLE, locked = look == LOCKED, over = look == OVERDRIVE, autop = look == AUTOPILOT;
+ *  The same drawing as on the Mac, look for look; `expr` is a reaction over the face (Expr). */
+inline void robot(uint16_t *fb, int cx, int gy, int look, float t, int expr = EX_NONE) {
+  bool asleep = look == ASLEEP && expr == EX_NONE, idle = look == IDLE, locked = look == LOCKED, over = look == OVERDRIVE, autop = look == AUTOPILOT;
   bool working = look == WARMING || look == CRUISING || locked || over;
   uint16_t accent = ACCENT[look];
   uint16_t body = rgb(0xa3b0c2), hi = rgb(0xd2dae5), sh = rgb(0x75839a), dark = rgb(0x4d586b);
@@ -242,7 +342,18 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
   // arms: resting at the sides, or raised and tapping while working
   float tapHz = look == WARMING ? 3 : look == CRUISING ? 6 : locked ? 10 : 15;
   int beat = (int)floorf(t * tapHz);
-  if (working) {
+  if (expr == EX_HAPPY) {
+    // both arms thrown up, waving out of step
+    int wl = (int)floorf(t * 5) % 2, wr = (int)floorf(t * 5 + 1) % 2;
+    R(x0 - 15, gy - 20, 4, 3, sh);
+    R(x0 - 18, gy - 23, 4, 3, sh);
+    R(x0 - 21, gy - 26 - wl, 4, 3, body);
+    R(x0 - 22, gy - 29 - wl, 5, 3, hi);
+    R(x0 + 11, gy - 20, 4, 3, sh);
+    R(x0 + 14, gy - 23, 4, 3, sh);
+    R(x0 + 17, gy - 26 - wr, 4, 3, body);
+    R(x0 + 17, gy - 29 - wr, 5, 3, hi);
+  } else if (working) {
     int l = beat % 2 ? 0 : 2, r = beat % 2 ? 2 : 0;
     R(x0 - 15, gy - 18, 4, 6, sh);
     R(x0 + 11, gy - 18, 4, 6, sh);
@@ -289,7 +400,33 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
   static const int LOOKS[6] = {-1, 0, 0, 1, 0, 0};
   int glance = idle ? LOOKS[(int)floorf(t / 1.3f) % 6] : 0;
   bool blink = !asleep && !over && !autop && fmodf(t, locked ? 6.3f : 3.7f) < 0.13f;
-  if (asleep || blink) {
+  if (expr == EX_WORRIED) {
+    // brows up in the middle, small eyes
+    R(lx, ey - 1, 2, 1, glow);
+    R(lx + 2, ey - 2, 2, 1, glow);
+    R(rx, ey - 2, 2, 1, glow);
+    R(rx + 2, ey - 1, 2, 1, glow);
+    R(lx + 1, ey + 1, 2, 3, glow);
+    R(rx + 1, ey + 1, 2, 3, glow);
+  } else if (expr == EX_HAPPY) {
+    int eyes[2] = {lx, rx};
+    for (int ex : eyes) {
+      R(ex, ey + 2, 1, 2, glow);
+      R(ex + 1, ey + 1, 2, 1, glow);
+      R(ex + 3, ey + 2, 1, 2, glow);
+    }
+  } else if (expr == EX_WAITING) {
+    // wide awake, looking out at you
+    if (fmodf(t, 2.9f) < 0.12f) {
+      R(lx, ey + 3, 4, 1, glow);
+      R(rx, ey + 3, 4, 1, glow);
+    } else {
+      R(lx, ey - 1, 4, 6, glow);
+      R(rx, ey - 1, 4, 6, glow);
+      R(lx + 1, ey + 1, 2, 2, screen);
+      R(rx + 1, ey + 1, 2, 2, screen);
+    }
+  } else if (asleep || blink) {
     R(lx, ey + 4, 4, 1, glow);
     R(rx, ey + 4, 4, 1, glow);
   } else if (autop) {
@@ -324,7 +461,15 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
 
   // mouth
   int my = hy + 14;
-  if (asleep) R(x0 - 1, my, 2, 1, glow);
+  if (expr == EX_WORRIED) {
+    for (int k = 0; k < 4; k++) R(x0 - 4 + k * 2, my - (k % 2), 2, 1, glow);
+  } else if (expr == EX_HAPPY) {
+    R(x0 - 5, my - 2, 1, 1, glow);
+    R(x0 + 4, my - 2, 1, 1, glow);
+    R(x0 - 4, my - 1, 8, 1, white);
+    R(x0 - 3, my, 6, 1, glow);
+  } else if (expr == EX_WAITING) R(x0 - 1, my - 1, 2, 2, glow);
+  else if (asleep) R(x0 - 1, my, 2, 1, glow);
   else if (autop) {
     R(x0 - 4, my - 1, 1, 1, glow);
     R(x0 - 3, my, 6, 1, glow);
@@ -377,6 +522,28 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t) {
     }
   }
 
+  // reactions that reach past the face
+  if (expr == EX_WORRIED) {
+    // a bead of sweat sliding down the side of the head
+    int s = (int)floorf(fmodf(t * 2.5f, 5));
+    R(x0 + 13, hy + 2 + s, 1, 1, rgb(0xbfe3ff));
+    R(x0 + 12, hy + 3 + s, 3, 2, rgb(0x8cc8f5));
+  } else if (expr == EX_HAPPY) {
+    static const int SX[4] = {-24, 21, -19, 25}, SY[4] = {-6, -9, 4, 2};
+    for (int k = 0; k < 4; k++) {
+      if ((int)floorf(t * 6 + k * 1.7f) % 3 == 0) continue;
+      uint16_t c = k % 2 ? rgb(0xfff6d2) : accent;
+      R(x0 + SX[k], hy + SY[k] - 1, 1, 3, c);
+      R(x0 + SX[k] - 1, hy + SY[k], 3, 1, c);
+    }
+  } else if (expr == EX_WAITING) {
+    // "!" over its shoulder, pulsing (a row lower than on the Mac: the scene starts right above)
+    if (fmodf(t, 1.2f) < 0.85f) {
+      R(x0 + 19, hy - 11, 2, 5, rgb(0xffd25e));
+      R(x0 + 19, hy - 5, 2, 2, rgb(0xffd25e));
+    }
+  }
+
   // asleep: z z z
   if (asleep) {
     for (int k = 0; k < 3; k++) {
@@ -404,7 +571,7 @@ const char *const TOKEN[3][3] = {
 
 /** The moving part of the screen: fire, falling tokens, embers, and the robot standing in them. */
 struct Scene {
-  static const int CX = 45, GY = 54;        // the robot's feet
+  static const int CX = ROBOT_X, GY = 54;   // the robot's feet
   uint8_t fire[AW * FH];
   float bump[AW];
   uint16_t palette[37];
@@ -586,7 +753,7 @@ struct Scene {
     rect(fb, CX - 24, GY, 48, 3, rgb(0x1d232d));
     rect(fb, CX - 24, GY, 48, 1, rgb(0x2f3846));
 
-    robot(fb, CX, GY, look, t);
+    robot(fb, CX, GY, look, t, waiting ? EX_NONE : s.expr);
 
     // tokens
     const uint16_t white = rgb(0xffffff);
