@@ -84,5 +84,23 @@
   "drift": [
     { "t": "Still there?", "a": "{project} has waited", "b": "{waited} on you." },
     { "t": "Over here", "a": "{project} handed you", "b": "the turn {waited} ago." }
-  ]
+  ],
+  "stretch": [
+    { "t": "Big session", "a": "{minutes} with Claude.", "b": "Good place to stop", "c": "for ten." },
+    { "t": "Long one", "a": "{minutes} in. Longer", "b": "than your usual.", "c": "Stand up. It keeps." }
+  ],
+  "glance": {
+    "needs": "Claude needs a yes: {detail}",
+    "running_test": "Claude is running tests",
+    "running_build": "Claude is building",
+    "running_typecheck": "Claude is checking types",
+    "working": "Claude is working",
+    "handed": "Claude handed it back {ago} ago",
+    "finished": "Claude finished {ago} ago",
+    "idle": "Claude is idle",
+    "nextNeeds": "Say yes or no to {detail} in {project}",
+    "nextReply": "Reply to Claude in {project}",
+    "nextRed": "{red} still failing in {project}",
+    "nextLast": "{next}"
+  }
 }

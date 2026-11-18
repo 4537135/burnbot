@@ -3,7 +3,7 @@
 //   History: the last week, the last month, or everything on record.
 // Burn is shown in tokens, never money.
 
-import { STATE_META, STATE_ORDER, LADDER, drawLogo, Scene } from './robot.js';
+import { STATE_META, STATE_ORDER, LADDER, drawLogo, drawRobot, Scene } from './robot.js';
 import { compact, duration, clock, subline, levelLine, nextLine } from './format.js';
 import { listen, tell } from './link.js';
 
@@ -976,7 +976,7 @@ function closeMenu() {
 function openMenu() {
   const screens = data?.meta?.screens ?? [];
   const item = (act, title, sub) => `<button data-act="${act}">${esc(title)}<small>${esc(sub)}</small></button>`;
-  let html = item('robot:0:0', 'Robot in a small window', 'Floats in the corner; move and resize it');
+  let html = item('robot:0:0', 'Robot on the desktop', 'Stands in a corner over your work; drag it anywhere');
   for (const d of [...screens.filter((d) => !d.primary), ...screens.filter((d) => d.primary)]) {
     html += item(`robot:${d.index}:1`, `Robot fullscreen on ${d.name}`, `${Math.round(d.width)} × ${Math.round(d.height)}${d.primary ? ' · your main screen' : ''}`);
   }
@@ -1001,20 +1001,29 @@ menu.addEventListener('click', (e) => {
 // ---- welcome, the first time (and again from the Burnbot menu) ----
 
 let welcomeShown = false;
+// Three sparks fanning out above its antenna: straight up, up and out, and out. One canvas pixel each.
+const SPARKS = [[33, 2], [33, 3], [33, 4], [33, 5], [38, 8], [39, 7], [40, 6], [41, 5], [40, 12], [41, 12], [42, 12], [43, 12]];
+function drawWelcomeRobot() {
+  const canvas = $('welcomeRobot');
+  if (canvas.width === 50) return; // drawn once: it holds still here
+  canvas.width = 50; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  drawRobot(ctx, 22, 62, 'cruising', 0.5, 'smile', { smoke: false });
+  ctx.fillStyle = '#ffd25e';
+  for (const [x, y] of SPARKS) ctx.fillRect(x, y, 1, 1);
+}
 function fillWelcome() {
-  const { scan, baseline, meta } = data;
-  $('welcomeFound').textContent =
+  const { scan, meta } = data;
+  const [title, line] =
     scan.phase !== 'live'
-      ? `Reading your history: ${scan.done} of ${scan.total} sessions…`
+      ? ['Getting ready', `Reading your history: ${scan.done} of ${scan.total} sessions…`]
       : !meta.foundLogs
-        ? 'No activity on this Mac yet. Start a Claude Code session and the robot wakes up by itself; there is nothing to connect.'
-        : baseline.calibrated
-          ? `Found ${baseline.daysOnRecord} days of your work in the last ${baseline.windowDays}. Burnbot is already calibrated to you, on ${duration(baseline.activeMinutes)} of hands-on time.`
-          : `Found your activity. Until it has seen two hours of your work, Burnbot uses starter values (${baseline.activeMinutes} of ${baseline.needMinutes} minutes so far).`;
-  if (!$('welcomeLadder').childElementCount) {
-    $('welcomeLadder').innerHTML = LADDER.map((s) => `<span class="chip lit" style="--c:${STATE_META[s].color}"><i></i>${esc(STATE_META[s].label)}</span>`).join('');
-    drawLogo($('welcomeRobot'), 'cruising');
-  }
+        ? ['Ready when you are', 'Start a Claude Code session and the robot wakes up by itself.']
+        : ['Ready to go', 'Your levels adapt to your own Claude Code activity.'];
+  $('readyTitle').textContent = title;
+  $('readyLine').textContent = line;
+  $('welcomeFound').classList.toggle('busy', scan.phase !== 'live');
+  drawWelcomeRobot();
 }
 function welcome(force = false) {
   if (!data) return;
@@ -1023,17 +1032,21 @@ function welcome(force = false) {
   welcomeShown = true;
   $('optLogin').checked = Boolean(data.meta.openAtLogin);
   $('optTop').checked = data.meta.keepOnTop !== false;
-  // Asked for the first time (new, or coming from 1.0): alerts default on, summaries off.
+  // Asked for the first time (new, or coming from 1.0): alerts default on. AI recaps are yours to
+  // switch on: the app keeps them off until you do, so this shows what is set now.
   $('optAlerts').checked = data.meta.firstRun ? true : Boolean(data.meta.claudeAlerts);
+  $('optAI').checked = Boolean(data.meta.aiOn);
   fillWelcome();
   $('welcome').hidden = false;
-  $('welcomeGo').focus({ preventScroll: true }); $('welcome').scrollTop = 0;
+  // Enter starts; the focus ring only shows once you reach for the keyboard.
+  $('welcomeGo').focus({ preventScroll: true, focusVisible: false }); $('welcome').scrollTop = 0;
 }
 window.burnbotWelcome = () => welcome(true);
 $('welcomeGo').addEventListener('click', () => {
   tell('openAtLogin', { on: $('optLogin').checked });
   tell('keepOnTop', { on: $('optTop').checked });
   tell('claudeAlerts', { on: $('optAlerts').checked });
+  tell('aiOn', { on: $('optAI').checked });
   tell('welcomed');
   $('welcome').hidden = true;
 });

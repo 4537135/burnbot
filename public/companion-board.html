@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desktop Robot Board</title>
+<link rel="stylesheet" href="pixel.css">
+<style>
+  /* The board for the desktop robot's three hover screens. Every robot here is the real
+     companion page (companion.html) in a frame, fed by hand, at actual size: one CSS pixel is one
+     point on a Mac screen, as the robot would stand on your desktop. */
+  :root {
+    --bg: #07090d; --card: #10141b; --rule: #232a36;
+    --ink: #eef1f6; --ink-2: #aab3c1; --ink-3: #7c8799;
+    --accent: #f4c542; --ok: #4fc9a4;
+    --wall-a: #2a3442; --wall-b: #151b24; --wall-ink: rgba(255, 255, 255, .06);
+  }
+  body[data-wall="light"] { --wall-a: #e4eaf1; --wall-b: #c3cfdc; --wall-ink: rgba(20, 30, 45, .07); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+  h1, h2, .pix { font-family: "Burnbot Pixel", ui-monospace, monospace; font-weight: 400; letter-spacing: .04em; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 0 0 4px; }
+  p { margin: 0 0 10px; max-width: 72ch; color: var(--ink-2); }
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 16px 80px; }
+  section { margin-top: 44px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; }
+  button {
+    font: inherit; font-size: 13px; color: var(--ink); background: var(--card); border: 1px solid var(--rule);
+    padding: 6px 12px; border-radius: 0; cursor: pointer;
+  }
+  button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .note { font-size: 13px; color: var(--ink-3); }
+
+  /* a wallpaper, with faint shapes so it is not flat */
+  .wall {
+    position: relative; overflow: hidden;
+    background:
+      radial-gradient(60% 80% at 20% 10%, var(--wall-ink), transparent 70%),
+      radial-gradient(50% 60% at 90% 90%, var(--wall-ink), transparent 70%),
+      linear-gradient(160deg, var(--wall-a), var(--wall-b));
+  }
+  .scroll { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+
+  /* ---------------------------------------------------------- the story stage: a busy desktop */
+  .desk { width: 1100px; height: 640px; flex: none; }
+  .win { position: absolute; background: #fff; box-shadow: 0 18px 40px rgba(0, 0, 0, .35), 0 0 0 1px rgba(0, 0, 0, .25); border-radius: 10px; overflow: hidden; }
+  .win .top { height: 28px; display: flex; gap: 7px; align-items: center; padding: 0 11px; }
+  .win .top i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; }
+  .win .top i + i { background: #febc2e; }
+  .win .top i + i + i { background: #28c840; }
+  .win .top b { margin-left: 10px; font-size: 12px; font-weight: 500; opacity: .7; }
+  .editor { left: 24px; top: 24px; width: 640px; height: 430px; background: #1e2128; color: #c9d1dc; }
+  .editor .top { background: #2a2e37; }
+  .code { padding: 12px 0; font: 12px/19px ui-monospace, Menlo, monospace; }
+  .code div { white-space: pre; padding-left: 14px; }
+  .code s { text-decoration: none; color: #586174; display: inline-block; width: 30px; }
+  .term { left: 300px; top: 290px; width: 560px; height: 310px; background: #0c0e12; color: #d7dde6; }
+  .term .top { background: #1d2027; color: #c8ced8; }
+  .term pre { margin: 0; padding: 10px 14px; font: 12px/18px ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  .term .g { color: #4fc9a4; } .term .r { color: #f4707e; } .term .y { color: #ffd25e; } .term .d { color: #7c8799; }
+  .web { left: 690px; top: 40px; width: 390px; height: 380px; color: #1d2430; }
+  .web .top { background: #eceff3; }
+  .web .url { margin: 8px 12px; height: 24px; border-radius: 6px; background: #eceff3; font-size: 11px; line-height: 24px; padding: 0 10px; color: #5c6675; }
+  .web .hero { margin: 10px 12px; height: 110px; border-radius: 6px; background: linear-gradient(120deg, #ffb36b, #f4707e); }
+  .web .t { margin: 8px 12px; height: 9px; border-radius: 3px; background: #d5dbe3; }
+  .stage iframe { position: absolute; right: 0; bottom: 0; width: 630px; height: 450px; border: 0; background: transparent; }
+  #cursor { position: absolute; left: 0; top: 0; width: 18px; height: 26px; pointer-events: none; z-index: 5; transition: opacity .2s; }
+  #cursor.gone { opacity: 0; }
+  .caption { display: flex; gap: 14px; align-items: baseline; margin-top: 10px; min-height: 52px; }
+  .caption b { font-family: "Burnbot Pixel", monospace; font-weight: 400; font-size: 20px; color: var(--accent); }
+  .caption span { font-size: 16px; }
+  .progress { height: 4px; background: var(--rule); margin-top: 8px; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); }
+
+  /* ---------------------------------------------------------- reference sheets */
+  .grid { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
+  /* Every robot is shown at its real size, so a frame wider than a phone scrolls inside itself. */
+  figure { margin: 0; flex: none; max-width: 100%; overflow-x: auto; }
+  figure .wall { border: 1px solid var(--rule); }
+  figure iframe { display: block; border: 0; background: transparent; }
+  figcaption { font-size: 13px; color: var(--ink-2); margin-top: 6px; max-width: 360px; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .row-title { margin: 22px 0 0; font-size: 14px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .12em; }
+
+  /* The page follows the viewer's light or dark setting; the robots stand on their own wallpaper. */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg: #f3f5f8; --card: #ffffff; --rule: #d3d9e2; --ink: #131820; --ink-2: #4a5464; --ink-3: #6b7484; --accent: #b98a00; }
+  }
+  :root[data-theme="light"] { --bg: #f3f5f8; --card: #ffffff; --rule: #d3d9e2; --ink: #131820; --ink-2: #4a5464; --ink-3: #6b7484; --accent: #b98a00; }
+</style>
+</head>
+<body data-wall="dark">
+<main>
+  <header>
+    <h1>Burnbot on your desktop</h1>
+    <p>Three ways for the robot's face to turn into a screen when you point at it. Every robot on this page is the real desktop robot at the size it stands on your screen (Medium unless marked). All three ship: pick yours in the robot's right-click menu or Robot → Hover Screen. Big shows the most, Wide takes the least height, Compact the least room.</p>
+    <div class="bar" role="group" aria-label="Wallpaper">
+      <span class="note">Wallpaper</span>
+      <button data-wall="dark" aria-pressed="true">Dark</button>
+      <button data-wall="light" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <section aria-labelledby="watch">
+    <h2 id="watch">Watch it</h2>
+    <p>About 50 seconds of a working session, played on a busy desktop. Pick a hover screen, or play all three in turn. Move your own pointer onto the stage and you can hover and click the robot yourself; the scripted pointer steps aside.</p>
+    <div class="bar">
+      <button data-style="1" aria-pressed="true">Big</button>
+      <button data-style="2" aria-pressed="false">Wide</button>
+      <button data-style="3" aria-pressed="false">Compact</button>
+      <button id="playAll">Play all three</button>
+      <button id="replay">Replay</button>
+    </div>
+    <div class="scroll">
+      <div class="desk wall stage" id="stage">
+        <div class="win editor"><div class="top"><i></i><i></i><i></i><b>checkout/tax.ts — shop</b></div><div class="code" id="code"></div></div>
+        <div class="win web"><div class="top"><i></i><i></i><i></i><b>Tax rules — Docs</b></div><div class="url">docs.example.com/tax/vat-rates</div><div class="hero"></div><div class="t" style="width:70%"></div><div class="t" style="width:88%"></div><div class="t" style="width:62%"></div><div class="t" style="width:80%"></div><div class="t" style="width:45%"></div></div>
+        <div class="win term"><div class="top"><i></i><i></i><i></i><b>claude — shop</b></div><pre id="term"></pre></div>
+        <iframe id="bot" title="The desktop robot" src="companion.html?demo=none&amp;right=0&amp;style=1"></iframe>
+        <svg id="cursor" class="gone" viewBox="0 0 18 26" aria-hidden="true"><path d="M1 1 L1 21 L6 16 L10 25 L13.5 23.5 L9.5 14.5 L16.5 14.5 Z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+    <div class="progress" aria-hidden="true"><i id="progress"></i></div>
+    <div class="caption" aria-live="polite"><b id="beatNo"></b><span id="beatText"></span></div>
+  </section>
+
+  <section aria-labelledby="rest">
+    <h2 id="rest">At rest</h2>
+    <p>No window, no backdrop: only the robot, with a little fire or a few embers when the level calls for it. The six levels and Autopilot, then the faces it pulls for a moment before settling back.</p>
+    <div class="grid" id="restGrid"></div>
+    <div class="row-title">Faces</div>
+    <div class="grid" id="faceGrid"></div>
+  </section>
+
+  <section aria-labelledby="hover">
+    <h2 id="hover">Hover</h2>
+    <p>Each hover screen with three things to say, at Medium, then the first of them at Small and Large.</p>
+    <div id="hoverRows"></div>
+  </section>
+
+  <section aria-labelledby="moments">
+    <h2 id="moments">Moments</h2>
+    <p>What it says, and how it looks while it says it. Yellow asks for you, green celebrates, the level's colour is everything else.</p>
+    <div class="grid" id="momentGrid"></div>
+  </section>
+
+  <section aria-labelledby="panel">
+    <h2 id="panel">Click: the panel</h2>
+    <p>The session you are on, what Claude is doing in it, and the one thing to do next. When Claude needs a yes, that comes first, with a button to go to it.</p>
+    <div class="grid" id="panelGrid"></div>
+  </section>
+
+  <section aria-labelledby="edges">
+    <h2 id="edges">At the edges</h2>
+    <p>The screen and the bubble always open toward the middle of the screen, so the robot can stand in any corner.</p>
+    <div class="grid" id="edgeGrid"></div>
+  </section>
+</main>
+
+<script type="module">
+import { demoState, DEMO_MOMENTS } from './demo.js';
+
+const $ = (id) => document.getElementById(id);
+const q = new URLSearchParams(location.search);
+
+// ------------------------------------------------------------------ what the robot is fed
+
+const g = (text, kind, next = null) => ({ title: 'Fix checkout tax tests', where: 'shop · feature/checkout', claude: { kind, text }, next });
+const card = (kind, title, lines, more = {}) => ({ id: `${kind}:${title}`, kind, title, lines, action: null, persistent: false, ...more });
+
+function build(spec) {
+  const base = demoState(spec.state || 'cruising', Date.now());
+  return {
+    ...base,
+    demo: true,
+    expr: spec.expr || '',
+    nowLine: spec.now ?? '',
+    moment: spec.moment || null,
+    glance: spec.glance || g('Claude is working', 'working'),
+    ...(spec.goal ? { goal: spec.goal } : {}),
+  };
+}
+
+// Each framed robot is spoken to by message (companion.js listens when it is in a frame), so the
+// board works wherever it is served from.
+const say = (frame, message) => frame.contentWindow?.postMessage({ burnbot: message.type, ...message }, '*');
+
+/** Feeds a framed robot, now and again every 2 s (some lines carry the time). */
+const fed = new Map();
+function feed(frame, spec) {
+  fed.set(frame, spec);
+  say(frame, { type: 'feed', state: build(spec) });
+}
+setInterval(() => fed.forEach((spec, frame) => feed(frame, spec)), 2000);
+
+const frames = new Set();
+let botBox = null; // the story robot, head to feet, in its frame's pixels
+addEventListener('message', (e) => {
+  const m = e.data;
+  if (!m || typeof m !== 'object') return;
+  const frame = [...frames].find((f) => f.contentWindow === e.source);
+  if (!frame) return;
+  if (m.burnbot === 'ready') {
+    if (frame.dataset.style) say(frame, { type: 'style', n: Number(frame.dataset.style) });
+    if (fed.has(frame)) feed(frame, fed.get(frame));
+    else if (frame === bot) beat = -1; // the story feeds it on its next frame
+  } else if (m.burnbot === 'robot' && frame === bot) botBox = m.box;
+});
+
+function framed(src, w, h, spec) {
+  const frame = document.createElement('iframe');
+  frame.loading = 'lazy';
+  frame.width = w;
+  frame.height = h;
+  frame.title = 'The desktop robot';
+  frame.src = src;
+  frames.add(frame);
+  fed.set(frame, spec);
+  return frame;
+}
+
+function figure(grid, frame, w, h, caption) {
+  const fig = document.createElement('figure');
+  const wall = document.createElement('div');
+  wall.className = 'wall';
+  wall.style.width = `${w}px`;
+  wall.style.height = `${h}px`;
+  wall.append(frame);
+  const cap = document.createElement('figcaption');
+  cap.innerHTML = caption;
+  const scroll = document.createElement('div');
+  scroll.className = 'scroll';
+  scroll.append(wall);
+  fig.append(scroll, cap);
+  grid.append(fig);
+}
+
+// ------------------------------------------------------------------ at rest
+
+const LEVELS = [
+  ['asleep', 'Asleep', 'Nothing for 30 min'],
+  ['idle', 'Chilling', 'Quiet for a few minutes'],
+  ['warming', 'Warming up', 'Working, below your usual pace'],
+  ['cruising', 'Cooking', 'Your usual pace'],
+  ['locked', 'Locked in', 'Well above your normal, and sustained'],
+  ['overdrive', 'On fire', 'Your top gear'],
+  ['autopilot', 'Autopilot', 'Claude working while you are away'],
+];
+for (const [state, name, about] of LEVELS) {
+  figure($('restGrid'), framed('companion.html?demo=none&right=1', 300, 276, { state }), 300, 276, `<b>${name}</b><br>${about}`);
+}
+const FACES = [
+  ['worried', 'Worried', 'A run failed'],
+  ['smile', 'Smile', 'Passed after one quick failure'],
+  ['happy', 'Happy', 'Green after failing'],
+  ['cheer', 'Cheer', 'Green after a long struggle'],
+  ['wave', 'Wave', 'Back after 30 min or more'],
+  ['tired', 'Tired', 'A long stretch, at a pause'],
+  ['waiting', 'Waiting', 'Claude needs a yes'],
+  ['puzzled', 'Puzzled', 'Going round'],
+  ['bored', 'Bored', 'Drifted while Claude waits'],
+];
+for (const [expr, name, about] of FACES) {
+  figure($('faceGrid'), framed('companion.html?demo=none&right=1', 300, 276, { state: 'cruising', expr }), 300, 276, `<b>${name}</b><br>${about}`);
+}
+
+// ------------------------------------------------------------------ hover
+
+const STYLE_NAMES = { 1: 'Big · the head grows', 2: 'Wide · the head widens', 3: 'Compact · a smaller head' };
+const SAYS = [
+  ['Cooking, running tests', { state: 'cruising', now: 'Claude running tests · 1m 40s', glance: g('Claude is running tests', 'running') }],
+  ['Autopilot', { state: 'autopilot', now: 'On: Fix checkout tax tests', glance: g('Claude is working', 'working') }],
+  ['Waiting on you', {
+    state: 'cruising', expr: 'waiting', now: 'Waiting on you · shop', glance: g('Claude needs a yes: npm test', 'needs'),
+    moment: card('waiting', 'Your call', ['shop is stuck', 'until you say yes to', 'npm test'], { action: 'focus', persistent: true }),
+  }],
+];
+const SIZES = [[2, 'Small'], [3, 'Medium'], [4, 'Large']];
+for (const style of [1, 2, 3]) {
+  const title = document.createElement('div');
+  title.className = 'row-title';
+  title.textContent = STYLE_NAMES[style];
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  $('hoverRows').append(title, grid);
+  const tile = (scale, says, spec) => {
+    const w = 120 * scale;
+    const h = 100 * scale;
+    figure(grid, framed(`companion.html?demo=none&right=1&hover=1&style=${style}&scale=${scale}`, w, h, spec), w, h,
+      `<b>${says}</b>${scale !== 3 ? ` · ${SIZES[scale - 2][1]}` : ''}`);
+  };
+  for (const [says, spec] of SAYS) tile(3, says, spec);
+  tile(2, SAYS[0][0], SAYS[0][1]);
+  tile(4, SAYS[0][0], SAYS[0][1]);
+}
+
+// ------------------------------------------------------------------ moments
+
+const MOMENT_NAMES = [
+  'A failing run: a bead of sweat, no words',
+  'Finally all green, after failing',
+  'Claude needs a yes',
+  'Your move: Claude handed it back while you were away',
+  'Session over',
+  'Going round: the same ask, no progress',
+  'Drifted while Claude waits on you',
+  'Daily goal hit: a face, no words',
+  'Passed after one quick failure: a small smile',
+  'Green after a long struggle: a cheer',
+  'Back after a long break: a wave',
+  'A long stretch, at a natural pause',
+];
+DEMO_MOMENTS.forEach((m, n) => {
+  const spec = { state: 'cruising', expr: m.expr, now: m.nowLine, moment: m.moment, glance: m.glance, goal: m.goal };
+  figure($('momentGrid'), framed('companion.html?demo=none&right=1', 630, 360, spec), 630, 360, `<b>${n + 1}.</b> ${MOMENT_NAMES[n] || ''}`);
+});
+
+// ------------------------------------------------------------------ the panel and the edges
+
+const m0 = DEMO_MOMENTS[0];
+const m2 = DEMO_MOMENTS[2];
+figure($('panelGrid'), framed('companion.html?demo=none&right=1&panel=1', 630, 450,
+  { state: 'cruising', now: m0.nowLine, glance: m0.glance }), 630, 450, '<b>Working</b> · tests still failing comes up next');
+figure($('panelGrid'), framed('companion.html?demo=none&right=1&panel=1', 630, 450,
+  { state: 'cruising', expr: 'waiting', now: m2.nowLine, moment: m2.moment, glance: m2.glance }), 630, 450, '<b>Claude needs a yes</b> · the bubble waits until the panel closes');
+for (const [right, down, where] of [[0, 0, 'Bottom right'], [1, 0, 'Bottom left'], [0, 1, 'Top right'], [1, 1, 'Top left']]) {
+  figure($('edgeGrid'), framed(`companion.html?demo=none&right=${right}&down=${down}`, 630, 450,
+    { state: 'cruising', expr: 'waiting', now: m2.nowLine, moment: m2.moment, glance: m2.glance }), 630, 450, `<b>${where}</b> of the screen`);
+}
+
+// ------------------------------------------------------------------ the busy desktop
+
+const CODE = [
+  ['import', ' { rateFor } ', 'from', " './rates';"], [], ['export function', ' taxFor(order: Order) {'],
+  ['  const', ' rate = rateFor(order.country);'], ['  if', ' (order.items.length === 0) ', 'return', ' 0;'],
+  ['  const', ' net = order.items.reduce((sum, i) => sum + i.price * i.qty, 0);'],
+  ['  // VAT is charged on shipping in the EU, not in the US'],
+  ['  const', ' base = order.eu ? net + order.shipping : net;'], ['  return', ' Math.round(base * rate * 100) / 100;'], ['}'], [],
+  ['export function', ' rounded(n: number) {'], ['  return', ' Math.round(n * 100) / 100;'], ['}'], [],
+  ['describe', "('taxFor', () => {"], ['  it', "('charges VAT on shipping in the EU', () => {"],
+  ['    expect', '(taxFor(euOrder)).toBe(4.2);'], ['  });'], ['});'],
+];
+$('code').innerHTML = CODE.map((parts, i) => `<div><s>${i + 1}</s>${parts.map((p, k) =>
+  `<span style="color:${p.startsWith('  //') ? '#6c7a8e' : k % 2 === 0 && parts.length > 1 ? '#c792ea' : '#c9d1dc'}">${p.replace(/</g, '&lt;')}</span>`).join('')}</div>`).join('');
+$('term').innerHTML = [
+  '<span class="d">&gt;</span> Make the EU shipping tax test pass',
+  '',
+  '<span class="y">●</span> Bash(npm test -- tax)',
+  '  <span class="r">✗ charges VAT on shipping in the EU</span>',
+  '    Expected: 4.2  Received: 3.6',
+  '',
+  '<span class="y">●</span> Update(checkout/tax.ts)',
+  '  <span class="g">+ const base = order.eu ? net + order.shipping : net;</span>',
+  '',
+  '<span class="y">●</span> Bash(npm test -- tax)',
+  '  <span class="g">✓ 14 passed</span>',
+].join('\n');
+
+// ------------------------------------------------------------------ the story
+
+const stage = $('stage');
+const bot = $('bot');
+const cursor = $('cursor');
+const AWAY = { x: 420, y: 160 };    // over the editor
+const HEAD = 'head';                // aim at the robot's head
+const BEATS = [
+  { at: 0, n: '1', text: 'Claude is idle. It just sits there.', spec: { state: 'idle', now: 'Last time: Fix checkout tax tests', glance: g('Claude is idle', 'idle') }, to: AWAY },
+  { at: 4, n: '2', text: 'Point at it: the face becomes a screen.', to: HEAD },
+  { at: 11, n: '3', text: 'Move away: the text clears and the eyes slide home.', to: AWAY },
+  { at: 14, n: '4', text: 'Claude starts. It warms up…', spec: { state: 'warming', now: 'On: Fix checkout tax tests', glance: g('Claude is working', 'working') } },
+  { at: 18, n: '4', text: '…and cooks.', spec: { state: 'cruising', now: 'Claude running tests · 20s', glance: g('Claude is running tests', 'running') } },
+  { at: 22, n: '5', text: 'Claude needs a yes: a “!” and the yellow bubble.', spec: {
+    state: 'cruising', expr: 'waiting', now: 'Waiting on you · shop', glance: g('Claude needs a yes: npm test', 'needs'),
+    moment: card('waiting', 'Your call', ['shop is stuck', 'until you say yes to', 'npm test'], { action: 'focus', persistent: true }) } },
+  { at: 30, n: '6', text: 'You say yes in the terminal. Back to work.', spec: { state: 'cruising', now: 'Claude running tests · 1m 10s', glance: g('Claude is running tests', 'running') } },
+  { at: 34, n: '6', text: 'The tests fail again: a bead of sweat, no words.', spec: { state: 'cruising', expr: 'worried', now: 'Claude running tests · 1m 40s', glance: g('Claude is running tests', 'running') } },
+  { at: 39, n: '7', text: 'Green after six tries and 14 min in the red: it cheers.', spec: {
+    state: 'cruising', expr: 'cheer', now: 'On: Fix checkout tax tests', glance: g('Claude is working', 'working'),
+    moment: card('breakthrough', 'Finally. All green.', ['6 tries.', '14 min in the red.', 'Commit it.']) } },
+  { at: 47, n: '·', text: 'Then it settles back to Cooking.', spec: { state: 'cruising', now: 'On: Fix checkout tax tests', glance: g('Claude is working', 'working') } },
+];
+const LENGTH = 52;
+
+let style = Number(q.get('style')) || 1;
+let all = false;
+let start = performance.now() - (Number(q.get('from')) || 0) * 1000;
+let beat = -1;
+let from = { ...AWAY };
+let to = AWAY;
+let moveAt = 0;
+let pointer = { ...AWAY };
+let userHere = false;
+
+function headPoint() {
+  const box = botBox;
+  if (!box) return { x: 944, y: 470 };
+  // the iframe sits at the stage's bottom right
+  return { x: stage.clientWidth - 630 + box.x + box.w / 2 + 6, y: stage.clientHeight - 450 + box.y + box.h * 0.3 };
+}
+
+function setStyle(n) {
+  style = n;
+  document.querySelectorAll('[data-style]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.style) === n)));
+  bot.dataset.style = String(n);
+  say(bot, { type: 'style', n });
+}
+
+function restart() {
+  start = performance.now();
+  beat = -1;
+  pointer = { ...AWAY };
+}
+
+function step(now) {
+  requestAnimationFrame(step);
+  let t = (now - start) / 1000;
+  if (t >= LENGTH) {
+    if (all) setStyle((style % 3) + 1);
+    restart();
+    t = 0;
+  }
+  $('progress').style.width = `${(t / LENGTH) * 100}%`;
+  let b = 0;
+  while (b + 1 < BEATS.length && BEATS[b + 1].at <= t) b++;
+  if (b !== beat) {
+    // jumping in part way: the latest food so far
+    const spec = [...BEATS.slice(0, b + 1)].reverse().find((x) => x.spec)?.spec;
+    if (spec) feed(bot, spec);
+    beat = b;
+    $('beatNo').textContent = BEATS[b].n;
+    $('beatText').textContent = BEATS[b].text;
+    const target = [...BEATS.slice(0, b + 1)].reverse().find((x) => x.to)?.to;
+    from = { ...pointer };
+    to = target;
+    moveAt = now;
+  }
+  // the scripted pointer glides over a second
+  const goal = to === HEAD ? headPoint() : to;
+  const k = Math.min(1, (now - moveAt) / 900);
+  const ease = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+  pointer = { x: from.x + (goal.x - from.x) * ease, y: from.y + (goal.y - from.y) * ease };
+  cursor.classList.toggle('gone', userHere);
+  cursor.style.transform = `translate(${Math.round(pointer.x)}px, ${Math.round(pointer.y)}px)`;
+  if (!userHere) {
+    const x = Math.round(pointer.x - (stage.clientWidth - 630));
+    const y = Math.round(pointer.y - (stage.clientHeight - 450));
+    const at = x >= 0 && y >= 0 ? `${x},${y}` : '';
+    if (at !== sentPointer) {
+      sentPointer = at;
+      say(bot, { type: 'pointer', x: at ? x : null, y });
+    }
+  }
+}
+let sentPointer = null;
+
+frames.add(bot);
+stage.addEventListener('mouseenter', () => {
+  userHere = true;
+  sentPointer = null;
+  say(bot, { type: 'pointer', x: null, y: null });
+});
+stage.addEventListener('mouseleave', () => (userHere = false));
+document.querySelectorAll('[data-style]').forEach((b) => b.addEventListener('click', () => {
+  all = false;
+  $('playAll').setAttribute('aria-pressed', 'false');
+  setStyle(Number(b.dataset.style));
+  restart();
+}));
+$('playAll').addEventListener('click', () => {
+  all = true;
+  $('playAll').setAttribute('aria-pressed', 'true');
+  setStyle(1);
+  restart();
+});
+$('replay').addEventListener('click', restart);
+document.querySelectorAll('[data-wall]').forEach((b) => b.addEventListener('click', () => {
+  document.body.dataset.wall = b.dataset.wall;
+  document.querySelectorAll('button[data-wall]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+}));
+if (q.get('wall') === 'light') document.querySelector('button[data-wall="light"]').click();
+setStyle(style);
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

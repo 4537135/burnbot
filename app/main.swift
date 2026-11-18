@@ -108,8 +108,8 @@ final class Engine {
                          "locked": "Locked in", "overdrive": "On fire", "autopilot": "Autopilot"]
     /// Called on the main thread with the state as JSON, about every two seconds.
     var onState: ((String) -> Void)?
-    /// A knock on the desk screen closed a bubble that was asking for you (main thread).
-    var onFocus: (() -> Void)?
+    /// A knock on the desk screen closed a bubble that was asking for you, with its session (main thread).
+    var onFocus: ((String) -> Void)?
     /// Whether the desk screen can feel knocks, and its knock setting, when that changes (main thread).
     var onDeskKnocks: ((Bool, Int) -> Void)?
     private var knockDismiss = false        // a knock closes the bubble; off until you have tried it on your desk
@@ -168,6 +168,15 @@ final class Engine {
     }
 
     /// Settings from the menu and the welcome screen.
+    /// You are pointing at the desktop robot or reading its panel: bubbles that can wait, wait.
+    func setBusy(_ on: Bool) {
+        queue.async {
+            guard self.moments.busy != on else { return }
+            self.moments.busy = on
+            log("moment you are \(on ? "reading the robot: bubbles wait" : "done reading the robot")")
+        }
+    }
+
     func setOptions(intelligence: Bool, aiOn: Bool, dailyGoal: Int) {
         queue.async {
             self.intelligence = intelligence
@@ -201,6 +210,14 @@ final class Engine {
         }
     }
 
+    /// The stretch with Claude so far and your usual long one, in minutes, from the last analysis.
+    private func stretch(_ state: [String: Any]?) -> (minutes: Int, long: Int)? {
+        guard let live = state?["live"] as? [String: Any], let baseline = state?["baseline"] as? [String: Any],
+              let minutes = (live["stretchMin"] as? NSNumber)?.intValue, let long = (baseline["longStretch"] as? NSNumber)?.intValue
+        else { return nil }
+        return (minutes, long)
+    }
+
     private func step() {
         tick += 1
         let changed = tick % 2 == 0 ? tracker.poll() : false
@@ -209,7 +226,8 @@ final class Engine {
         if signals.contains(where: { if case .prompt = $0 { return true } else { return false } }) { attention.learn() }
         let place = attention.now
         let moved = moments.tick(signals: signals, hooks: inbox.drain(), front: place.front, idle: place.idle,
-                                 level: (state?["live"] as? [String: Any])?["state"] as? String ?? "", goal: GoalState(state?["goal"], now: now), now: now)
+                                 level: (state?["live"] as? [String: Any])?["state"] as? String ?? "", goal: GoalState(state?["goal"], now: now),
+                                 stretch: stretch(state), now: now)
         if changed || state == nil || Int(now / 60000) != analyzedMinute || now - analyzedAt >= 10_000 {
             refresh()
         } else if moved || tick % 2 == 0 {
@@ -338,6 +356,14 @@ final class Engine {
         return demo.last(where: { $0.at <= elapsed })?.output ?? MomentsOutput()
     }
 
+    /// Where a session was started (see Tracker.origin), answered on the main thread.
+    func origin(of session: String, _ done: @escaping ((entry: String, cwd: String)?) -> Void) {
+        queue.async {
+            let found = self.tracker.origin(session)
+            DispatchQueue.main.async { done(found) }
+        }
+    }
+
     func dismissMoment(_ id: String) {
         queue.async {
             self.close(id, now: Date().timeIntervalSince1970 * 1000)
@@ -365,7 +391,7 @@ final class Engine {
             log("Test Knock: felt one")
         } else if knockDismiss, let card = shown.card {
             log("Knock closed \"\(card.title)\"")
-            if card.action == "focus", demoOutput(now) == nil { DispatchQueue.main.async { self.onFocus?() } }
+            if card.action == "focus", demoOutput(now) == nil { DispatchQueue.main.async { self.onFocus?(card.session) } }
             close(card.id, now: now)
         } else {
             return
@@ -410,10 +436,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private let pages = Pages(folder: pagesFolder)
     private var dashboard: NSWindow?
     private var dashboardView: WKWebView?
-    private var robotPanel: NSPanel?                // the small robot, floating over everything
-    private var robotStage: NSWindow?               // the robot filling a whole screen
-    private var robotView: WKWebView?
-    private var robotShown: Bool { robotPanel?.isVisible == true || robotStage?.isVisible == true }
+    private var companion: Companion?               // the robot standing on your desktop
+    private var robotStage: NSWindow?               // the robot's whole scene, filling a screen
+    private var robotView: WKWebView?               // the scene (display.html)
+    private var robotShown: Bool { companion?.isVisible == true || robotStage?.isVisible == true }
+    /// The page that shows the robot right now: the desktop robot's, or the scene's.
+    private var shownRobotView: WKWebView? { robotStage?.isVisible == true ? robotView : companion?.view }
     private var stageIsFull: Bool { robotStage?.styleMask.contains(.fullScreen) == true }
     private var listening: [WKWebView] = []         // pages that have asked for state
     private var latest = ""
@@ -424,8 +452,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var keepOnTop = fresh ? true : UserDefaults.standard.object(forKey: "keepRobotOnTop") as? Bool ?? true
     // 1 = saw the 1.0 welcome, 2 = saw the one that asks about Claude Code alerts and AI summaries.
     private var welcomed = fresh ? 0 : max(UserDefaults.standard.integer(forKey: "welcomeSeen"), UserDefaults.standard.bool(forKey: "welcomed") ? 1 : 0)
-    // AI recaps and loop judging are on unless you turned them off (the 1.1 opt-in key is not carried over).
-    private var aiOn = fresh || UserDefaults.standard.object(forKey: "aiOn") as? Bool ?? true
+    // AI recaps and loop judging: you opt in on the welcome. Someone who already answered the welcome
+    // and never touched the setting keeps it on, as they were told (the 1.1 opt-in key is not carried over).
+    private var aiOn = fresh ? false : UserDefaults.standard.object(forKey: "aiOn") as? Bool ?? (UserDefaults.standard.integer(forKey: "welcomeSeen") >= 2)
     private var dailyGoal = fresh ? 0 : UserDefaults.standard.integer(forKey: "dailyGoal")
     // The pricing switch: the robot's reactions, its Now line and summaries. On; the levels are never behind it.
     private let intelligence = fresh || UserDefaults.standard.object(forKey: "intelligence") as? Bool ?? true
@@ -453,7 +482,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self?.engine.attention.setFront(app?.bundleIdentifier ?? "")
         }
         engine.onState = { [weak self] json in self?.push(json) }
-        engine.onFocus = { [weak self] in self?.bringBackWork() }
+        engine.onFocus = { [weak self] session in self?.goTo(session: session) }
         engine.onDeskKnocks = { [weak self] can, level in
             self?.deskKnocks = can
             self?.deskSensitivity = level
@@ -520,7 +549,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         for view in listening { view.evaluateJavaScript("window.burnbotReceive && window.burnbotReceive(\(json))") }
     }
 
-    private func makeWebView() -> WKWebView {
+    private func makeWebView(firstClick: Bool = false) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(pages, forURLScheme: Pages.scheme)
         configuration.userContentController.add(self, name: "burnbot")
@@ -530,7 +559,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         window.addEventListener('unhandledrejection', (e) => webkit.messageHandlers.burnbot.postMessage({ type: 'error', text: 'unhandled: ' + ((e.reason && e.reason.message) || e.reason) }));
         """
         configuration.userContentController.addUserScript(WKUserScript(source: report, injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        let view = WKWebView(frame: .zero, configuration: configuration)
+        let view = firstClick ? FirstClickWebView(frame: .zero, configuration: configuration) : WKWebView(frame: .zero, configuration: configuration)
         view.navigationDelegate = self
         view.uiDelegate = self
         view.underPageBackgroundColor = .black
@@ -549,13 +578,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         log("Could not load \(webView.url?.absoluteString ?? "page"): \(error.localizedDescription)")
     }
 
-    /// Links that would open a new tab: the level preview goes to the robot window, web links to the browser.
+    /// Links that would open a new tab: the level preview goes to the robot, web links to the browser.
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         guard let url = navigationAction.request.url else { return nil }
         if url.scheme == Pages.scheme, url.path == "/display" {
             followSecondScreen = false
-            if !robotShown { showRobot(on: dashboard?.screen ?? NSScreen.screens[0], fullscreen: false) }
-            robotView?.load(URLRequest(url: url))
+            previewLevels()
         } else if url.scheme == "https" {
             NSWorkspace.shared.open(url)
         }
@@ -580,6 +608,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             refreshMeta()
         case "claudeAlerts":
             setClaudeAlerts(body["on"] as? Bool ?? false)
+        case "aiOn":
+            // It sends your session details to Claude: a missing or garbled answer changes nothing.
+            guard let on = body["on"] as? Bool else { return }
+            setAI(on)
         case "dailyGoal":
             setDailyGoal(body["n"] as? Int ?? 0)
         case "openAtLogin":
@@ -598,18 +630,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             hideRobot()
         case "flipDesk":
             engine.flipDesk()
+        case "hit":
+            let rects = (body["rects"] as? [[Any]] ?? []).map { $0.compactMap { ($0 as? NSNumber)?.doubleValue } }
+            let robot = (body["robot"] as? [Any] ?? []).compactMap { ($0 as? NSNumber)?.doubleValue }
+            companion?.setHits(rects, robot: robot)
+        case "where":
+            // The desktop robot's page is ready to hear where the robot stands (it asks once it has loaded:
+            // telling it sooner, before its script has run, would be lost).
+            companion?.tellPlace()
+        case "busy":
+            // You are reading the robot's face or its panel: a bubble that is not urgent waits.
+            engine.setBusy(body["on"] as? Bool ?? false)
+        case "panel":
+            companion?.watchOutside(body["open"] as? Bool ?? false)
+        case "dashboard":
+            showDashboard()
+        case "focus":
+            goTo(session: body["session"] as? String ?? "")
         case "moment":
             // A speech bubble was clicked: it goes, and if it was asking for you, so do you.
             guard let id = body["id"] as? String else { return }
-            if body["action"] as? String == "focus" { bringBackWork() }
+            if body["action"] as? String == "focus" { goTo(session: body["session"] as? String ?? "") }
             engine.dismissMoment(id)
         default:
             break
         }
     }
 
-    /// Brings forward the terminal or editor you were last working in. Through Launch Services,
-    /// because the robot's panel never makes Burnbot the active app, so a plain activate is refused.
     // ---------- the knock ----------
     private var knockDismiss = !fresh && UserDefaults.standard.bool(forKey: "knockDismiss")
     private var deskKnocks = false
@@ -634,6 +681,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         engine.testKnock()
     }
 
+    /// Go to it: takes you to the session a bubble or the panel is about. A session in the VS Code
+    /// extension (or a fork of it) gets its own window and its own Claude tab: opening the folder makes
+    /// the editor raise that window, which also moves you to its Space when it is full screen (a plain
+    /// activate leaves you where you are when "switch to a Space with open windows" is off). Then
+    /// the extension's link reveals the session's tab. Anything else brings back your work app.
+    private func goTo(session: String) {
+        guard !session.isEmpty else { return bringBackWork() }
+        engine.origin(of: session) { [weak self] found in
+            guard let self else { return }
+            guard let found, found.entry == "claude-vscode", let editor = Self.editor(prefer: self.engine.attention.workApp),
+                  let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: editor.id) else { return self.bringBackWork() }
+            let folder = URL(fileURLWithPath: found.cwd, isDirectory: true)
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            configuration.addsToRecentItems = false
+            log("Go to it: \(session.prefix(8)) in \(editor.id) at \((found.cwd as NSString).abbreviatingWithTildeInPath)")
+            NSWorkspace.shared.open([folder], withApplicationAt: app, configuration: configuration) { _, error in
+                if let error { log("Could not open \(found.cwd) in \(editor.id): \(error.localizedDescription)") }
+                var link = URLComponents()
+                link.scheme = editor.scheme
+                link.host = "anthropic.claude-code"
+                link.path = "/open"
+                link.queryItems = [URLQueryItem(name: "session", value: session)]
+                guard let url = link.url else { return }
+                DispatchQueue.main.async {
+                    NSWorkspace.shared.open([url], withApplicationAt: app, configuration: configuration) { _, error in
+                        if let error { log("Could not open the session's tab: \(error.localizedDescription)") }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Editors that run the Claude Code VS Code extension, with the link scheme each one answers.
+    private static let editors = [("com.microsoft.VSCode", "vscode"), ("com.microsoft.VSCodeInsiders", "vscode-insiders"),
+                                  ("com.todesktop.230313mzl4w4u92", "cursor"), ("com.exafunction.windsurf", "windsurf"),
+                                  ("com.vscodium", "vscodium")]
+
+    /// The editor to go to: the work app you were last in, if it is one, or else the first one running.
+    private static func editor(prefer workApp: String) -> (id: String, scheme: String)? {
+        if let hit = editors.first(where: { $0.0 == workApp }) { return hit }
+        let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+        return editors.first(where: { running.contains($0.0) })
+    }
+
+    /// Brings forward the terminal or editor you were last working in. Through Launch Services,
+    /// because the robot's panel never makes Burnbot the active app, so a plain activate is refused.
     private func bringBackWork() {
         let id = engine.attention.workApp
         guard !id.isEmpty, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return }
@@ -744,68 +838,98 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return others.first(where: { !$0.isBuiltIn }) ?? others.first
     }
 
-    /// A small 16:9 window in the bottom-right corner of a screen.
-    private func cornerFrame(on screen: NSScreen) -> NSRect {
-        let area = screen.visibleFrame
-        let width = min(560, (area.width * 0.4).rounded())
-        let height = (width * 9 / 16).rounded()
-        return NSRect(x: area.maxX - width - 24, y: area.minY + 24, width: width, height: height)
-    }
-
     private func robotWebView() -> WKWebView {
         if let view = robotView { return view }
-        let view = makeWebView()
+        // It sits on another screen while you work elsewhere: Go to it has to work on the first click.
+        let view = makeWebView(firstClick: true)
         view.load(URLRequest(url: URL(string: Pages.home + "display")!))
         robotView = view
         return view
     }
 
-    /// On top, the small robot floats over everything: every desktop, and other
+    /// On top, the desktop robot floats over everything: every desktop, and other
     /// apps' fullscreen windows too, the way a second screen would always be in view.
     private func applyWindowMode() {
-        guard let panel = robotPanel else { return }
-        panel.level = keepOnTop ? .floating : .normal
-        panel.isFloatingPanel = keepOnTop
-        panel.collectionBehavior = keepOnTop ? [.canJoinAllSpaces, .fullScreenAuxiliary] : []
+        companion?.setOnTop(keepOnTop)
     }
 
-    /// The small robot. A panel that does not take the focus, which is what
-    /// lets it stay visible over another app's fullscreen window.
-    private func showRobotPanel(on screen: NSScreen?) {
+    private func ensureCompanion() -> Companion {
+        if let companion { return companion }
+        let view = makeWebView(firstClick: true)
+        let made = Companion(view: view, remember: !fresh)
+        made.menu = { [weak self] in self?.companionMenu() ?? NSMenu() }
+        made.onHide = { [weak self] in self?.engine.setBusy(false) }
+        view.load(URLRequest(url: URL(string: Pages.home + "companion")!))
+        companion = made
+        return made
+    }
+
+    /// The robot on your desktop: no window around it, only the robot. It never takes the focus,
+    /// which is what lets it stay in view over another app's fullscreen window.
+    private func showCompanion(on screen: NSScreen?) {
         if stageIsFull {
-            afterExitFullScreen = { [weak self] in self?.showRobotPanel(on: screen) }
+            afterExitFullScreen = { [weak self] in self?.showCompanion(on: screen) }
             robotStage?.toggleFullScreen(nil)
             return
         }
         robotStage?.orderOut(nil)
-        if robotPanel == nil {
-            let home = screen ?? NSScreen.screens[0]
-            let panel = NSPanel(contentRect: cornerFrame(on: home), styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel], backing: .buffered, defer: false)
-            panel.title = "Burnbot Robot"
-            panel.appearance = NSAppearance(named: .darkAqua)
-            panel.titleVisibility = .hidden
-            panel.titlebarAppearsTransparent = true
-            panel.backgroundColor = .black
-            panel.isReleasedWhenClosed = false
-            panel.hidesOnDeactivate = false
-            panel.becomesKeyOnlyIfNeeded = true
-            panel.minSize = NSSize(width: 360, height: 202)
-            panel.delegate = self
-            // Remember where the person puts it.
-            if fresh || !panel.setFrameUsingName("BurnbotRobot") { panel.setFrame(cornerFrame(on: home), display: false) }
-            if !fresh { panel.setFrameAutosaveName("BurnbotRobot") }
-            robotPanel = panel
-        }
-        guard let panel = robotPanel else { return }
-        if let screen, panel.screen != screen { panel.setFrame(cornerFrame(on: screen), display: true) }
-        if panel.contentView !== robotView { panel.contentView = robotWebView() }
-        applyWindowMode()
+        let robot = ensureCompanion()
         // Regardless: the robot should come into view even when another app has the focus.
-        // (macOS also stops animating a window that is completely covered.)
-        panel.orderFrontRegardless()
-        log("Robot shown in a window on \(panel.screen?.localizedName ?? "?")")
+        robot.show(on: screen ?? dashboard?.screen, onTop: keepOnTop)
+        log("Robot shown on the desktop on \(robot.panel.screen?.localizedName ?? "?")")
         updateAwake()
     }
+
+    /// Right-click the robot.
+    private func companionMenu() -> NSMenu {
+        let menu = NSMenu()
+        func entry(_ title: String, _ action: Selector, tag: Int = 0, on: Bool = false) -> NSMenuItem {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            item.tag = tag
+            item.state = on ? .on : .off
+            return item
+        }
+        menu.addItem(entry("Open Dashboard", #selector(showDashboard)))
+        menu.addItem(.separator())
+        menu.addItem(sizeMenuItem())
+        menu.addItem(styleMenuItem())
+        menu.addItem(entry("Keep on Top", #selector(toggleKeepOnTop), on: keepOnTop))
+        if secondScreen() != nil { menu.addItem(entry("Robot on the Second Screen", #selector(robotToSecondScreen))) }
+        menu.addItem(.separator())
+        menu.addItem(entry("Hide Robot", #selector(hideRobot)))
+        return menu
+    }
+
+    private func sizeMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: "Robot Size", action: nil, keyEquivalent: "")
+        let menu = NSMenu()
+        for (index, name) in Companion.sizeNames.enumerated() {
+            let entry = NSMenuItem(title: name, action: #selector(pickRobotSize(_:)), keyEquivalent: "")
+            entry.target = self
+            entry.tag = index
+            menu.addItem(entry)
+        }
+        item.submenu = menu
+        return item
+    }
+
+    /// How the robot's head turns into a screen when you point at it: yours to pick.
+    private func styleMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: "Hover Screen", action: nil, keyEquivalent: "")
+        let menu = NSMenu()
+        for (index, name) in Companion.styleNames.enumerated() {
+            let entry = NSMenuItem(title: name, action: #selector(pickHoverStyle(_:)), keyEquivalent: "")
+            entry.target = self
+            entry.tag = index + 1
+            menu.addItem(entry)
+        }
+        item.submenu = menu
+        return item
+    }
+
+    @objc func pickRobotSize(_ sender: NSMenuItem) { ensureCompanion().setSize(sender.tag) }
+    @objc func pickHoverStyle(_ sender: NSMenuItem) { ensureCompanion().setStyle(sender.tag) }
 
     /// The robot filling a whole screen, as a normal fullscreen window.
     private func showRobotStage(on screen: NSScreen) {
@@ -828,7 +952,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             robotStage = window
         }
         guard let window = robotStage else { return }
-        robotPanel?.orderOut(nil)
+        companion?.hide()
         if window.contentView !== robotView { window.contentView = robotWebView() }
         window.setFrame(screen.visibleFrame, display: true)
         window.orderFrontRegardless()
@@ -840,7 +964,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     private func showRobot(on screen: NSScreen, fullscreen: Bool) {
-        if fullscreen { showRobotStage(on: screen) } else { showRobotPanel(on: screen) }
+        if fullscreen { showRobotStage(on: screen) } else { showCompanion(on: screen) }
     }
 
     @objc func toggleRobotFullScreen() {
@@ -848,7 +972,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if stageIsFull {
             robotStage?.toggleFullScreen(nil)       // back to the small robot, see windowDidExitFullScreen
         } else {
-            showRobotStage(on: robotPanel?.screen ?? dashboard?.screen ?? NSScreen.screens[0])
+            showRobotStage(on: companion?.panel.screen ?? dashboard?.screen ?? NSScreen.screens[0])
         }
     }
 
@@ -858,9 +982,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     @objc func showRobotLive() {
-        if robotView?.url?.query != nil { robotView?.load(URLRequest(url: URL(string: Pages.home + "display")!)) }
+        backToLive()
         if robotShown {
-            (stageIsFull ? robotStage : robotPanel)?.orderFrontRegardless()
+            if stageIsFull { robotStage?.orderFrontRegardless() } else { companion?.panel.orderFrontRegardless() }
         } else {
             let second = secondScreen()
             followSecondScreen = true
@@ -876,25 +1000,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc func robotToWindow() {
         followSecondScreen = false
-        showRobotPanel(on: robotShown ? nil : dashboard?.screen)
+        showCompanion(on: robotShown ? nil : dashboard?.screen)
+    }
+
+    /// The pages showing the robot back on your own data, after a preview.
+    private func backToLive() {
+        if robotView?.url?.query != nil { robotView?.load(URLRequest(url: URL(string: Pages.home + "display")!)) }
+        if let view = companion?.view, view.url?.query != nil { view.load(URLRequest(url: URL(string: Pages.home + "companion")!)) }
     }
 
     @objc func previewLevels() {
         if !robotShown { robotToWindow() }
-        robotView?.load(URLRequest(url: URL(string: Pages.home + "display?demo=cycle")!))
+        let page = robotStage?.isVisible == true ? "display" : "companion"
+        shownRobotView?.load(URLRequest(url: URL(string: Pages.home + page + "?demo=cycle")!))
     }
 
     /// A recorded session through the robot's real reactions, about a minute long, on the
-    /// robot window and the desk screen; then back to your own.
+    /// robot and the desk screen; then back to your own.
     @objc func playMoments() {
         if !robotShown { robotToWindow() }
-        if robotView?.url?.query != nil { robotView?.load(URLRequest(url: URL(string: Pages.home + "display")!)) }
+        backToLive()
         engine.playDemo(demoFolder)
     }
 
     @objc func hideRobot() {
         followSecondScreen = false
-        robotPanel?.orderOut(nil)
+        companion?.hide()
         if stageIsFull {
             afterExitFullScreen = { [weak self] in self?.robotStage?.orderOut(nil) }
             robotStage?.toggleFullScreen(nil)
@@ -905,7 +1036,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     @objc func reload() {
-        (NSApp.keyWindow === dashboard ? dashboardView : robotView)?.reload()
+        if NSApp.keyWindow === dashboard { dashboardView?.reload() } else { shownRobotView?.reload() }
     }
 
     /// A screen was plugged in or removed.
@@ -920,8 +1051,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         } else if stageIsFull {
             // Its screen is gone: do not sit fullscreen over the only screen left.
             log("Second screen removed")
-            showRobotPanel(on: NSScreen.screens[0])
+            showCompanion(on: NSScreen.screens[0])
         }
+        companion?.settle()                         // keep the desktop robot on a screen that is still there
     }
 
     func windowDidEnterFullScreen(_ notification: Notification) { updateAwake() }
@@ -933,13 +1065,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             afterExitFullScreen = nil
             work()
         } else {
-            showRobotPanel(on: nil)                 // left fullscreen by hand: back to the small robot
+            showCompanion(on: nil)                  // left fullscreen by hand: back to the desktop robot
         }
     }
 
     func windowWillClose(_ notification: Notification) {
         let closing = notification.object as? NSWindow
-        if closing === robotPanel || closing === robotStage { followSecondScreen = false }
+        if closing === robotStage { followSecondScreen = false }
         DispatchQueue.main.async { self.updateAwake() }
     }
 
@@ -993,7 +1125,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             item("Show Robot", #selector(showRobotLive), "2", mine: true),
             .separator(),
             item("Robot on the Second Screen", #selector(robotToSecondScreen), "3", mine: true),
-            item("Robot in a Window", #selector(robotToWindow), "4", mine: true),
+            item("Robot on the Desktop", #selector(robotToWindow), "4", mine: true),
+            sizeMenuItem(),
+            styleMenuItem(),
             item("Keep Robot on Top", #selector(toggleKeepOnTop), "t", mine: true),
             item("Hide Robot", #selector(hideRobot), mine: true),
             .separator(),
@@ -1028,6 +1162,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         if menuItem.action == #selector(robotToSecondScreen) { return secondScreen() != nil }
         if menuItem.action == #selector(hideRobot) { return robotShown }
+        if menuItem.action == #selector(pickRobotSize(_:)) { menuItem.state = menuItem.tag == (companion?.size ?? 1) ? .on : .off }
+        if menuItem.action == #selector(pickHoverStyle(_:)) { menuItem.state = menuItem.tag == (companion?.style ?? 1) ? .on : .off }
         if menuItem.action == #selector(toggleKeepOnTop) { menuItem.state = keepOnTop ? .on : .off }
         if menuItem.action == #selector(toggleOpenAtLogin) { menuItem.state = openAtLogin ? .on : .off }
         if menuItem.action == #selector(toggleClaudeAlerts) { menuItem.state = hooks.installed ? .on : .off }
@@ -1069,26 +1205,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
 
-    /// The robot's reactions (display?demo=moments), at the robot window's size and at a big one,
-    /// then back to the live robot.
+    /// The robot's reactions (?demo=moments): the desktop robot's, with its head as a screen and its
+    /// panel open, and the scene's too while it is on a screen; then back to the live robot.
     private func snapshotMoments(in directory: URL) {
-        guard let view = robotView, let window = view.window else { return }
-        let original = window.frame
-        let big = NSSize(width: 1120, height: 630)
-        var steps = (0..<8).map { (name: "robot-moment-\($0)", size: original.size, n: $0) }
-            + (0..<8).map { (name: "robot-moment-big-\($0)", size: big, n: $0) }
+        var steps: [(name: String, view: WKWebView, page: String)] = []
+        if let view = companion?.view, companion?.isVisible == true {
+            steps += (0..<12).map { ("robot-moment-\($0)", view, "companion?demo=moments&n=\($0)") }
+            steps += [("robot-hover", view, "companion?demo=cruising&hover=1"),
+                      ("robot-panel", view, "companion?demo=moments&n=2&panel=1")]
+        }
+        if let view = robotView, robotStage?.isVisible == true {
+            steps += (0..<12).map { ("robot-moment-big-\($0)", view, "display?demo=moments&n=\($0)") }
+        }
         func next() {
-            guard !steps.isEmpty else {
-                window.setFrame(original, display: true)
-                view.load(URLRequest(url: URL(string: Pages.home + "display")!))
-                return
-            }
+            guard !steps.isEmpty else { return backToLive() }
             let step = steps.removeFirst()
-            if window.frame.size != step.size, !window.styleMask.contains(.fullScreen) {
-                window.setFrame(NSRect(origin: original.origin, size: step.size), display: true)
-            }
-            view.load(URLRequest(url: URL(string: Pages.home + "display?demo=moments&n=\(step.n)")!))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.capture(view, as: step.name, in: directory) { next() } }
+            step.view.load(URLRequest(url: URL(string: Pages.home + step.page)!))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.capture(step.view, as: step.name, in: directory) { next() } }
         }
         next()
     }
@@ -1098,11 +1231,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private func snapshot(to folder: String) {
         let directory = URL(fileURLWithPath: folder)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let frames = [dashboard, robotPanel, robotStage].compactMap { $0 }.filter { $0.isVisible }.map {
+        let frames = [dashboard, companion?.panel, robotStage].compactMap { $0 }.filter { $0.isVisible }.map {
             "\($0.title) \(Int($0.frame.width))x\(Int($0.frame.height)) on \($0.screen?.localizedName ?? "no screen") inView=\($0.occlusionState.contains(.visible)) level=\($0.level.rawValue)"
         }
         log("Windows: \(frames.joined(separator: "; "))")
-        capture(robotView, as: "robot", in: directory) { self.snapshotMoments(in: directory) }
+        capture(shownRobotView, as: "robot", in: directory) { self.snapshotMoments(in: directory) }
 
         // Today from the top and further down, then History the same way.
         var shots: [(name: String, script: String)] = [

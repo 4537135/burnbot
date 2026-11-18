@@ -131,9 +131,23 @@ func replayTimeline(_ folder: String, voice: Voice, frame: ((Double, MomentsOutp
     // "levels": true prints the level each minute; "goal": n sets the daily goal (the replay has no other days).
     let showLevels = settings["levels"] as? Bool ?? false
     let goalSet = (settings["goal"] as? NSNumber)?.intValue
+    // "stretch": n is your long one, in minutes; without "levels" the stretch is already that long at the
+    // first log line, so a replay can test the natural pause without hours of logs.
+    let stretchLong = (settings["stretch"] as? NSNumber)?.intValue
+    // "desk": true prints the face the desk screen draws when it changes; "glance": true what Claude is
+    // doing as the robot's head and panel say it.
+    let showDesk = settings["desk"] as? Bool ?? false
+    let showGlance = settings["glance"] as? Bool ?? false
+    var shownDesk = ""
+    var shownGlance = ""
+    let busy: [(Double, Double)] = (settings["busy"] as? [[String]] ?? []).compactMap {
+        guard $0.count == 2, let a = milliseconds($0[0]), let b = milliseconds($0[1]) else { return nil }
+        return (a, b)
+    }
     let stamp = DateFormatter()
     stamp.dateFormat = "HH:mm:ss"
     var shownLevel = ""
+    var stretchSeen = 0
 
     var hookIndex = 0
     var level = ""
@@ -154,12 +168,33 @@ func replayTimeline(_ folder: String, voice: Voice, frame: ((Double, MomentsOutp
                                 now: now, askedAt: askedAt, goal: goalSet ?? 0)
             level = (state["live"] as? [String: Any])?["state"] as? String ?? ""
             if goalSet != nil { goal = GoalState(state["goal"], now: now) }
-            if showLevels && minutely && level != shownLevel {
-                out.append("\(stamp.string(from: Date(timeIntervalSince1970: now / 1000)))  LEVEL \(level)\(askedAt > 0 ? " (a question or plan is open)" : "")")
-                shownLevel = level
+            stretchSeen = ((state["live"] as? [String: Any])?["stretchMin"] as? NSNumber)?.intValue ?? 0
+            if showLevels && minutely {
+                let told = level + (stretchLong != nil ? " · stretch \(stretchSeen / 5 * 5)+ min" : "")
+                if told != shownLevel {
+                    out.append("\(stamp.string(from: Date(timeIntervalSince1970: now / 1000)))  LEVEL \(level)\(askedAt > 0 ? " (a question or plan is open)" : "")\(stretchLong != nil ? " · stretch \(stretchSeen) min" : "")")
+                }
+                shownLevel = told
             }
         }
-        moments.tick(signals: signals, hooks: due, front: place.front, idle: place.idle, level: level, goal: goal, now: now)
+        // "busy": [[from, to], …] (ISO) stands in for you pointing at the robot or reading its panel.
+        moments.busy = busy.contains { $0.0 <= now && now < $0.1 }
+        moments.tick(signals: signals, hooks: due, front: place.front, idle: place.idle, level: level, goal: goal,
+                     // With "levels" the stretch is the real one, from the levels; without, it is already long at the start.
+                     stretch: stretchLong.map { long in showLevels ? (stretchSeen, long) : (long + Int((now - first) / 60_000), long) },
+                     now: now)
+        let clock = stamp.string(from: Date(timeIntervalSince1970: now / 1000))
+        if showDesk {
+            let face = deskFace(moments.output.expr)
+            if face != shownDesk { out.append("\(clock)  DESK ex=\(face.isEmpty ? "-" : face)") }
+            shownDesk = face
+        }
+        if showGlance {
+            let g = moments.output.glance
+            let told = "\(g.claudeKind): \(g.claude)" + (g.next.isEmpty ? "" : " · next: \(g.next)")
+            if told != shownGlance { out.append("\(clock)  GLANCE \(told)") }
+            shownGlance = told
+        }
         frame?(now, moments.output)
         now += 1000
     }

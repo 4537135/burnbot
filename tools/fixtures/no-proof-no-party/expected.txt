@@ -3,7 +3,9 @@
 10:00:50  test failed (1 so far): worried face, 5 s
 10:00:50  FACE worried
 10:00:55  FACE normal
-10:01:50  test passed after one quick failure: nothing to celebrate
+10:01:50  test passed after one quick failure: a small smile, 2.5 s
+10:01:50  FACE smile
+10:01:53  FACE normal
 10:03:40  test failed (1 so far): worried face, 5 s
 10:03:40  FACE worried
 10:03:45  FACE normal

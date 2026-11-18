@@ -253,7 +253,14 @@ func deskLine(_ state: [String: Any], names: [String: String], expr: String = ""
         "rt=\(tokens((live["tokensPerHour"] as? NSNumber)?.doubleValue ?? 0))",
         String(format: "tm=%02d:%02d", clock.hour ?? 0, clock.minute ?? 0),
     ].joined(separator: "|") + goal
-        + (expr.isEmpty ? "" : "|ex=" + (["worried": "w", "happy": "h", "waiting": "a", "puzzled": "p", "bored": "d"][expr] ?? "-"))
+        + (expr.isEmpty ? "" : "|ex=" + (deskFace(expr).isEmpty ? "-" : deskFace(expr)))
+}
+
+/// The desk's letter for a reaction ("ex=" in the B line), or "" for the level's own face. The desk
+/// draws five faces: worried, happy, waiting, puzzled, bored. A cheer and a wave are its happy face;
+/// a small smile and a tired face are its level face.
+func deskFace(_ expr: String) -> String {
+    ["worried": "w", "happy": "h", "cheer": "h", "wave": "h", "waiting": "a", "puzzled": "p", "bored": "d"][expr] ?? ""
 }
 
 /// What the robot is saying, as the desk draws it: capitals, the board's own letters, the words

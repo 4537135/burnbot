@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Burnbot</title>
+<link rel="stylesheet" href="pixel.css">
+<link rel="stylesheet" href="bubble.css">
+<style>
+  /* The desktop robot. Nothing here has a background: the window is see-through, and only the
+     robot, its bubble and its panel are drawn. --s is one robot pixel, in CSS pixels. */
+  :root { --s: 3px; --state: #6f83ad; --ink: #eef1f6; --ink-2: #aab3c1; --ink-3: #7c8799; --text: calc(5 * var(--s)); }
+  * { box-sizing: border-box; border-radius: 0; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: transparent; }
+  body {
+    font-family: "Burnbot Pixel", ui-monospace, Menlo, monospace; color: var(--ink);
+    -webkit-font-smoothing: none; font-smooth: never; -webkit-user-select: none; user-select: none; cursor: default;
+  }
+  p, h2, h3, h4 { margin: 0; font-weight: 400; }
+  #robot { position: fixed; left: 0; top: 0; image-rendering: pixelated; pointer-events: none; }
+
+  /* The head as a screen. Placed over the screen the canvas draws, in robot pixels. */
+  #screen { position: fixed; left: 0; top: 0; pointer-events: none; font-size: var(--text); line-height: calc(6 * var(--s)); white-space: nowrap; }
+  #screen > * { position: absolute; overflow: hidden; text-overflow: ellipsis; visibility: hidden; }
+  #screen > .on { visibility: visible; }
+  #sTitle { color: var(--state); letter-spacing: .05em; }
+  #sNow { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+  #sNow.ask { color: #ffd25e; }
+  #sRate { color: var(--ink-2); text-align: right; }
+
+  .bubble { --p: var(--s); --bt: var(--text); --bl: var(--text); --bs: var(--text); --bmax: calc(92 * var(--s));
+    --bpad: calc(4 * var(--s)) calc(5 * var(--s)) calc(4.5 * var(--s)); }
+  .bubble h2 { margin-bottom: .6em; }
+  .bubble p { line-height: 1.4; }
+
+  /* Click the robot: a short panel beside its head, with a bubble's frame and tail, in the level's colour. */
+  #panel {
+    --p: var(--s);
+    --line: var(--state);
+    position: fixed; left: 0; top: 0; z-index: 6; width: calc(98 * var(--s));
+    padding: calc(4 * var(--s)) calc(5 * var(--s)) calc(4 * var(--s));
+    background: #0b0f15; font-size: var(--text); line-height: 1.4;
+    box-shadow: 0 calc(-1 * var(--p)) 0 0 var(--state), 0 var(--p) 0 0 var(--state), calc(-1 * var(--p)) 0 0 0 var(--state), var(--p) 0 0 0 var(--state),
+      0 0 0 calc(2 * var(--p)) rgba(0, 0, 0, .35);
+    visibility: hidden; opacity: 0; transform: translateY(calc(2 * var(--p)));
+    transition: opacity .2s steps(3), transform .2s steps(3), visibility 0s .2s;
+  }
+  #panel.on { visibility: visible; opacity: 1; transform: none; transition: opacity .2s steps(3), transform .2s steps(3); }
+  #panel p { overflow-wrap: anywhere; }
+  #pTitle { color: var(--ink); }
+  #pWhere { color: var(--ink-3); }
+  #pClaude { margin-top: calc(3 * var(--s)); }
+  #pClaude.ask { color: #ffd25e; }
+  #pLevel { color: var(--state); }
+  #pRate { color: var(--ink-3); }
+  #pNext { margin-top: calc(3 * var(--s)); }
+  #pNext[hidden] { display: none; }
+  #pNext h4 { font-size: var(--text); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); }
+  #panel button:not(.go) {
+    font: inherit; color: var(--ink); background: #1a2130; border: 0; padding: calc(1 * var(--s)) calc(3 * var(--s)); margin-top: calc(2 * var(--s));
+    box-shadow: 0 0 0 var(--p) #2f3846; cursor: pointer;
+  }
+  #panel button:not(.go):hover { background: #253045; }
+  #pGo { margin-top: calc(3 * var(--s)); }
+  #pDash { display: block; margin-top: calc(4 * var(--s)) !important; }
+
+  #toast { position: fixed; left: 0; top: 0; font-size: var(--text); color: var(--ink-2); visibility: hidden; }
+  @media (prefers-reduced-motion: reduce) { #panel { transition: none; } }
+</style>
+</head>
+<body>
+  <canvas id="robot" aria-hidden="true"></canvas>
+  <div id="screen" aria-live="polite">
+    <p id="sTitle"></p>
+    <p id="sNow"></p>
+    <p id="sRate"></p>
+  </div>
+  <div id="bubble" class="bubble side" role="status" aria-live="assertive"><h2 id="bubbleTitle"></h2><div id="bubbleLines"></div><button id="bubbleGo" class="go" type="button" hidden><span>Go to it</span><i aria-hidden="true"></i></button><i class="tail"></i></div>
+  <div id="panel" class="panel" role="dialog" aria-label="Burnbot">
+    <p id="pTitle"></p>
+    <p id="pWhere"></p>
+    <p id="pClaude"></p>
+    <p id="pLevel"></p>
+    <p id="pRate"></p>
+    <div id="pNext" hidden><h4>Up next</h4><p id="pNextText"></p><button id="pGo" class="go" type="button"><span>Go to it</span><i aria-hidden="true"></i></button></div>
+    <button id="pDash" type="button">Open Dashboard</button>
+    <i class="tail" aria-hidden="true"></i>
+  </div>
+  <script type="module" src="companion.js"></script>
+</body>
+</html>

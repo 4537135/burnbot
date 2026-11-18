@@ -47,6 +47,12 @@ struct Config {
     var goalDefault = 3             // until there are enough working days to go by
     var goalMinDays = 7
     var workingDayMin = 30          // a day with less hands-on time than this neither counts nor breaks a streak
+    // A stretch with Claude: minutes at Warming up or above, ended by this long without one.
+    var stretchGap = 15
+    var stretchDefault = 90         // your long one, until enough stretches are known
+    var stretchQuantile = 0.9
+    var stretchRange = (75, 180)
+    var stretchSamples = 10         // stretches of 30 min or more needed to learn it
     // Used until there is enough history: the value that counts as "typical".
     var defaultBurn = 3e6, defaultTyping = 400.0, defaultActions = 20.0
 }
@@ -270,6 +276,28 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
         previous = s
     }
 
+    // ---- stretches with Claude ----
+    // Only minutes you and Claude are at it count: at Warming up or above, with Claude or you doing
+    // something in that minute. Autopilot is Claude alone, and a break in Safari while Claude is idle
+    // adds nothing, so a stretch is those minutes, not the time on the clock.
+    var stretches: [Double] = []
+    var stretchRun = 0
+    var lastWorking = -1_000_000
+    for m in 0..<N where state[m] >= S.warming && state[m] <= S.overdrive && active[m] > 0 {
+        if m - lastWorking >= cfg.stretchGap {
+            if stretchRun > 0 { stretches.append(Double(stretchRun)) }
+            stretchRun = 0
+        }
+        stretchRun += 1
+        lastWorking = m
+    }
+    let stretchMin = N - 1 - lastWorking < cfg.stretchGap ? stretchRun : 0
+    if stretchMin == 0 && stretchRun > 0 { stretches.append(Double(stretchRun)) }
+    let stretchSeen = stretches.filter { $0 >= 30 }.sorted()
+    let longStretch = stretchSeen.count >= cfg.stretchSamples
+        ? max(cfg.stretchRange.0, min(cfg.stretchRange.1, Int(quantile(stretchSeen, cfg.stretchQuantile).rounded())))
+        : cfg.stretchDefault
+
     /// The state most of the minutes from a up to b were in; asleep only wins outright.
     func dominant(_ a: Int, _ b: Int) -> Int {
         var tally = [Int](repeating: 0, count: stateNames.count)
@@ -474,6 +502,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
             "idleMin": idleMin,
             "humanIdleMin": min(i - lastHuman, 1_000_000),
             "streakMin": streakMin,
+            "stretchMin": stretchMin,
             "lockedRunMin": lockedRun,
             "sessions": sessionsNow,
             "agents": agentsNow,
@@ -504,6 +533,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
             "autopilotAfter": autopilotAfter,
             "autopilotLearned": autopilotLearned,
             "promptGapsSeen": gaps.count,
+            "longStretch": longStretch,
         ] as [String: Any],
         "history": [
             "days": days.map { $0.values },

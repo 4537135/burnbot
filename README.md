@@ -2,9 +2,10 @@
 
 Burnbot turns how hard you work with your AI coding agent into a level:
 asleep, chilling, warming up, cooking, locked in, on fire. A small steel robot
-shows the level you are on, its face glowing in the level's colour, standing
-in a fire that burns higher the more tokens you burn. All of it is pixel art,
-down to the letters.
+stands on your desktop and shows the level you are on: its face glowing in the
+level's colour, its arms tapping faster, a little fire at its feet the more
+tokens you burn, and at the top, flames on its head and smoke out of its ears.
+All of it is pixel art, down to the letters.
 
 The levels are calibrated to you. "Locked in" means well above your own
 normal, whatever your normal is.
@@ -17,9 +18,11 @@ session is over.
 It works with Claude Code. Burnbot is an independent project: it is not made
 by, affiliated with, or endorsed by Anthropic.
 
-![The robot window](preview/robot.png)
+![The robot on your desktop, when Claude needs a yes](preview/desktop-robot.png)
 
-![The robot, when Claude needs a yes](preview/robot-speaking.png)
+![Point at it and its face becomes a screen](preview/desktop-robot-hover.png)
+
+![The robot on a second screen](preview/robot.png)
 
 ![The dashboard: today](preview/dashboard.png)
 
@@ -47,11 +50,31 @@ A welcome screen explains what it does and what it found on your Mac.
 
 After that there are two windows:
 
-- **The robot.** A small window in the bottom-right corner that stays on top
-  of everything, including fullscreen apps, on every desktop. It shows your
-  level and tokens per hour. Make it bigger and it also shows the whole
-  ladder, today's burn and what the next level takes. Drag it anywhere; it
-  remembers. Double-click it to fill the screen.
+- **The robot**, standing in the bottom-right corner of your desktop with
+  nothing around it: no window, no backdrop. It stays on top of everything,
+  including fullscreen apps, on every desktop, and clicks pass straight
+  through the space around it. At rest it says nothing; its face, its arms
+  and the little fire or embers around it show the level.
+  - **Point at it** and its face turns into a small screen: the level, what
+    Claude is doing, and an intensity bar. Move away and its eyes come back.
+    Pick how: **Big** (the head grows, with tokens per hour), **Wide** (a
+    strip with the eyes at one end, the least height) or **Compact** (a
+    smaller head with a thin frame, the least room).
+  - **Click it** and it tells you, in a panel beside its head with a speech
+    bubble's tail: the session you are on, what Claude is
+    doing in it, your level, and the one thing to do next ("Approve npm test
+    in shop", "Reply to Claude in shop", "Tests still failing in shop"), with
+    a **Go to it** button when Claude needs you. Click it again or click
+    elsewhere to close it; left alone, it closes after 20 seconds.
+  - **Drag it** anywhere; it remembers. Its screen, bubbles and panel always
+    open toward the middle of the screen, so any corner works.
+  - **Flick it** with two fingers on the trackpad, pointer on the robot, and it
+    slides one spot the way your fingers went. The spots are the corners and the
+    middle of each edge, just in from the edge. Flick right at the top left and
+    it goes to the top middle; flick again and it reaches the top right, where
+    another flick right leaves it be. A slow scroll over it does nothing.
+  - **Right-click it** for its size (Small, Medium, Large), its hover screen,
+    Keep on Top, the second screen and Hide.
 - **The dashboard**, in two pages.
   - **Today** starts with your level and the ladder, then four numbers, then
     today's graphs: tokens through the day coloured by level, today against
@@ -62,7 +85,8 @@ After that there are two windows:
     by project, and every day drawn hour by hour.
 
 Plug in a second monitor and the robot moves there and goes fullscreen by
-itself; unplug it and the robot comes back to its corner.
+itself, in its whole scene: the fire, the level ladder, today's burn and what
+the next level takes. Unplug it and the robot comes back to your desktop.
 
 If you have never used Claude Code on this Mac, the robot sleeps and the
 dashboard says so. Use Claude Code and it wakes up on its own.
@@ -72,7 +96,9 @@ dashboard says so. Use Claude Code and it wakes up on its own.
 | Show Dashboard | ⌘1 |
 | Show Robot | ⌘2 |
 | Robot on the Second Screen | ⌘3 |
-| Robot in a Window | ⌘4 |
+| Robot on the Desktop | ⌘4 |
+| Robot Size ▸ Small, Medium, Large | |
+| Hover Screen ▸ Big, Wide, Compact | |
 | Keep Robot on Top | ⌘T |
 | Full Screen | ⌃⌘F |
 
@@ -87,7 +113,7 @@ dashboard says so. Use Claude Code and it wakes up on its own.
 | 2 | Warming up | Working, in your quietest 30% |
 | 3 | Cooking | Above your quietest 30%: your usual working pace |
 | 4 | Locked in | Your top 25%, after 20 minutes of unbroken work |
-| 5 | On fire | Your top 7% |
+| 5 | On fire | Your top 7%. Flames on its head, smoke out of its ears |
 | A | Autopilot | Off the ladder: the AI is still working but you have gone longer without a prompt than you usually do |
 
 ## It calibrates itself
@@ -125,34 +151,43 @@ and only when there is good reason to:
 | Moment | What it sees | What it does |
 |---|---|---|
 | A run failed | A test, build or type check Claude ran came back failing | A worried face for a few seconds, if you are at your terminal or editor |
-| Breakthrough | The same kind of run passes after failing twice, or after five minutes in the red, with a clean exit and nothing in the output that says it failed | A happy face and "Finally. All green." (or "It builds", "Types check") |
+| Quick fix | The same kind of run passes after failing once, quickly | A small smile for a couple of seconds, no words. A run that passes with nothing red before it gets nothing at all |
+| Breakthrough | The same kind of run passes after failing twice, or after five minutes in the red, with a clean exit and nothing in the output that says it failed | A happy face and "Finally. All green." (or "It builds", "Types check"). After four tries or ten minutes in the red, a cheer: a hop and more sparks |
 | Waiting on you | Claude Code asks permission for something | If you are in your terminal or editor, a face; if you are elsewhere, a bubble that stays until you are back. Click it to go to your terminal |
 | Your move | Claude stops after working for two minutes or more | A bubble, only if you are elsewhere |
 | Session over | The session ends, or goes quiet for 30 minutes after at least 20 minutes of work | A recap: how long, what went green, commits and pull requests |
 | Going round | Three near-repeats of the same ask, interrupts or turned-down plans in 20 minutes, with no file changed, no run passing and no plan approved in between | A puzzled face and "Going round" under the robot. Still at it 15 minutes later, a bubble, once, if Claude agrees it is a loop (see AI below) |
 | Drifted | Claude handed you the turn, you are at the Mac but in another app for longer than your usual break | A bored face and "Drifted · 6 min · shop is waiting"; at twice your usual break, one "Still there?" bubble. Click it to go back |
 | Back to | You come back to your terminal or editor after drifting | "Back to: <session>" under the robot for a minute |
-| Goal hit | Today's wins reach your daily goal | A happy face and "Goal hit · 4 wins, goal 4 · 6-day streak" under the robot |
+| Goal hit | Today's wins reach your daily goal | A happy face, and "Goal hit · 4 wins, goal 4 · 6-day streak" on its screen |
+| Welcome back | Your first touch of the Mac after 30 minutes or more away, or on a new day | A wave |
+| Big session | You and Claude have been at it longer than your usual long stretch (your longest tenth over 30 days, between 75 minutes and 3 hours; 90 until it knows), and there is a natural pause: Claude handed you the turn or went quiet, and you have not prompted for a minute | A tired face and one "Big session" bubble suggesting a break. Once per stretch, never while Claude is working |
 
 Iterating is not going round: a prompt that changes files, or makes a run
-pass, resets the count. Your usual break is learned from the stretches you
+pass, resets the count. A stretch is only the minutes you and Claude are
+working together: Autopilot, and time in other apps while Claude is idle,
+add nothing, and 15 minutes off ends it. Your usual break is learned from the stretches you
 spend in other apps before you come back and prompt again (five minutes
 until it has seen twenty of them).
 
 It decides how loud to be from where you are: which app is in front, and
 how long since you touched the Mac. One bubble at a time, the most important
 first, never the same one twice, gone as soon as it no longer applies, and
-no more than one of the less urgent ones every ten minutes. A run that is
+no more than one of the less urgent ones every ten minutes. While you are
+pointing at the robot or reading its panel, a bubble waits until you are
+done instead of covering what you are reading; a yes Claude needs shows in
+the screen or panel straight away. A run that is
 piped into `tail` or ends in `|| true` proves nothing, so it never gets a
 cheer. "Stopped" is never called "done": the robot can see that Claude
 stopped, not whether it succeeded.
 
-Under the robot, one line says what is going on: "Waiting on you · shop",
-"Claude running tests · 1m 40s", the session you are on, or what you did
-last time. It changes when something matters more, not every few seconds.
+On the robot's screen when you point at it (and under the robot on a second
+screen), one line says what is going on: "Waiting on you · shop", "Claude
+running tests · 1m 40s", the session you are on, or what you did last time.
+It changes when something matters more, not every few seconds.
 
 **Robot → Play Every Moment** plays a recorded session through all of it in
-about a minute, on the robot window and the desk screen.
+about a minute and a half, on the robot and the desk screen.
 
 ### Daily goal and streak
 
@@ -169,8 +204,10 @@ The goal is the wins of your usual working day (the median over the last 30
 days you worked at least 30 minutes), or 3 until you have a week of them.
 Set your own on the dashboard (− / + / Auto). The streak counts working days
 that hit the goal; a day with under 30 minutes hands-on is skipped, not a
-break. The robot window and the desk screen show today's wins against the
-goal and the streak; the dashboard's Today page shows what they were.
+break. On your desktop the robot only shows it when it matters: a happy face
+when you hit the goal, with the wins and streak on its screen. The robot on a
+second screen and the desk screen show today's wins against the goal and the
+streak all day; the dashboard's Today page shows what they were.
 
 ### Claude Code alerts
 
@@ -271,7 +308,26 @@ for you.
 
 To put the program on the board: quit Burnbot, plug the board in, and
 double-click `desk/Upload to the screen.command`. It needs `arduino-cli`
-(`brew install arduino-cli`).
+(`brew install arduino-cli`, or `desk/board.sh setup`, which gets the
+boards' tools as well).
+
+`desk/board.sh` does the rest with a board on USB, the XIAO or an ESP32 dev
+board, and finds which one is plugged in:
+
+```bash
+desk/board.sh                         # which boards are plugged in, and what they run
+desk/board.sh listen                  # what the board prints; type a line to send it
+desk/board.sh send V                  # send a line and show the answer ("BURNBOT 3")
+desk/board.sh upload ~/Arduino/blink  # build any sketch and put it on the board
+desk/board.sh screen                  # Burnbot's screen program, as the .command does
+desk/board.sh backup                  # ESP32: save everything on it to desk/backup/
+desk/board.sh restore FILE            # ESP32: put a saved file back
+desk/board.sh setup                   # arduino-cli and both boards' tools
+```
+
+With both boards plugged in, add `--esp32` or `--xiao`. Add `--build-only`
+to only check that a sketch builds (no board needed). Burnbot's screen
+program runs on the XIAO only for now; on an ESP32, `screen` says so.
 
 To see a screen without the board:
 
@@ -303,7 +359,8 @@ step for people who download it.
 
 ### Working on the screens
 
-The dashboard and the robot window are the pages in `public/`. Point the app
+The dashboard and the robot are the pages in `public/`: `companion.html` is
+the robot on your desktop, `display.html` its scene on a second screen. Point the app
 at that folder and it loads them from there, so you can edit and press ⌘R
 instead of rebuilding:
 
@@ -327,6 +384,11 @@ tools/check-moments.sh              # replays tools/fixtures/*, compares with ex
 tools/check-moments.sh --update     # accept the new output
 python3 tools/make-fixtures.py      # rewrite the recorded sessions from their scripts
 ```
+
+Open `public/companion-board.html` (served from `public/`, for example with
+`python3 -m http.server`) to see the desktop robot at actual size on a
+pretend busy desktop: a short scripted session in each hover screen, then
+every level, face, moment, the panel and the four corners.
 
 Level names and colours are in `STATE_META` at the top of `public/robot.js`,
 and the robot is drawn by `drawRobot` in the same file. The desk screen picks
@@ -356,6 +418,7 @@ comes out without the robot, the fire and the big numbers.
 
 ```
 app/main.swift        windows, menus, second screen, talking to the pages
+app/Companion.swift   the robot on your desktop: its see-through window, pointer, drag, size
 app/Tracker.swift     reads and tails Claude Code's session logs
 app/Metrics.swift     baseline, intensity, levels
 app/Signals.swift     Claude Code's hooks, and which app you are in
@@ -365,8 +428,8 @@ app/Summaries.swift   remembered sessions, AI recaps and loop checks
 app/Replay.swift      replays a recorded session (tests, Play Every Moment)
 app/DeskScreen.swift  finds the desk screen on USB and feeds it
 app/Pages.swift       serves the pages to the app's own windows
-public/               the dashboard and the robot window
-desk/                 the desk screen's own program, its simulator and upload command
+public/               the dashboard, the desktop robot and its second-screen scene
+desk/                 the desk screen's own program, its simulator, upload command and board.sh
 tools/audit.py        independent recount of the tokens
 tools/fixtures/       recorded sessions and what the robot should do in each
 tools/check-moments.sh replays them all

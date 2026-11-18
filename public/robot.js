@@ -29,19 +29,52 @@ function lighten(hex, amount) {
 
 // ---------------------------------------------------------------------- robot
 
+const SMOKE = ['#d6dde8', '#a3adbd', '#6b7484']; // a puff of smoke, young to old
+
+/**
+ * On fire: smoke puffing out of the robot's ears. Each puff leaves the cup, drifts out and up and
+ * grows as it fades; three to an ear, the ears out of step. drawRobot draws it unless told
+ * {smoke: false}, and returns `ears` for a caller that draws it apart (the desktop robot, so its
+ * outline does not ring each puff). desk/burnbot_screen/render.h does the same.
+ */
+export function drawSmoke(ctx, ears, t) {
+  for (const side of [-1, 1]) {
+    const ear = side < 0 ? ears.x - ears.hw - 5 : ears.x + ears.hw + 4; // just outside the cup
+    for (let k = 0; k < 3; k++) {
+      const p = (t / 1.4 + k / 3 + (side > 0 ? 1 / 6 : 0)) % 1;
+      const size = 1 + Math.floor(p * 3);
+      const x = ear + side * Math.round(1 + p * 4 + Math.sin(p * 6 + k)) - (side < 0 ? size - 1 : 0);
+      ctx.fillStyle = SMOKE[size - 1];
+      ctx.fillRect(Math.round(x), Math.round(ears.y - Math.round(p * 12) - size + 1), size, size);
+    }
+  }
+}
+
 /**
  * Draws the robot standing with its feet at (cx, gy). `t` is seconds; the
  * state picks the face, the posture and how fast it moves.
- */
-/**
+ *
  * expr: a reaction drawn over the level's face for a few seconds, or '' for none.
  *   worried  a run just failed: raised brows, a wobbly mouth, a bead of sweat
  *   happy    it finally passed: arms up, a grin, sparks
+ *   cheer    it passed after a long fight: happy, hopping, twice the sparks
+ *   smile    it passed after one quick miss: happy eyes and a small grin, nothing more
+ *   wave     you are back after a long while: one arm up, waving
+ *   tired    a long stretch of work: heavy lids, a small slump
  *   waiting  Claude needs a yes from you: eyes on you, a "!" over its head
  *   puzzled  you are going round: one brow up, a lopsided mouth, a "?" over its head
  *   bored    Claude handed you the turn and you wandered off: half-shut eyes looking away, a slow sway
+ *
+ * opt, for the desktop robot whose face turns into a screen when you point at it:
+ *   head   {w, h}: the head's size (32 × 22 as a face). A bigger head grows up from the neck,
+ *          so the body never moves; the frame, ear bolts, antenna, headphones and flames go with it.
+ *   bezel  the frame around the screen: 4, or 2 for a thin one.
+ *   face   where the face is: 'face' (as always), 'edge' (full-size eyes riding the screen's left
+ *          edge, no mouth) or 'corner' (a small pair of eyes in the screen's top-left corner).
+ *          glance: pixels the eyes look aside first.
+ * Returns the screen and the whole head (antenna included), in canvas pixels.
  */
-export function drawRobot(ctx, cx, gy, state, t, expr = '') {
+export function drawRobot(ctx, cx, gy, state, t, expr = '', opt = {}) {
   const asleep = state === 'asleep' && !expr;
   const idle = state === 'idle';
   const locked = state === 'locked';
@@ -49,6 +82,12 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
   const auto = state === 'autopilot';
   const working = state === 'warming' || state === 'cruising' || locked || over;
   const accent = STATE_META[state].color;
+  const cheer = expr === 'cheer';
+  const happy = expr === 'happy' || cheer;
+  const smile = expr === 'smile';
+  const wave = expr === 'wave';
+  const tired = expr === 'tired';
+  const bored = expr === 'bored';
 
   let body = '#a3b0c2';
   let hi = '#d2dae5';
@@ -68,11 +107,17 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
     ctx.globalAlpha = 1;
   };
 
+  const hw = Math.round((opt.head?.w ?? 32) / 2); // half the head's width
+  const hh = opt.head?.h ?? 22;
+  const big = hw > 16 || hh > 22;
+  const b = opt.bezel ?? 4;
+  const mode = opt.face?.mode ?? 'face';
+
+  if (cheer && Math.floor(t * 4) % 2) gy -= 2; // hopping
   const pace = asleep ? 1.1 : idle ? 1.7 : auto ? 2 : state === 'warming' ? 3 : state === 'cruising' ? 4.2 : locked ? 6 : 9;
   const bob = Math.sin(t * pace) > 0.35 ? 1 : 0;
-  const bored = expr === 'bored';
   const x0 = cx + (over ? Math.round(Math.sin(t * 41)) : 0) + (auto || bored ? Math.round(Math.sin(t * (bored ? 0.8 : 1.3))) : 0);
-  const hy = gy - 43 + bob + (asleep ? 2 : 0); // top of the head
+  const hy = gy - 21 - hh + bob + (asleep ? 2 : 0) + (tired ? 1 : 0); // top of the head
 
   // legs and feet
   R(x0 - 9, gy - 5, 5, 5, sh);
@@ -83,19 +128,31 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
   // arms: resting at the sides, or raised and tapping while working
   const tapHz = state === 'warming' ? 3 : state === 'cruising' ? 6 : locked ? 10 : 15;
   const beat = Math.floor(t * tapHz);
-  if (expr === 'happy') {
+  const armUp = (side, lift) => {
+    // an arm thrown up, on the left (-1) or the right (1)
+    const x = side < 0 ? x0 - 15 : x0 + 11;
+    R(x, gy - 20, 4, 3, sh);
+    R(x + 3 * side, gy - 23, 4, 3, sh);
+    R(x + 6 * side, gy - 26 - lift, 4, 3, body);
+    R(x + 6 * side - (side < 0 ? 1 : 0), gy - 29 - lift, 5, 3, hi);
+  };
+  const armDown = (side) => {
+    const x = side < 0 ? x0 - 15 : x0 + 11;
+    R(x, gy - 18, 4, 11, sh);
+    R(x, gy - 9, 4, 3, hi);
+  };
+  if (happy) {
     // both arms thrown up, waving out of step
-    const wl = Math.floor(t * 5) % 2;
-    const wr = Math.floor(t * 5 + 1) % 2;
-    R(x0 - 15, gy - 20, 4, 3, sh);
-    R(x0 - 18, gy - 23, 4, 3, sh);
-    R(x0 - 21, gy - 26 - wl, 4, 3, body);
-    R(x0 - 22, gy - 29 - wl, 5, 3, hi);
+    armUp(-1, Math.floor(t * 5) % 2);
+    armUp(1, Math.floor(t * 5 + 1) % 2);
+  } else if (wave) {
+    armDown(-1);
+    const swing = Math.floor(t * 6) % 2;
     R(x0 + 11, gy - 20, 4, 3, sh);
     R(x0 + 14, gy - 23, 4, 3, sh);
-    R(x0 + 17, gy - 26 - wr, 4, 3, body);
-    R(x0 + 17, gy - 29 - wr, 5, 3, hi);
-  } else if (working && !bored) {
+    R(x0 + 17 + swing, gy - 26, 4, 3, body);
+    R(x0 + 17 + swing * 2, gy - 29, 5, 3, hi);
+  } else if (working && !bored && !tired) {
     const l = beat % 2 ? 0 : 2;
     const r = beat % 2 ? 2 : 0;
     R(x0 - 15, gy - 18, 4, 6, sh);
@@ -109,10 +166,8 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
     R(sx + ((beat * 7) % 4), gy - 6, 1, 1, '#ffffff');
     if (locked || over) R(sx + ((beat * 5) % 4), gy - 4, 1, 1, accent);
   } else {
-    R(x0 - 15, gy - 18, 4, 11, sh);
-    R(x0 + 11, gy - 18, 4, 11, sh);
-    R(x0 - 15, gy - 9, 4, 3, hi);
-    R(x0 + 11, gy - 9, 4, 3, hi);
+    armDown(-1);
+    armDown(1);
   }
 
   // body with a chest meter
@@ -128,124 +183,184 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
 
   // neck and head
   R(x0 - 3, gy - 21 + bob, 6, 2, sh);
-  R(x0 - 15, hy, 30, 22, body);
-  R(x0 - 16, hy + 1, 32, 20, body);
-  R(x0 - 15, hy, 30, 1, hi);
-  R(x0 - 16, hy + 1, 1, 20, hi);
-  R(x0 + 15, hy + 1, 1, 20, sh);
-  R(x0 - 15, hy + 21, 30, 1, sh);
-  R(x0 - 18, hy + 8, 2, 6, sh);
-  R(x0 + 16, hy + 8, 2, 6, sh);
-  R(x0 - 11, hy + 4, 22, 13, screen);
-  R(x0 - 12, hy + 5, 24, 11, screen);
-
-  // eyes
-  const ey = hy + 7;
-  const lx = x0 - 8;
-  const rx = x0 + 4;
-  const look = idle ? [-1, 0, 0, 1, 0, 0][Math.floor(t / 1.3) % 6] : 0;
-  const blink = !asleep && !over && !auto && t % (locked ? 6.3 : 3.7) < 0.13;
-  if (expr === 'worried') {
-    // brows up in the middle, small eyes
-    R(lx, ey - 1, 2, 1, glow);
-    R(lx + 2, ey - 2, 2, 1, glow);
-    R(rx, ey - 2, 2, 1, glow);
-    R(rx + 2, ey - 1, 2, 1, glow);
-    R(lx + 1, ey + 1, 2, 3, glow);
-    R(rx + 1, ey + 1, 2, 3, glow);
-  } else if (expr === 'happy') {
-    for (const ex of [lx, rx]) {
-      R(ex, ey + 2, 1, 2, glow);
-      R(ex + 1, ey + 1, 2, 1, glow);
-      R(ex + 3, ey + 2, 1, 2, glow);
-    }
-  } else if (expr === 'waiting') {
-    // wide awake, looking out at you
-    R(lx, ey - 1, 4, 6, glow);
-    R(rx, ey - 1, 4, 6, glow);
-    R(lx + 1, ey + 1, 2, 2, screen);
-    R(rx + 1, ey + 1, 2, 2, screen);
-    if (t % 2.9 < 0.12) {
-      R(lx, ey - 1, 4, 6, screen);
-      R(rx, ey - 1, 4, 6, screen);
-      R(lx, ey + 3, 4, 1, glow);
-      R(rx, ey + 3, 4, 1, glow);
-    }
-  } else if (expr === 'puzzled') {
-    // left brow up, right eye narrowed
-    R(lx, ey - 2, 4, 1, glow);
-    R(lx, ey, 4, 5, glow);
-    R(rx, ey + 1, 4, 1, glow);
-    R(rx, ey + 2, 4, 2, glow);
-  } else if (bored) {
-    // half shut, looking off to the side, now and then the other way
-    const away = Math.floor(t / 3.1) % 3 === 2 ? -1 : 1;
-    R(lx + away, ey + 2, 4, 1, sh);
-    R(rx + away, ey + 2, 4, 1, sh);
-    R(lx + away, ey + 3, 4, 2, glow);
-    R(rx + away, ey + 3, 4, 2, glow);
-  } else if (asleep || blink) {
-    R(lx, ey + 4, 4, 1, glow);
-    R(rx, ey + 4, 4, 1, glow);
-  } else if (auto) {
-    for (const ex of [lx, rx]) {
-      R(ex, ey + 2, 1, 2, glow);
-      R(ex + 1, ey + 1, 2, 1, glow);
-      R(ex + 3, ey + 2, 1, 2, glow);
-    }
-  } else if (locked || over) {
-    glowBox(lx - 1, ey, 6, 5, accent, 0.3);
-    glowBox(rx - 1, ey, 6, 5, accent, 0.3);
-    R(lx, ey + 1, 4, 3, glow);
-    R(rx, ey + 1, 4, 3, glow);
-    R(lx + 3, ey + 1, 1, 1, screen); // slanted inner corners: the focused look
-    R(rx, ey + 1, 1, 1, screen);
-    if (over) {
-      for (let k = 0; k < 3; k++) {
-        const up = (Math.floor(t * 14) + k) % 3;
-        R(lx + ((k * 7 + Math.floor(t * 20)) % 4), ey - 1 - up, 1, 2, '#ff9a3d');
-        R(rx + ((k * 5 + Math.floor(t * 17)) % 4), ey - 1 - up, 1, 2, '#ff9a3d');
-      }
-    }
-  } else {
-    R(lx + look, ey, 4, 5, glow);
-    R(rx + look, ey, 4, 5, glow);
-    if (state === 'cruising') {
-      R(lx + look, ey, 1, 1, '#ffffff');
-      R(rx + look, ey, 1, 1, '#ffffff');
-    }
+  R(x0 - hw + 1, hy, 2 * hw - 2, hh, body);
+  R(x0 - hw, hy + 1, 2 * hw, hh - 2, body);
+  R(x0 - hw + 1, hy, 2 * hw - 2, 1, hi);
+  R(x0 - hw, hy + 1, 1, hh - 2, hi);
+  R(x0 + hw - 1, hy + 1, 1, hh - 2, sh);
+  R(x0 - hw + 1, hy + hh - 1, 2 * hw - 2, 1, sh);
+  const boltY = hy + Math.round(hh / 2) - 3;
+  R(x0 - hw - 2, boltY, 2, 6, sh);
+  R(x0 + hw, boltY, 2, 6, sh);
+  // the screen: chamfered corners, a frame of `b` pixels, a little more below
+  const sx = x0 - hw + b;
+  const sy = hy + b;
+  const sw = 2 * hw - 2 * b;
+  const sH = hh - b - (b >= 4 ? 5 : 3);
+  R(sx + 1, sy, sw - 2, sH, screen);
+  R(sx, sy + 1, sw, sH - 2, screen);
+  if (big && !asleep) {
+    // a stretched face is lit from inside in the level's colour
+    glowBox(sx + 1, sy, sw - 2, 1, accent, 0.35);
+    glowBox(sx, sy + 1, 1, sH - 2, accent, 0.2);
+    glowBox(sx + sw - 1, sy + 1, 1, sH - 2, accent, 0.2);
+    glowBox(sx + 1, sy + sH - 1, sw - 2, 1, accent, 0.35);
   }
 
-  // mouth
-  const my = hy + 14;
-  if (expr === 'worried') {
-    for (let k = 0; k < 4; k++) R(x0 - 4 + k * 2, my - (k % 2), 2, 1, glow);
-  } else if (expr === 'happy') {
-    R(x0 - 5, my - 2, 1, 1, glow);
-    R(x0 + 4, my - 2, 1, 1, glow);
-    R(x0 - 4, my - 1, 8, 1, '#ffffff');
-    R(x0 - 3, my, 6, 1, glow);
-  } else if (expr === 'waiting') {
-    R(x0 - 1, my - 1, 2, 2, glow);
-  } else if (expr === 'puzzled') {
-    R(x0 - 2, my, 4, 1, glow);
-    R(x0 + 2, my - 1, 2, 1, glow);
-  } else if (bored) {
-    R(x0 - 3, my, 6, 1, glow);
-  } else if (asleep) R(x0 - 1, my, 2, 1, glow);
-  else if (auto) {
-    R(x0 - 4, my - 1, 1, 1, glow);
-    R(x0 - 3, my, 6, 1, glow);
-    R(x0 + 3, my - 1, 1, 1, glow);
-  } else if (over) {
-    R(x0 - 4, my - 1, 8, 2, '#ffffff');
-    for (let k = 0; k < 3; k++) R(x0 - 2 + k * 2, my - 1, 1, 2, screen);
-  } else if (locked) R(x0 - 3, my, 6, 1, glow);
-  else if (state === 'cruising') {
-    R(x0 - 3, my - 1, 1, 1, glow);
-    R(x0 - 2, my, 4, 1, glow);
-    R(x0 + 2, my - 1, 1, 1, glow);
-  } else R(x0 - 2, my, 4, 1, glow);
+  // eyes
+  const blink = !asleep && !over && !auto && t % (locked ? 6.3 : 3.7) < 0.13;
+  const arcs = (ex, ey) => {
+    R(ex, ey + 2, 1, 2, glow);
+    R(ex + 1, ey + 1, 2, 1, glow);
+    R(ex + 3, ey + 2, 1, 2, glow);
+  };
+  if (mode === 'corner') {
+    // a small pair in the top-left corner, still pulling the face it would
+    const ey = sy + 2;
+    for (const [i, ex] of [sx + 2, sx + 7].entries()) {
+      if (happy || smile || wave || auto) {
+        R(ex, ey + 1, 1, 1, glow);
+        R(ex + 1, ey, 1, 1, glow);
+        R(ex + 2, ey + 1, 1, 1, glow);
+      } else if (asleep || blink) R(ex, ey + 2, 3, 1, glow);
+      else if (expr === 'worried') {
+        R(ex + (i ? 0 : 1), ey - 1 + i, 2, 1, glow);
+        R(ex + 1, ey + 1, 2, 2, glow);
+      } else if (expr === 'waiting') {
+        R(ex, ey, 3, 3, glow);
+        R(ex + 1, ey + 1, 1, 1, screen);
+      } else if (expr === 'puzzled') {
+        if (i === 0) {
+          R(ex, ey - 1, 3, 1, glow);
+          R(ex, ey + 1, 3, 2, glow);
+        } else R(ex, ey + 2, 3, 1, glow);
+      } else if (bored || tired) {
+        R(ex, ey + 1, 3, 1, sh);
+        R(ex, ey + 2, 3, 1, glow);
+      } else if (locked || over) {
+        R(ex, ey + 1, 3, 2, glow);
+        R(ex + (i ? 0 : 2), ey + 1, 1, 1, screen);
+      } else R(ex, ey, 2, 3, glow);
+    }
+  } else {
+    const edge = mode === 'edge';
+    const glance = opt.face?.glance ?? 0;
+    const ey = edge ? sy + 3 : hy + 7;
+    const lx = (edge ? sx + 2 : x0 - 8) + glance;
+    const rx = lx + 12;
+    const look = idle && !edge ? [-1, 0, 0, 1, 0, 0][Math.floor(t / 1.3) % 6] : 0;
+    if (expr === 'worried') {
+      // brows up in the middle, small eyes
+      R(lx, ey - 1, 2, 1, glow);
+      R(lx + 2, ey - 2, 2, 1, glow);
+      R(rx, ey - 2, 2, 1, glow);
+      R(rx + 2, ey - 1, 2, 1, glow);
+      R(lx + 1, ey + 1, 2, 3, glow);
+      R(rx + 1, ey + 1, 2, 3, glow);
+    } else if (happy || smile || wave) {
+      arcs(lx, ey);
+      arcs(rx, ey);
+    } else if (expr === 'waiting') {
+      // wide awake, looking out at you
+      R(lx, ey - 1, 4, 6, glow);
+      R(rx, ey - 1, 4, 6, glow);
+      R(lx + 1, ey + 1, 2, 2, screen);
+      R(rx + 1, ey + 1, 2, 2, screen);
+      if (t % 2.9 < 0.12) {
+        R(lx, ey - 1, 4, 6, screen);
+        R(rx, ey - 1, 4, 6, screen);
+        R(lx, ey + 3, 4, 1, glow);
+        R(rx, ey + 3, 4, 1, glow);
+      }
+    } else if (expr === 'puzzled') {
+      // left brow up, right eye narrowed
+      R(lx, ey - 2, 4, 1, glow);
+      R(lx, ey, 4, 5, glow);
+      R(rx, ey + 1, 4, 1, glow);
+      R(rx, ey + 2, 4, 2, glow);
+    } else if (bored) {
+      // half shut, looking off to the side, now and then the other way
+      const away = Math.floor(t / 3.1) % 3 === 2 ? -1 : 1;
+      R(lx + away, ey + 2, 4, 1, sh);
+      R(rx + away, ey + 2, 4, 1, sh);
+      R(lx + away, ey + 3, 4, 2, glow);
+      R(rx + away, ey + 3, 4, 2, glow);
+    } else if (tired) {
+      // heavy lids, looking straight ahead, a slow blink now and then
+      const shut = t % 5.3 < 0.5;
+      R(lx, ey + 1, 4, shut ? 3 : 2, sh);
+      R(rx, ey + 1, 4, shut ? 3 : 2, sh);
+      R(lx, ey + (shut ? 4 : 3), 4, shut ? 1 : 2, glow);
+      R(rx, ey + (shut ? 4 : 3), 4, shut ? 1 : 2, glow);
+    } else if (asleep || blink) {
+      R(lx, ey + 4, 4, 1, glow);
+      R(rx, ey + 4, 4, 1, glow);
+    } else if (auto) {
+      arcs(lx, ey);
+      arcs(rx, ey);
+    } else if (locked || over) {
+      glowBox(lx - 1, ey, 6, 5, accent, 0.3);
+      glowBox(rx - 1, ey, 6, 5, accent, 0.3);
+      R(lx, ey + 1, 4, 3, glow);
+      R(rx, ey + 1, 4, 3, glow);
+      R(lx + 3, ey + 1, 1, 1, screen); // slanted inner corners: the focused look
+      R(rx, ey + 1, 1, 1, screen);
+      if (over) {
+        for (let k = 0; k < 3; k++) {
+          const up = (Math.floor(t * 14) + k) % 3;
+          R(lx + ((k * 7 + Math.floor(t * 20)) % 4), ey - 1 - up, 1, 2, '#ff9a3d');
+          R(rx + ((k * 5 + Math.floor(t * 17)) % 4), ey - 1 - up, 1, 2, '#ff9a3d');
+        }
+      }
+    } else {
+      R(lx + look, ey, 4, 5, glow);
+      R(rx + look, ey, 4, 5, glow);
+      if (state === 'cruising') {
+        R(lx + look, ey, 1, 1, '#ffffff');
+        R(rx + look, ey, 1, 1, '#ffffff');
+      }
+    }
+
+    // mouth: only on the face itself, not while the face is moving over for a screen
+    const mx = x0 + glance;
+    const my = ey + 7;
+    if (edge) {
+      // no mouth
+    } else if (expr === 'worried') {
+      for (let k = 0; k < 4; k++) R(mx - 4 + k * 2, my - (k % 2), 2, 1, glow);
+    } else if (happy) {
+      R(mx - 5, my - 2, 1, 1, glow);
+      R(mx + 4, my - 2, 1, 1, glow);
+      R(mx - 4, my - 1, 8, 1, '#ffffff');
+      R(mx - 3, my, 6, 1, glow);
+    } else if (smile || wave) {
+      R(mx - 3, my - 1, 1, 1, glow);
+      R(mx - 2, my, 4, 1, glow);
+      R(mx + 2, my - 1, 1, 1, glow);
+    } else if (expr === 'waiting') {
+      R(mx - 1, my - 1, 2, 2, glow);
+    } else if (expr === 'puzzled') {
+      R(mx - 2, my, 4, 1, glow);
+      R(mx + 2, my - 1, 2, 1, glow);
+    } else if (bored) {
+      R(mx - 3, my, 6, 1, glow);
+    } else if (tired) {
+      R(mx - 2, my, 4, 1, glow);
+    } else if (asleep) R(mx - 1, my, 2, 1, glow);
+    else if (auto) {
+      R(mx - 4, my - 1, 1, 1, glow);
+      R(mx - 3, my, 6, 1, glow);
+      R(mx + 3, my - 1, 1, 1, glow);
+    } else if (over) {
+      R(mx - 4, my - 1, 8, 2, '#ffffff');
+      for (let k = 0; k < 3; k++) R(mx - 2 + k * 2, my - 1, 1, 2, screen);
+    } else if (locked) R(mx - 3, my, 6, 1, glow);
+    else if (state === 'cruising') {
+      R(mx - 3, my - 1, 1, 1, glow);
+      R(mx - 2, my, 4, 1, glow);
+      R(mx + 2, my - 1, 1, 1, glow);
+    } else R(mx - 2, my, 4, 1, glow);
+  }
 
   // antenna
   R(x0 - 1, hy - 5, 2, 5, sh);
@@ -265,36 +380,45 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
   // headphones go on when it locks in
   if (locked || over) {
     const band = '#232a36';
-    R(x0 - 17, hy - 2, 34, 2, band);
-    R(x0 - 18, hy - 1, 2, 8, band);
-    R(x0 + 16, hy - 1, 2, 8, band);
-    R(x0 - 20, hy + 6, 4, 11, '#303a49');
-    R(x0 + 16, hy + 6, 4, 11, '#303a49');
-    R(x0 - 20, hy + 10, 1, 3, accent);
-    R(x0 + 19, hy + 10, 1, 3, accent);
+    const cup = boltY - 2;
+    R(x0 - hw - 1, hy - 2, 2 * hw + 2, 2, band);
+    R(x0 - hw - 2, hy - 1, 2, cup - hy + 2, band);
+    R(x0 + hw, hy - 1, 2, cup - hy + 2, band);
+    R(x0 - hw - 4, cup, 4, 11, '#303a49');
+    R(x0 + hw, cup, 4, 11, '#303a49');
+    R(x0 - hw - 4, cup + 4, 1, 3, accent);
+    R(x0 + hw + 3, cup + 4, 1, 3, accent);
   }
 
-  // on fire: the head is burning
+  // on fire: the head is burning, all the way along its top
   if (over) {
-    for (let k = 0; k < 6; k++) {
-      const fx = x0 - 13 + k * 5 + Math.round(Math.sin(t * 9 + k));
+    const n = Math.max(6, Math.round((2 * hw) / 5.3));
+    for (let k = 0; k < n; k++) {
+      const fx = x0 - hw + 3 + k * 5 + Math.round(Math.sin(t * 9 + k));
       const fh = 3 + Math.floor((Math.sin(t * 13 + k * 2.1) + 1) * 2.4);
       R(fx, hy - fh, 2, fh, '#ff8a2e');
       if (fh > 4) R(fx, hy - fh + 2, 1, fh - 3, '#ffe08a');
     }
   }
 
+  // on fire: smoke out of its ears (see drawSmoke)
+  const ears = over ? { x: x0, hw, y: boltY + 3 } : null;
+  if (ears && opt.smoke !== false) drawSmoke(ctx, ears, t);
+
   // reactions that reach past the face
+  const out = hw - 16; // how much wider than usual the head is
   if (expr === 'worried') {
     // a bead of sweat sliding down the side of the head
     const s = Math.floor((t * 2.5) % 5);
-    R(x0 + 13, hy + 2 + s, 1, 1, '#bfe3ff');
-    R(x0 + 12, hy + 3 + s, 3, 2, '#8cc8f5');
-  } else if (expr === 'happy') {
-    for (let k = 0; k < 4; k++) {
+    R(x0 + hw - 3, hy + 2 + s, 1, 1, '#bfe3ff');
+    R(x0 + hw - 4, hy + 3 + s, 3, 2, '#8cc8f5');
+  } else if (happy) {
+    const n = cheer ? 8 : 4;
+    for (let k = 0; k < n; k++) {
       if (Math.floor(t * 6 + k * 1.7) % 3 === 0) continue;
-      const sx = x0 + [-24, 21, -19, 25][k];
-      const sy = hy + [-6, -9, 4, 2][k];
+      const left = [-24, 21, -19, 25, -28, 29, -14, 15][k] < 0;
+      const sx = x0 + [-24, 21, -19, 25, -28, 29, -14, 15][k] + (left ? -out : out);
+      const sy = hy + [-6, -9, 4, 2, -13, -3, -12, -14][k];
       const c = k % 2 ? '#fff6d2' : accent;
       R(sx, sy - 1, 1, 3, c);
       R(sx - 1, sy, 3, 1, c);
@@ -302,14 +426,14 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
   } else if (expr === 'waiting') {
     // "!" over its head, pulsing
     if (t % 1.2 < 0.85) {
-      const bx = x0 + 19;
+      const bx = x0 + hw + 3;
       const by = hy - 12;
       R(bx, by, 2, 5, '#ffd25e');
       R(bx, by + 6, 2, 2, '#ffd25e');
     }
   } else if (expr === 'puzzled') {
     // "?" over its head, bobbing
-    const bx = x0 + 18;
+    const bx = x0 + hw + 2;
     const by = hy - 13 + (Math.floor(t * 1.6) % 2);
     const q = '#c5cde4';
     R(bx + 1, by, 2, 1, q);
@@ -324,17 +448,23 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '') {
   if (asleep) {
     for (let k = 0; k < 3; k++) {
       const p = (t * 0.32 + k / 3) % 1;
-      const zx = x0 + 16 + p * 12;
+      const zx = x0 + hw + p * 12;
       const zy = hy - 2 - p * 18;
-      const big = p > 0.5;
+      const large = p > 0.5;
       ctx.globalAlpha = Math.min(1, (1 - p) * 1.6);
-      const w = big ? 4 : 3;
+      const w = large ? 4 : 3;
       R(zx, zy, w, 1, '#c5cde4');
       for (let d = 1; d < w - 1; d++) R(zx + w - 1 - d, zy + d, 1, 1, '#c5cde4');
       R(zx, zy + w - 1, w, 1, '#c5cde4');
       ctx.globalAlpha = 1;
     }
   }
+
+  return {
+    screen: { x: sx, y: sy, w: sw, h: sH },
+    head: { x: x0 - hw - (locked || over ? 4 : 2), y: hy - 9, w: 2 * hw + (locked || over ? 8 : 4), h: hh + 9 },
+    ears, // where smoke comes out, at On fire (for drawSmoke, when the caller draws it itself)
+  };
 }
 
 /** The app's logo is the robot's head, so it changes with the level too. */
@@ -343,7 +473,7 @@ export function drawLogo(canvas, state, t = 0.5) {
   if (canvas.height !== 36) canvas.height = 36;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 42, 36);
-  drawRobot(ctx, 21, 55, state, t);
+  drawRobot(ctx, 21, 55, state, t, '', { smoke: false }); // too small for smoke
 }
 
 // ---------------------------------------------------------------------- scene
@@ -370,6 +500,73 @@ function firePalette() {
   return pal;
 }
 
+const PALETTE = firePalette();
+
+/** A strip of pixel fire, burning up from its bottom row. The robot's scene has one across the
+ *  whole screen; the desktop robot has a small one at its feet. */
+export class Fire {
+  constructor(W, H) {
+    this.W = W;
+    this.H = H;
+    this.cells = new Uint8Array(W * H);
+    this.bump = new Float32Array(W);
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = W;
+    this.canvas.height = H;
+    this.ctx = this.canvas.getContext('2d');
+    this.img = this.ctx.createImageData(W, H);
+  }
+
+  /** One step (they come 30 a second). level 0..1; room(x), if given, how high column x may burn (0..1). */
+  step(level, t, room) {
+    const { W, H, cells, bump } = this;
+    const base = (H - 1) * W;
+    for (let x = 0; x < W; x++) {
+      const lump = 0.74 + 0.26 * Math.sin(x * 0.23 + t * 2.3) * Math.sin(x * 0.061 - t * 1.1);
+      const r = room ? room(x) : 1;
+      let h = 36 * level * lump * r + bump[x] * r;
+      if (level < 0.1 && Math.random() < 0.5) h *= 0.4; // embers flicker
+      bump[x] *= 0.9;
+      cells[base + x] = h <= 0 ? 0 : h >= 36 ? 36 : h;
+    }
+    for (let y = 1; y < H; y++) {
+      const row = y * W;
+      for (let x = 0; x < W; x++) {
+        const v = cells[row + x];
+        const r = (Math.random() * 3) | 0;
+        let dx = x - r + 1;
+        if (dx < 0) dx = 0;
+        else if (dx >= W) dx = W - 1;
+        const cool = Math.random() < 0.85 ? 1 : 0;
+        cells[row - W + dx] = v > cool ? v - cool : 0;
+      }
+    }
+  }
+
+  /** A flare-up around column x. */
+  burst(x) {
+    for (let d = -4; d <= 4; d++) {
+      const i = Math.round(x) + d;
+      if (i >= 0 && i < this.W) this.bump[i] += 16 - Math.abs(d) * 3;
+    }
+  }
+
+  draw(ctx, x, y) {
+    const { cells } = this;
+    const data = this.img.data;
+    for (let i = 0; i < cells.length; i++) {
+      const p = cells[i] * 4;
+      const o = i * 4;
+      data[o] = PALETTE[p];
+      data[o + 1] = PALETTE[p + 1];
+      data[o + 2] = PALETTE[p + 2];
+      data[o + 3] = PALETTE[p + 3];
+    }
+    this.ctx.putImageData(this.img, 0, 0);
+    ctx.drawImage(this.canvas, x, y);
+  }
+}
+
 // A token: a small chip that turns as it falls, so three widths of it.
 const TOKEN = [
   ['xhx', 'xxs', 'sss'],
@@ -384,9 +581,6 @@ export class Scene {
     this.centered = centered;
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.fireCanvas = document.createElement('canvas');
-    this.fctx = this.fireCanvas.getContext('2d');
-    this.palette = firePalette();
     this.state = 'asleep';
     this.expr = '';
     this.flame = 0;
@@ -412,11 +606,7 @@ export class Scene {
     this.canvas.width = W;
     this.canvas.height = H;
     this.FH = Math.min(H, 60);
-    this.fire = new Uint8Array(W * this.FH);
-    this.bump = new Float32Array(W);
-    this.fireCanvas.width = W;
-    this.fireCanvas.height = this.FH;
-    this.img = this.fctx.createImageData(W, this.FH);
+    this.fire = new Fire(W, this.FH);
     this.wide = !this.centered && W / H > 1.25;
     this.cx = this.wide ? Math.round(W * 0.26) : Math.round(W / 2);
     this.gy = H - 27; // high enough that the flames lick its legs without hiding it
@@ -455,54 +645,17 @@ export class Scene {
   }
 
   #stepFire() {
-    const { W, FH, fire, bump } = this;
-    const base = (FH - 1) * W;
-    const lvl = this.flame;
-    for (let x = 0; x < W; x++) {
-      const lump = 0.74 + 0.26 * Math.sin(x * 0.23 + this.t * 2.3) * Math.sin(x * 0.061 - this.t * 1.1);
-      // On a wide screen the numbers sit on the right: keep the fire lower there.
+    const { W } = this;
+    // On a wide screen the numbers sit on the right: keep the fire lower there.
+    const room = (x) => {
       const f = x / W;
-      const room = !this.wide || f < 0.42 ? 1 : f > 0.56 ? 0.46 : 1 - ((f - 0.42) / 0.14) * 0.54;
-      let h = 36 * lvl * lump * room + bump[x] * room;
-      if (lvl < 0.1 && Math.random() < 0.5) h *= 0.4; // embers flicker
-      bump[x] *= 0.9;
-      fire[base + x] = h <= 0 ? 0 : h >= 36 ? 36 : h;
-    }
-    for (let y = 1; y < FH; y++) {
-      const row = y * W;
-      for (let x = 0; x < W; x++) {
-        const v = fire[row + x];
-        const r = (Math.random() * 3) | 0;
-        let dx = x - r + 1;
-        if (dx < 0) dx = 0;
-        else if (dx >= W) dx = W - 1;
-        const cool = Math.random() < 0.85 ? 1 : 0;
-        fire[row - W + dx] = v > cool ? v - cool : 0;
-      }
-    }
-  }
-
-  #drawFire() {
-    const { fire, palette } = this;
-    const data = this.img.data;
-    for (let i = 0; i < fire.length; i++) {
-      const p = fire[i] * 4;
-      const o = i * 4;
-      data[o] = palette[p];
-      data[o + 1] = palette[p + 1];
-      data[o + 2] = palette[p + 2];
-      data[o + 3] = palette[p + 3];
-    }
-    this.fctx.putImageData(this.img, 0, 0);
-    this.ctx.drawImage(this.fireCanvas, 0, this.H - this.FH);
+      return !this.wide || f < 0.42 ? 1 : f > 0.56 ? 0.46 : 1 - ((f - 0.42) / 0.14) * 0.54;
+    };
+    this.fire.step(this.flame, this.t, room);
   }
 
   #burst(x) {
-    const { W, bump } = this;
-    for (let d = -4; d <= 4; d++) {
-      const i = Math.round(x) + d;
-      if (i >= 0 && i < W) bump[i] += 16 - Math.abs(d) * 3;
-    }
+    this.fire.burst(x);
     for (let k = 0; k < 5; k++) {
       this.embers.push({
         x: x + Math.random() * 4 - 2,
@@ -516,7 +669,7 @@ export class Scene {
   }
 
   frame(nowMs) {
-    if (!this.img) return; // not sized yet
+    if (!this.fire) return; // not sized yet
     const dt = Math.min(0.05, this.last ? (nowMs - this.last) / 1000 : 0.016);
     this.last = nowMs;
     this.t += dt;
@@ -602,7 +755,7 @@ export class Scene {
         }
     }
 
-    this.#drawFire();
+    this.fire.draw(ctx, 0, H - this.FH);
 
     // embers rise off the fire
     this.emberAcc += this.flame * W * 0.22 * dt;

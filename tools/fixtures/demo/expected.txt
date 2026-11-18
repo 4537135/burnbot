@@ -30,6 +30,12 @@
 10:04:49  SHOW nothing
 10:04:49  FACE normal
 10:05:12  NOW Goal hit · 3 wins, goal 2
+10:05:30  typecheck failed (1 so far): worried face, 5 s
+10:05:30  FACE worried
+10:05:35  FACE normal
+10:05:50  typecheck passed after one quick failure: a small smile, 2.5 s
+10:05:50  FACE smile
+10:05:53  FACE normal
 10:06:30  front app: com.apple.Safari
 10:06:40  NOW On: Fix checkout tax tests
 10:07:01  waiting:d3m0d3m0-0000-4000-8000-000000000001 noticed (Bash needs a yes)
@@ -67,3 +73,6 @@
 10:37:02  SHOW done: SESSION OVER / 28 min on Fix checkout tax tests / Tests green after 3 tries / 1 commit
 10:39:03  done:d3m0d3m0-0000-4000-8000-000000000001:29915190 over (its time is up, or you are back)
 10:39:03  SHOW nothing
+11:15:00  back at the Mac after 33 min: a wave, 3 s
+11:15:00  FACE wave
+11:15:03  FACE normal

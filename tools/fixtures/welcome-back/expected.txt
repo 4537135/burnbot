@@ -1,0 +1,9 @@
+10:00:00  front app: com.apple.Terminal (work)
+10:00:00  NOW On: Paginate the orders list
+10:11:20  NOW -
+10:31:20  session a1b2c3d4 over, 2 min: too short for a recap
+10:48:00  back at the Mac after 40 min: a wave, 3 s
+10:48:00  FACE wave
+10:48:00  DESK ex=h
+10:48:03  FACE normal
+10:48:03  DESK ex=-

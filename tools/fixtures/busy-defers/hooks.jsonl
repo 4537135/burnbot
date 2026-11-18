@@ -1,0 +1,1 @@
+{"at": "2026-11-17T10:09:01.000Z", "hook_event_name": "PermissionRequest", "session_id": "a1b2c3d4-0019-4000-8000-000000000019", "cwd": "/Users/dev/shop", "transcript_path": "-Users-dev-shop/a1b2c3d4-0019-4000-8000-000000000019.jsonl", "tool_name": "Bash", "tool_input": {"command": "rm -rf dist && npm run build"}}

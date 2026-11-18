@@ -32,6 +32,7 @@ lipo -create "$BUILD/Burnbot-arm64" "$BUILD/Burnbot-x86_64" -output "$APP/Conten
 echo "Packing the screens…"
 cp app/Info.plist "$APP/Contents/Info.plist"
 cp -R public "$APP/Contents/Resources/public"
+rm -f "$APP/Contents/Resources/public/companion-board.html"   # a page for choosing the look, not part of the app
 cp -R tools/fixtures/demo "$APP/Contents/Resources/demo"   # Play Every Moment
 rm -f "$APP/Contents/Resources/demo/expected.txt" "$APP/Contents/Resources/demo/README.txt"
 

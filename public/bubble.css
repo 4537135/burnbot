@@ -1,0 +1,56 @@
+/* Burnbot speaking: a pixel speech bubble, framed in the colour of what it is about, with a stepped
+   tail pointing at the robot's head. Shared by the big scene (display.html) and the desktop robot
+   (companion.html); each sets the sizes:
+     --p     one pixel of the frame          --bt, --bl, --bs   title, line and button font sizes
+     --bpad  the padding                     --bmax             the widest it gets */
+.bubble {
+  --line: var(--state, #6f83ad);
+  position: fixed; left: 0; top: 0; z-index: 5;
+  width: max-content; max-width: var(--bmax);
+  padding: var(--bpad);
+  background: #0b0f15; color: var(--ink, #eef1f6);
+  box-shadow: 0 calc(-1 * var(--p)) 0 0 var(--line), 0 var(--p) 0 0 var(--line), calc(-1 * var(--p)) 0 0 0 var(--line), var(--p) 0 0 0 var(--line),
+    0 0 0 calc(2 * var(--p)) rgba(0, 0, 0, .35);
+  visibility: hidden; opacity: 0; transform: translateY(calc(2 * var(--p)));
+  transition: opacity .25s steps(3), transform .25s steps(3), visibility 0s .25s;
+  cursor: pointer; text-shadow: none;
+}
+.bubble.on { visibility: visible; opacity: 1; transform: none; transition: opacity .25s steps(3), transform .25s steps(3); }
+.bubble.urgent { --line: #ffd25e; }
+.bubble.happy { --line: #4fc9a4; }
+.bubble h2 { margin: 0 0 .7em; font-size: var(--bt); font-weight: 400; letter-spacing: .2em; text-transform: uppercase; color: var(--line); }
+.bubble p { margin: 0; font-size: var(--bl); line-height: 1.45; }
+.bubble p + p { color: var(--ink-2, #aab3c1); }
+/* Go to it: a steel pixel button, for whatever the bubble or the panel asks you to go to. Outlined
+   like the frame (corners left out), a lit top row, a shaded bottom row and a dark row under it;
+   pressed, it sinks one pixel onto that row, so nothing round it moves. .hot and .down are hover
+   and pressed set by hand, where the window gets no hover of its own (the desktop robot). */
+.go {
+  --face: #b9c3d8; --lit: #eef2fa; --shade: #7f8aa3; --edge: #2b3242; --drop: rgba(0, 0, 0, .5);
+  display: inline-flex; align-items: baseline; gap: .5em;
+  margin: 1.2em 0 var(--p); padding: calc(2.5 * var(--p)) calc(5 * var(--p));
+  font: inherit; font-size: var(--bs, var(--text)); line-height: 1; letter-spacing: .1em; text-transform: uppercase;
+  color: #1a2030; background: var(--face); border: 0; border-radius: 0; cursor: pointer; text-shadow: none;
+  box-shadow: inset 0 var(--p) 0 0 var(--lit), inset 0 calc(-1 * var(--p)) 0 0 var(--shade),
+    0 calc(-1 * var(--p)) 0 0 var(--edge), 0 var(--p) 0 0 var(--edge), calc(-1 * var(--p)) 0 0 0 var(--edge), var(--p) 0 0 0 var(--edge),
+    0 calc(2 * var(--p)) 0 0 var(--drop);
+}
+.go[hidden] { display: none; }
+/* The play arrow, drawn on the font's own grid (a font pixel is .1em): 4 wide, 7 tall, a capital's height. */
+.go i {
+  width: .4em; height: .7em; background: currentColor;
+  clip-path: polygon(0 0, 25% 0, 25% 14.29%, 50% 14.29%, 50% 28.57%, 75% 28.57%, 75% 42.86%, 100% 42.86%, 100% 57.14%,
+    75% 57.14%, 75% 71.43%, 50% 71.43%, 50% 85.71%, 25% 85.71%, 25% 100%, 0 100%);
+}
+.go:hover, .go.hot { --face: #cbd4e6; --lit: #ffffff; --shade: #8d98b0; }
+.go:active, .go.down { --face: #a5afc5; --lit: #7f8aa3; --shade: #a5afc5; --drop: transparent; transform: translateY(var(--p)); }
+.go:focus-visible { outline: var(--p) solid var(--line, #ffd25e); outline-offset: calc(2 * var(--p)); }
+/* The tail: three steps, drawn in the frame's colour. Below the bubble, to its left, or (flip) to its
+   right. The desktop robot's panel (.panel, which sets its own --line) always sits beside the robot. */
+.bubble .tail, .panel .tail { position: absolute; width: var(--p); height: var(--p); background: var(--line);
+  box-shadow: var(--p) 0 var(--line), calc(2 * var(--p)) 0 var(--line), 0 var(--p) var(--line), var(--p) var(--p) var(--line), 0 calc(2 * var(--p)) var(--line); }
+.bubble.side .tail, .panel .tail {
+  box-shadow: 0 var(--p) var(--line), 0 calc(2 * var(--p)) var(--line), calc(-1 * var(--p)) 0 var(--line), calc(-1 * var(--p)) var(--p) var(--line), calc(-2 * var(--p)) 0 var(--line); }
+.bubble.side.flip .tail, .panel.flip .tail {
+  box-shadow: 0 var(--p) var(--line), 0 calc(2 * var(--p)) var(--line), var(--p) 0 var(--line), var(--p) var(--p) var(--line), calc(2 * var(--p)) 0 var(--line); }
+@media (prefers-reduced-motion: reduce) { .bubble { transition: none; } }

@@ -25,7 +25,7 @@ final class Pages: NSObject, WKURLSchemeHandler {
         guard let url = task.request.url else { return }
         var path = url.path
         if path.isEmpty || path == "/" { path = "/index.html" }
-        if path == "/display" { path = "/display.html" }
+        if !path.contains(".") { path += ".html" }        // /display, /companion
         let file = folder.appendingPathComponent(String(path.dropFirst())).standardizedFileURL
         // only files inside the folder
         guard file.path.hasPrefix(folder.standardizedFileURL.path + "/"), let data = try? Data(contentsOf: file) else {

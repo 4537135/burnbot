@@ -1,9 +1,15 @@
 10:00:00  front app: com.apple.Terminal (work)
 10:00:00  NOW On: Clean rebuild
+10:00:00  GLANCE working: Claude is working
+10:01:00  GLANCE running: Claude is building
 10:01:01  waiting:a1b2c3d4-0005-4000-8000-000000000005 noticed (Bash needs a yes)
 10:01:01  NOW Waiting on you · shop
 10:01:01  FACE waiting
+10:01:01  GLANCE needs: Claude needs a yes: rm -rf dist && npm run build · next: Say yes or no to rm -rf dist && npm run build in shop
 10:01:20  waiting:a1b2c3d4-0005-4000-8000-000000000005: you have been at your work app since it asked, so it is handled
 10:01:20  NOW On: Clean rebuild
 10:01:20  FACE normal
+10:01:20  GLANCE running: Claude is building
 10:01:30  waiting:a1b2c3d4-0005-4000-8000-000000000005 over (the command it asked about has run)
+10:01:30  GLANCE working: Claude is working
+10:02:40  GLANCE finished: Claude finished 1 min ago

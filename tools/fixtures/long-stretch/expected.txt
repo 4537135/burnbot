@@ -1,0 +1,28 @@
+09:15:00  LEVEL warming · stretch 1 min
+09:15:00  front app: com.apple.Terminal (work)
+09:15:00  NOW On: Rewrite the order emails
+09:19:00  LEVEL warming · stretch 5 min
+09:25:00  LEVEL warming · stretch 10 min
+09:30:00  LEVEL warming · stretch 15 min
+09:30:20  front app: com.apple.Safari
+09:35:00  LEVEL idle · stretch 16 min
+09:40:20  NOW -
+09:42:00  LEVEL warming · stretch 17 min
+09:42:00  NOW On: Rewrite the order emails
+09:42:20  front app: com.apple.Terminal (work)
+09:46:00  LEVEL warming · stretch 21 min
+09:46:00  back to prompting after a break of 12 min: learned
+09:50:00  LEVEL warming · stretch 25 min
+09:56:00  LEVEL warming · stretch 30 min
+10:01:00  LEVEL warming · stretch 35 min
+10:01:35  Claude stopped after 4 min: silence, you are at your work app
+10:07:00  LEVEL warming · stretch 40 min
+10:12:00  LEVEL warming · stretch 45 min
+10:12:05  Claude stopped after 9 min: silence, you are at your work app
+10:12:05  stretch:29915172 noticed (45 min with Claude, past your long one (40), and a natural pause)
+10:12:05  SHOW stretch: BIG SESSION / 45 min with Claude. / Good place to stop / for ten.
+10:12:05  FACE tired
+10:13:06  stretch:29915172 over (its time is up, or you are back)
+10:13:06  SHOW nothing
+10:13:06  FACE normal
+10:16:00  LEVEL idle · stretch 45 min

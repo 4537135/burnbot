@@ -38,7 +38,7 @@ def iso(t):
 class Case:
     def __init__(self, name, about, end=None, **settings):
         self.name, self.about, self.end = name, about, end
-        self.settings = settings            # levels=True, goal=n, judge=True/False (see app/Replay.swift)
+        self.settings = settings            # levels=True, goal=n, judge=True/False, desk=True, glance=True (see app/Replay.swift)
         self.logs = {}
         self.hooks = []
         self.attention = []
@@ -240,7 +240,8 @@ cases.append(c)
 
 # ---------------------------------------------------------------------------
 c = Case('no-proof-no-party', """
-Passing is only celebrated with proof. One quick failure then a pass: nothing.
+Passing is only celebrated with proof. One quick failure then a pass: a small
+smile, no words.
 After two real failures, a piped run that hides its own exit code, a run with
 "|| true", a run that was denied, and commands that only mention tests are all
 ignored. Only the plain run that passes, with a pass count, is a breakthrough.
@@ -281,7 +282,9 @@ cases.append(c)
 c = Case('permission-at-desk', """
 Claude needs a yes while you are at the terminal. You will see the prompt
 there, so no bubble: the robot only looks at you until you touch something.
-""", end='10:03:00')
+Once you have (you said yes), its head and panel stop saying Claude needs a
+yes, even though the build has not reported back yet.
+""", end='10:03:00', glance=True)
 s = c.session('a1b2c3d4-0005-4000-8000-000000000005', 'shop', 'Clean rebuild')
 c.front('10:00:00', TERMINAL, 0)
 c.front('10:01:00', TERMINAL, 0)
@@ -389,8 +392,9 @@ green, and with it the daily goal of 2 (happy). Claude needs a yes while you
 are in Safari (your call, until you are back). Claude stops after a long turn
 while you read in Safari at the Mac (your move), you stay there (bored, then
 still there?), come back (back to), and the session ends: the recap, once the
-bubble budget allows.
-""", end='10:42:00', goal=2)
+bubble budget allows. Types fail once and pass (a small smile). Back after
+lunch: a wave.
+""", end='11:16:00', goal=2)
 s = c.session('d3m0d3m0-0000-4000-8000-000000000001', 'shop', 'Fix checkout tax tests', branch='fix/tax')
 c.busy('09:49:40', '10:06:20')
 s.prompt('09:50:00', 'Checkout totals are a cent off. Plan the fix first.')
@@ -412,6 +416,9 @@ s.bash('10:02:30', 'npm test', '10:03:10', exit=1, output=FAIL_1)
 s.edit('10:03:40', 'src/round.ts')
 s.bash('10:04:00', 'npm test', '10:04:40', output=PASS)
 s.bash('10:05:10', 'git add -A && git commit -m "Round after tax"', '10:05:12', output='[fix/tax 3e1f2a9] Round after tax\n 3 files changed')
+s.bash('10:05:20', 'npx tsc --noEmit', '10:05:30', exit=1, output="src/tax.ts(9,5): error TS2304: Cannot find name 'cents'.")
+s.edit('10:05:35', 'src/tax.ts')
+s.bash('10:05:40', 'npx tsc --noEmit', '10:05:50', output='')
 s.prompt('10:06:00', 'Now a clean rebuild.')
 c.front('10:06:30', SAFARI, 0)
 s.think('10:06:20')
@@ -427,6 +434,7 @@ c.busy('10:28:20', '10:42:00')
 s.prompt('10:28:40', 'Good. Push it.')
 s.work('10:29:00', '10:30:00')
 c.hook('10:30:10', 'SessionEnd', s, reason='prompt_input_exit')
+c.busy('11:15:00', '11:16:00')              # back after lunch: a wave
 cases.append(c)
 
 # ---------------------------------------------------------------------------
@@ -543,6 +551,98 @@ s.edit('10:06:10', 'src/tax.ts')
 s.bash('10:06:30', 'npm test', '10:07:10', exit=1, output=FAIL_1)
 s.edit('10:07:40', 'src/round.ts')
 s.bash('10:08:00', 'npm test', '10:08:40', output=PASS)
+cases.append(c)
+
+# ---------------------------------------------------------------------------
+# Burnbot 1.3: the desktop robot. Wins graded by the story behind them, a wave
+# when you come back, a word about a break after a long stretch, and bubbles
+# that wait while you are reading the robot.
+
+c = Case('pass-graded', """
+How glad a pass makes the robot depends on the story behind it. Tests passing
+with nothing red before: nothing. One quick failure, then a pass: a small smile
+for a moment, no words. Green after a long fight (four failures, more than ten
+minutes in the red): a cheer, with the bubble. The desk screen has no smile
+or cheer of its own: the smile is its level face, the cheer its happy face.
+""", end='10:40:00', desk=True)
+s = c.session('a1b2c3d4-0016-4000-8000-000000000016', 'shop', 'Tidy the cart module')
+c.busy('09:59:40', '10:40:00')
+s.prompt('10:00:00', 'Tidy the cart module and keep the tests passing.')
+s.edit('10:00:40', 'src/cart.ts')
+s.bash('10:01:00', 'npm test', '10:01:30', output=PASS)
+s.edit('10:02:30', 'src/cart.ts')
+s.bash('10:03:00', 'npx tsc --noEmit', '10:03:20', exit=1, output="src/cart.ts(14,3): error TS2322: Type 'string' is not assignable to type 'number'.")
+s.edit('10:03:50', 'src/cart.ts')
+s.bash('10:04:10', 'npx tsc --noEmit', '10:04:30', output='')
+s.prompt('10:06:00', 'Now the discount tests, they have been red all week.')
+for k, (start, done) in enumerate([('10:07:00', '10:07:40'), ('10:10:00', '10:10:40'), ('10:13:00', '10:13:40'), ('10:16:00', '10:16:40')]):
+    s.edit(start[:-2] + '10', 'src/discount.ts')
+    s.bash(start, 'npm test -- discount', done, exit=1, output=FAIL_2 if k % 2 == 0 else FAIL_1)
+s.edit('10:19:00', 'src/discount.ts')
+s.bash('10:19:30', 'npm test -- discount', '10:20:10', output=PASS)
+cases.append(c)
+
+c = Case('welcome-back', """
+You leave the Mac for 40 minutes (no input at all), then come back: the robot
+waves for a few seconds. A short break of a few minutes gets nothing. The
+desk screen waves with its happy face.
+""", end='10:50:00', desk=True)
+s = c.session('a1b2c3d4-0017-4000-8000-000000000017', 'shop', 'Paginate the orders list')
+c.busy('09:59:40', '10:03:00')
+s.prompt('10:00:00', 'Paginate the orders list, 50 a page.')
+s.work('10:00:20', '10:02:00')
+c.busy('10:07:00', '10:08:00')              # 4 min away: nothing
+c.busy('10:48:00', '10:50:00')              # 40 min away: a wave
+cases.append(c)
+
+c = Case('long-stretch', """
+A long stretch with Claude, with your usual long one set to 40 min. The
+stretch counts only minutes you and Claude are at it: a 12-minute break in
+Safari while Claude is idle adds nothing, so at the first pause (Claude stops,
+around 45 min on the clock) you are not there yet and nothing is said. Claude
+working flat out past 40 min says nothing either: never mid-focus. At the next
+natural pause (Claude handed it back, no prompt for a minute, you at the Mac):
+a tired face and one word about a break, once.
+""", end='10:20:00', levels=True, stretch=40)
+s = c.session('a1b2c3d4-0018-4000-8000-000000000018', 'shop', 'Rewrite the order emails')
+c.busy('09:14:40', '09:30:00')
+ASKS = iter(['Start with the order confirmation email.', 'Shipping notice next, with the tracking link.',
+             'Make the receipt table work in Outlook.', 'Add a plain-text version of each.',
+             'The refund email needs the store credit balance.', 'Translate the subject lines into German.',
+             'Use the brand fonts with a safe fallback.', 'Dark mode colours for all of them.'])
+for m in range(15, 30, 4):
+    s.prompt(f'09:{m:02d}:00', next(ASKS))
+    s.work(f'09:{m:02d}:20', f'09:{m + 3:02d}:40', every=30)
+c.busy('09:30:20', '09:42:00', SAFARI)
+c.busy('09:42:20', '10:20:00')
+for m in range(42, 58, 4):
+    s.prompt(f'09:{m:02d}:00', next(ASKS))
+    s.work(f'09:{m:02d}:20', f'09:{m + 3:02d}:40', every=30)
+s.prompt('09:58:00', 'Last one, the refund email.')
+s.work('09:58:20', '10:01:30', every=30)
+c.hook('10:01:35', 'Stop', s)
+s.prompt('10:03:00', 'Now render every template and check them.')
+s.work('10:03:20', '10:12:00', every=30)
+c.hook('10:12:05', 'Stop', s)
+cases.append(c)
+
+c = Case('busy-defers', """
+The tests go green after two failures while you are pointing at the robot (its
+face is a screen): the happy face shows at once, the bubble waits until you
+move away, then shows for its full time. A permission ask is never held back.
+""", end='10:12:00', busy=[[iso(at('10:05:50')), iso(at('10:07:30'))], [iso(at('10:08:50')), iso(at('10:09:40'))]])
+s = c.session('a1b2c3d4-0019-4000-8000-000000000019', 'shop', 'Fix checkout tax tests')
+c.busy('09:59:40', '10:08:30')
+c.front('10:08:40', SAFARI, 0)
+s.prompt('10:00:00', 'The checkout tests fail on the tax line. Fix them.')
+s.edit('10:00:40', 'src/tax.ts')
+s.bash('10:01:00', 'npm test', '10:01:40', exit=1, output=FAIL_2)
+s.edit('10:02:30', 'src/tax.ts')
+s.bash('10:03:00', 'npm test', '10:03:40', exit=1, output=FAIL_1)
+s.edit('10:05:00', 'src/round.ts')
+s.bash('10:05:30', 'npm test', '10:06:10', output=PASS)
+s.bash('10:09:00', 'rm -rf dist && npm run build', '10:10:30', output='built in 3.1s')
+c.hook('10:09:01', 'PermissionRequest', s, tool_name='Bash', tool_input={'command': 'rm -rf dist && npm run build'})
 cases.append(c)
 
 if __name__ == '__main__':

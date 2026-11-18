@@ -93,21 +93,39 @@ struct Card: Equatable {
     let kind: String
     let title: String
     let lines: [String]
-    let action: String?                     // "focus": clicking brings your work app forward
+    let action: String?                     // "focus": clicking takes you to its session
     let persistent: Bool                    // stays until its reason is gone
+    var session = ""                        // the session it is about, where Go to it takes you
+}
+
+/// What the desktop robot's panel says: the session you are on, what Claude is doing in it, and
+/// the one thing to do next, when there is one. Only from what the logs and hooks say.
+struct Glance: Equatable {
+    var title = "", place = ""              // the session's title; project · branch
+    var claude = "", claudeKind = "idle"    // "needs", "running", "working", "handed", "finished", "idle"
+    var next = "", nextFocus = false        // nextFocus: going to it means your terminal or editor
+    var session = ""                        // the session it is about
+
+    var json: [String: Any] {
+        var out: [String: Any] = ["title": title, "where": place, "claude": ["kind": claudeKind, "text": claude], "session": session]
+        out["next"] = next.isEmpty ? NSNull() : ["text": next, "action": nextFocus ? "focus" : NSNull()] as [String: Any]
+        return out
+    }
 }
 
 struct MomentsOutput: Equatable {
     var card: Card?
-    var expr = ""                           // "worried", "happy", "waiting" or ""
+    var expr = ""                           // "worried", "happy", "cheer", "smile", "wave", "tired", "waiting", "puzzled", "bored" or ""
     var now = ""                            // the Now line
+    var glance = Glance()
 
     var json: [String: Any] {
         // "nowLine", not "now": the state's own "now" is the time, which the dashboard reads.
-        var out: [String: Any] = ["expr": expr, "nowLine": now]
+        var out: [String: Any] = ["expr": expr, "nowLine": now, "glance": glance.json]
         if let card {
             out["moment"] = ["id": card.id, "kind": card.kind, "title": card.title, "lines": card.lines,
-                             "action": card.action.map { $0 as Any } ?? NSNull(), "persistent": card.persistent] as [String: Any]
+                             "action": card.action.map { $0 as Any } ?? NSNull(), "persistent": card.persistent,
+                             "session": card.session] as [String: Any]
         } else {
             out["moment"] = NSNull()
         }
@@ -183,8 +201,8 @@ private final class LiveSession {
 }
 
 private enum Kind: String {
-    case waiting, yourMove = "your-move", breakthrough, done, loop, drift
-    var priority: Int { [.waiting: 4, .breakthrough: 3, .yourMove: 2, .done: 2, .drift: 2, .loop: 1][self]! }
+    case waiting, yourMove = "your-move", breakthrough, done, loop, drift, stretch
+    var priority: Int { [.waiting: 4, .breakthrough: 3, .yourMove: 2, .done: 2, .drift: 2, .loop: 1, .stretch: 1][self]! }
 }
 
 private enum Presentation: Equatable {
@@ -207,7 +225,7 @@ private struct Observation {
     var backAt: Double?
     var handled = false                     // waiting: you have been back at a work app since it asked
     var shownAt: Double?
-    var happy = false                       // shows the happy face with it
+    var face = ""                           // the face it pulls while it shows ("happy", "cheer", "tired")
 }
 
 final class Moments {
@@ -246,7 +264,16 @@ final class Moments {
     let driftAfterPrompt = 30 * 60_000.0    // a session you have not touched for longer is not waiting on you
     let backShown = 60_000.0
     let goalShown = 2 * 60_000.0
+    let cheerTries = 4, cheerStuck = 10 * 60_000.0   // green after this many tries, or this long in the red: a cheer
+    let smileFor = 2_500.0
+    let welcomeAfter = 30 * 60_000.0        // away from the Mac this long, then back: a wave
+    let pauseFor = 60_000.0                 // no prompt for this long, Claude done or quiet everywhere: a natural pause
+    let stretchSayWithin = 10 * 60_000.0
     static let burnbotApp = "local.burnbot.app"
+
+    /// You are reading the robot's face or its panel: a bubble that is not urgent waits until you are done,
+    /// and its time and the bubble budget start when it shows.
+    var busy = false
 
     private var live: [String: LiveSession] = [:]
     private var observations: [Observation] = []
@@ -261,6 +288,8 @@ final class Moments {
     private var back: (title: String, until: Double) = ("", 0)
     private var goalSeen: GoalState?
     private var goalUntil = 0.0
+    private var lastInput = 0.0             // when you last touched the Mac, as the ticks saw it
+    private var stretchSaid = false         // the long-stretch bubble, once per stretch
     private(set) var output = MomentsOutput()
 
     private func note(_ now: Double, _ text: String) { trace?("\(clock(now))  \(text)") }
@@ -297,7 +326,7 @@ final class Moments {
     /// One step. Returns whether what the robot shows changed.
     @discardableResult
     func tick(signals: [LogSignal], hooks: [HookEvent], front: String, idle: Double, level: String,
-              goal: GoalState? = nil, now: Double) -> Bool {
+              goal: GoalState? = nil, stretch: (minutes: Int, long: Int)? = nil, now: Double) -> Bool {
         clockNow = now
         let atWork = isWork(front) && idle < awayAfterIdle
         if front != lastFront {
@@ -313,6 +342,8 @@ final class Moments {
         loops(atWork: atWork, now: now)
         drifting(front: front, idle: idle, now: now)
         goals(goal, now: now)
+        welcome(idle: idle, now: now)
+        stretching(stretch, idle: idle, now: now)
         expire(atWork: atWork, idle: idle, now: now)
 
         let next = present(atWork: atWork, now: now)
@@ -441,13 +472,20 @@ final class Moments {
             case .narrowed:
                 note(now, "\(family.rawValue) passed for \(run.core), others still failing")
             case .shrugged:
-                note(now, "\(family.rawValue) passed after one quick failure: nothing to celebrate")
+                if atWork {
+                    transient = ("smile", now + smileFor)
+                    note(now, "\(family.rawValue) passed after one quick failure: a small smile, 2.5 s")
+                } else {
+                    note(now, "\(family.rawValue) passed after one quick failure: nothing to celebrate, you are away")
+                }
             case let .green(fails, stuck):
                 let tries = fails + 1
+                // The story behind it decides how glad: a long fight earns a cheer.
+                let big = tries >= cheerTries || stuck >= cheerStuck
                 let facts = ["project": project(s, now), "tries": "\(tries) tries", "fails": "\(fails)", "stuck": minutesText(stuck)]
                 if let win = voice.line(["facts", "win", family.rawValue], facts) { s.wins.append(win) }
                 var observation = Observation(kind: .breakthrough, session: id, key: "breakthrough:\(id):\(family.rawValue)", at: ms,
-                                              facts: facts, path: ["breakthrough", family.rawValue], happy: true)
+                                              facts: facts, path: ["breakthrough", family.rawValue], face: big ? "cheer" : "happy")
                 if atWork {
                     observation.ttl = topGear ? breakthroughShortTTL : breakthroughTTL
                     observation.deadline = now + 2 * 60_000
@@ -455,8 +493,8 @@ final class Moments {
                     observation.untilBack = true
                     observation.deadline = now + keptUntilBackMax
                 }
-                transient = ("happy", now + 5000)
-                add(observation, now, because: "\(fails) failures, then a clean pass: \(run.core)")
+                transient = big ? ("cheer", now + 8000) : ("happy", now + 5000)
+                add(observation, now, because: "\(fails) failures, then a clean pass: \(run.core)\(big ? ", a long fight: cheer" : "")")
             }
         }
     }
@@ -658,6 +696,41 @@ final class Moments {
         note(now, "daily goal hit: \(goal.wins) of \(goal.target) wins, \(goal.streak)-day streak: happy face 8 s")
     }
 
+    /// Back at the Mac after a long time away, or for the first time today: a wave.
+    private func welcome(idle: Double, now: Double) {
+        let input = now - idle * 1000
+        defer { lastInput = max(lastInput, input) }
+        guard lastInput > 0, input - lastInput >= 1000 else { return }
+        let away = input - lastInput
+        let calendar = Calendar.current
+        let newDay = !calendar.isDate(Date(timeIntervalSince1970: input / 1000), inSameDayAs: Date(timeIntervalSince1970: lastInput / 1000))
+        guard away >= welcomeAfter || (newDay && away >= pauseFor) else { return }
+        transient = ("wave", now + 3000)
+        note(now, "back at the Mac after \(minutesText(away))\(newDay ? ", a new day" : ""): a wave, 3 s")
+    }
+
+    /// A long stretch with Claude (stretch.minutes, from the levels), longer than your usual long one:
+    /// once per stretch, at the first natural pause, a tired face and a word about a break. Never mid-focus.
+    private func stretching(_ stretch: (minutes: Int, long: Int)?, idle: Double, now: Double) {
+        guard let stretch else { return }
+        if stretch.minutes == 0 {
+            if stretchSaid { note(now, "the long stretch is over: a break of 15 min or more") }
+            stretchSaid = false
+            return
+        }
+        guard !stretchSaid, stretch.minutes >= stretch.long, idle < awayAfterIdle else { return }
+        // A natural pause: nothing asking for you, nothing running, every session handed back or quiet, no prompt for a minute.
+        let sessions = live.values.filter { $0.lastLine > 0 && now - $0.lastLine < activeWithin && !$0.isOver }
+        let paused = !sessions.isEmpty && !observations.contains { $0.kind == .waiting }
+            && sessions.allSatisfy { $0.running.isEmpty && ($0.handedAt > 0 || now - $0.lastLine >= pauseFor) && now - max($0.lastPrompt, $0.lastYou) >= pauseFor }
+        guard paused else { return }
+        stretchSaid = true
+        let observation = Observation(kind: .stretch, session: "", key: "stretch:\(Int(now / 60_000))", at: now,
+                                      facts: ["minutes": minutesText(Double(stretch.minutes) * 60_000)], path: ["stretch"],
+                                      ttl: yourMoveTTL, deadline: now + stretchSayWithin, face: "tired")
+        add(observation, now, because: "\(stretch.minutes) min with Claude, past your long one (\(stretch.long)), and a natural pause")
+    }
+
     // MARK: Decide
 
     private func expire(atWork: Bool, idle: Double, now: Double) {
@@ -689,7 +762,7 @@ final class Moments {
             return atWork ? .expression("waiting") : .bubble(urgent: true, exempt: true)
         case .yourMove:
             return .bubble(urgent: false, exempt: true)
-        case .breakthrough, .done, .loop, .drift:
+        case .breakthrough, .done, .loop, .drift, .stretch:
             return .bubble(urgent: false, exempt: false)
         }
     }
@@ -710,7 +783,11 @@ final class Moments {
             switch decide(o, atWork: atWork) {
             case .expression(let face): faces.append(face)
             case .silence: break
-            case .bubble(_, let exempt):
+            case .bubble(let urgent, let exempt):
+                if busy, o.shownAt == nil, !urgent {
+                    if !o.face.isEmpty { faces.append(o.face) }   // the face still changes
+                    continue
+                }
                 let allowed = o.shownAt != nil || exempt || now - lastBudget >= budgetGap
                 guard allowed else { continue }
                 if let current = best {
@@ -730,15 +807,59 @@ final class Moments {
             }
             let words = voice.card(o.path, seed: o.key, facts: o.facts)
             out.card = Card(id: "\(o.key)@\(Int(o.at))", kind: o.kind.rawValue, title: words.title, lines: words.lines,
-                            action: [.waiting, .yourMove, .drift].contains(o.kind) ? "focus" : nil, persistent: o.kind == .waiting)
+                            action: [.waiting, .yourMove, .drift].contains(o.kind) ? "focus" : nil, persistent: o.kind == .waiting,
+                            session: o.session)
             if o.kind == .waiting { faces.insert("waiting", at: 0) }
-            if o.happy { faces.insert("happy", at: 0) }
+            if !o.face.isEmpty { faces.insert(o.face, at: 0) }
         }
         if now < transient.until { faces.append(transient.expr) }
         if drift?.noted == true { faces.append("bored") }
         out.expr = faces.first ?? ""
         out.now = nowLine(now)
+        out.glance = glance(now)
         return out
+    }
+
+    // MARK: The panel
+
+    private func glance(_ now: Double) -> Glance {
+        var g = Glance()
+        func say(_ key: String, _ facts: [String: String] = [:]) -> String { voice.line(["glance", key], facts) ?? "" }
+        let ask = observations.filter { $0.kind == .waiting && !$0.handled }.max(by: { $0.at < $1.at })
+        let active = live.values.filter { $0.lastLine > 0 && now - $0.lastLine < activeWithin && !$0.isOver }
+            .sorted { ($0.lastPrompt, $0.lastLine) > ($1.lastPrompt, $1.lastLine) }
+        // The session it is about: one asking for you, or else the one you are on.
+        guard let s = ask.flatMap({ live[$0.session] }) ?? active.first else {
+            g.claude = say("idle")
+            if let last = lastSession(now) {
+                g.title = last.title
+                g.next = last.next.isEmpty ? "" : say("nextLast", ["next": shortened(last.next, 60)])
+            }
+            return g
+        }
+        let info = sessionInfo(s.id, now, 0)
+        let name = project(s, now)
+        g.session = s.id
+        g.title = (info?.title).flatMap { $0.isEmpty ? nil : $0 } ?? name
+        g.place = [name, info?.branch ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
+        if let ask {
+            let detail = ask.facts["detail"] ?? ""
+            (g.claudeKind, g.claude) = ("needs", say("needs", ["detail": detail]))
+            (g.next, g.nextFocus) = (say("nextNeeds", ["detail": detail, "project": name]), true)
+        } else if let run = s.running.values.filter({ $0.family != nil }).min(by: { $0.ms < $1.ms }) {
+            (g.claudeKind, g.claude) = ("running", say("running_" + run.family!.rawValue))
+        } else if s.handedAt > 0 {
+            (g.claudeKind, g.claude) = ("handed", say("handed", ["ago": minutesText(now - s.handedAt)]))
+        } else if now - s.lastLine < pauseFor && s.lastLine >= s.lastPrompt {
+            (g.claudeKind, g.claude) = ("working", say("working"))
+        } else {
+            (g.claudeKind, g.claude) = ("finished", say("finished", ["ago": minutesText(now - s.lastLine)]))
+        }
+        if g.next.isEmpty, s.handedAt > 0 { (g.next, g.nextFocus) = (say("nextReply", ["project": name]), true) }
+        if g.next.isEmpty, let red = s.ledger.red(now: now).first, let what = voice.line(["facts", "red", red.rawValue]) {
+            g.next = say("nextRed", ["red": what.prefix(1).uppercased() + what.dropFirst(), "project": name])
+        }
+        return g
     }
 
     // MARK: Now line

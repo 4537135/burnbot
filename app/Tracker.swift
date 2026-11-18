@@ -342,6 +342,24 @@ final class Tracker {
         return info
     }
 
+    /// Where a session was started: Claude Code's entry point ("claude-vscode", "cli", ...) and the
+    /// folder it was opened in, a worktree reported as its repo. Read from the head of its main log
+    /// only when asked (a click on Go to it), so a log restored from the store needs no new field.
+    func origin(_ id: String) -> (entry: String, cwd: String)? {
+        guard !id.isEmpty,
+              let file = files.values.filter({ $0.session == id && !$0.side && !$0.gone }).max(by: { $0.modified < $1.modified }),
+              let handle = FileHandle(forReadingAtPath: file.path) else { return nil }
+        defer { try? handle.close() }
+        let head = handle.readData(ofLength: 1 << 20)
+        for line in head.split(separator: 10) where line.count > 20 {
+            guard let object = (try? JSONSerialization.jsonObject(with: line)) as? [String: Any],
+                  var cwd = object["cwd"] as? String, !cwd.isEmpty else { continue }
+            if let range = cwd.range(of: "/.claude/worktrees/") { cwd = String(cwd[..<range.lowerBound]) }
+            return (object["entrypoint"] as? String ?? "", cwd)
+        }
+        return nil
+    }
+
     // MARK: Parsing
 
     private func bump(_ file: LogFile, _ minute: Int, _ field: Int, _ value: Double) {

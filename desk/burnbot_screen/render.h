@@ -546,6 +546,18 @@ inline void robot(uint16_t *fb, int cx, int gy, int look, float t, int expr = EX
       R(fx, hy - fh, 2, fh, rgb(0xff8a2e));
       if (fh > 4) R(fx, hy - fh + 2, 1, fh - 3, rgb(0xffe08a));
     }
+    // smoke puffing out of its ears, as public/robot.js draws it: each puff drifts out and up and
+    // grows as it fades, three to an ear, the ears out of step
+    static const uint32_t SMOKE[3] = {0xd6dde8, 0xa3adbd, 0x6b7484};
+    for (int side = -1; side <= 1; side += 2) {
+      int ear = side < 0 ? x0 - 21 : x0 + 20;   // just outside the cup
+      for (int k = 0; k < 3; k++) {
+        float p = fmodf(t / 1.4f + k / 3.0f + (side > 0 ? 1 / 6.0f : 0), 1);
+        int size = 1 + (int)floorf(p * 3);
+        int x = ear + side * (int)lroundf(1 + p * 4 + sinf(p * 6 + k)) - (side < 0 ? size - 1 : 0);
+        R(x, hy + 11 - (int)lroundf(p * 12) - size + 1, size, size, rgb(SMOKE[size - 1]));
+      }
+    }
   }
 
   // reactions that reach past the face
