@@ -1,0 +1,553 @@
+{
+ "as_of": "2026-11-18",
+ "method": "One agent per claim, told to try to refute it from primary sources (moving numbers accepted within about 3%).",
+ "results": [
+  {
+   "claim": "SlashVibe V1's Kickstarter had raised about $143,175 from 639 backers (goal $10,000) as of 2026-11-18. Early Bird pledge $189, stated retail $249, first batch expected to ship March 2027. It supports 20+ coding agents and approves agent requests on the device.",
+   "id": "slashvibe",
+   "verdict": "confirmed",
+   "corrected": "As of 2026-11-18, SlashVibe V1's Kickstarter (by Loda, Nov 10 to Dec 10, 2026) had raised $143,175 from 639 backers against a $10,000 goal. The Early Bird pledge is $189 and the stated retail price is $249. The first batch is expected to start shipping in March 2027. It supports 20+ AI agents and tools, and agent requests can be approved on the device.",
+   "evidence": [
+    {
+     "url": "https://www.kicktraq.com/projects/loda/slashvibe/",
+     "quote": "Funding: $143,175 of $10,000 ... Backers: 639 ... Dates: Nov 10th -> Dec 10th (30 days)",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.pledgebox.com/projects/slashvibe",
+     "quote": "$142,271 of a $10,000 goal ... Backers: 635 (slightly earlier snapshot, consistent)",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://the-gadgeteer.com/?p=546183",
+     "quote": "Early Bird pledges are $189 against a $249 retail price, and two Early Bird units cost $368. ... the first batch is expected to start shipping in March 2027. ... works with more than 20 agents and tools on macOS and Windows ... approvals happen on the device.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://slashvibe.ai",
+     "quote": "Supports 20+ AI agents and tools ... Review and approve agent requests right on SlashVibe. ... We currently expect the first batch to begin shipping in March 2027.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://thegadgetflow.com/blog/slashvibe-gives-your-ai-tools-their-own-spot-on-the-desk/",
+     "quote": "SlashVibe is now live on Kickstarter, and backers can reserve theirs today at $169.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.yankodesign.com/?p=658454",
+     "quote": "$249 ($80 off). Hurry, only a few left!",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "Kicktraq's figures match the claim exactly: $143,175 raised, 639 backers, $10,000 goal. Its average pledge is $224, and it showed about 22 days left on 2026-11-18. kickstarter.com returned a 403, so the reward tiers could not be read there directly. The $189 Early Bird and $249 retail prices come from The Gadgeteer's FAQ (Nov 15, 2026). slashvibe.ai gives no retail price. A cheaper, limited $169 tier was offered at launch: Gadget Flow (Nov 10) and Yanko Design both show $169, and Yanko says \"only a few left\". That was most likely a Super Early Bird tier that has since sold out. It does not contradict the $189 Early Bird, but the report could mention it. 20+ agents, approval on the device and March 2027 shipping are all confirmed on the official slashvibe.ai page."
+  },
+  {
+   "claim": "Codex Micro is a Work Louder x OpenAI macro pad sold for $230 through OpenAI Supply Co. and Work Louder. Orders opened 2026-07-15 as a limited run and it sold out in about 12 hours; OpenAI has no plans to restock. It has keys to approve agent requests and a voice/dictation key.",
+   "id": "codex-micro",
+   "verdict": "confirmed",
+   "corrected": "Codex Micro is a Work Louder x OpenAI macro pad sold for $230 through OpenAI Supply Co. and Work Louder. Orders opened 2026-07-15 as a limited run, and it sold out in about 12 hours (Fortune). OpenAI has no plans to restock it. Work Louder's page still showed it sold out as of 2026-11-18. It has Command Keys to approve or decline agent requests and a Mic (push-to-talk) key for dictation.",
+   "evidence": [
+    {
+     "url": "https://learn.chatgpt.com/docs/features/codex-micro",
+     "quote": "limited-run collaboration between Codex and Work Louder ... Approve current request ... Decline current request ... push-to-talk ... Mic key handles dictation",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.engadget.com/2215952/openai-launches-a-physical-keypad-for-controlling-agents/",
+     "quote": "available to order for $230 from both [OpenAI and Work Louder] ... accepting or rejecting code, branching threads or using voice input (published July 15, 2026)",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://fortune.com/2026/07/27/openai-first-hardware-device-micro-codex-keyboard-sold-out-12-hours-reselling-on-ebay-premium/",
+     "quote": "It sold out the day it went on sale in about 12 hours ... OpenAI has no plans to restock the device",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://worklouder.cc/codex-micro",
+     "quote": "Codex Micro sold out ... Limited quantity.",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "I checked each part of the claim, and every part holds. Price and the two sellers: Engadget says $230, available from both OpenAI and Work Louder. Date: Engadget's launch story is dated 2026-07-15. Sell-out and restock: Fortune says it sold out in about 12 hours and OpenAI has no plans to restock. Keys: the learn.chatgpt.com docs list approve and decline keys and a Mic/push-to-talk dictation key. The docs page itself gives no price and names only OpenAI Supply Co. as the place to buy it. The OpenAI Supply Co. page (openai.com/supply/co-lab/work-louder/) returned 403, so I could not read the price there directly. Work Louder's own page shows it sold out today and links to its unbranded Creator Micro 2 instead. I found no report of a restock through 2026-11-18."
+  },
+  {
+   "claim": "Clawd on Desk (github.com/rullerzhou-afk/clawd-on-desk) is a free AGPL-3.0 desktop pet for Windows, macOS and Linux with about 6,777 GitHub stars as of 2026-11-18. It supports about 30 coding agents (Claude Code, Codex CLI, Copilot CLI, Gemini CLI, Cursor Agent and more), shows permission/approval bubbles, and releases roughly every one to two weeks (v1.6.0 on 2026-11-08).",
+   "id": "clawd-on-desk",
+   "verdict": "confirmed",
+   "corrected": "Clawd on Desk (github.com/rullerzhou-afk/clawd-on-desk) is a free, open-source (AGPL-3.0 source; artwork excluded) desktop pet for Windows (x64 and ARM64), macOS and Linux, with 6,777 GitHub stars and 717 forks as of 2026-11-18. Its README lists 29 supported coding agents (Claude Code, Codex CLI, Copilot CLI, Gemini CLI, Cursor Agent, Kiro, Qwen Code, opencode and more) plus a custom HTTP agent endpoint. It shows permission bubbles to allow or deny tool requests, though not for every agent. It has released every 8 to 12 days since v1.1.0 (2026-09-19), most recently v1.6.0 on 2026-11-08.",
+   "evidence": [
+    {
+     "url": "https://api.github.com/repos/rullerzhou-afk/clawd-on-desk",
+     "quote": "'stargazers_count': 6777, 'forks_count': 717, 'license': {'key': 'agpl-3.0', ... 'spdx_id': 'AGPL-3.0'}",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/rullerzhou-afk/clawd-on-desk",
+     "quote": "Runs where you code: Windows (x64 and ARM64), macOS and Linux, plus Remote SSH and WSL, with the UI in 7 languages",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/rullerzhou-afk/clawd-on-desk/main/README.md",
+     "quote": "## Supported Agents > Claude Code · Codex CLI · Copilot CLI · Gemini CLI · Antigravity CLI (agy) · Cursor Agent · ... · MiniMax Code (29 names listed)",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/rullerzhou-afk/clawd-on-desk/main/README.md",
+     "quote": "Permission bubbles: Allow or Deny tool requests from a floating card or a global hotkey, or switch to auto-approve",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/rullerzhou-afk/clawd-on-desk/main/README.md",
+     "quote": "Source code is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). Artwork and bundled theme assets ... are NOT covered by AGPL-3.0.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/rullerzhou-afk/clawd-on-desk/releases",
+     "quote": "v1.6.0: github-actions released this 08 Nov 03:22; v1.5.0: 31 Oct 05:43; v1.4.0: 19 Oct 13:49; v1.3.0: 10 Oct 09:12; v1.2.0: 29 Sep 14:52; v1.1.0: 19 Sep 02:14",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://api.github.com/repos/rullerzhou-afk/clawd-on-desk/releases",
+     "quote": "v1.6.0 2026-11-08T03:22:03Z",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "I tried to refute each part and every one holds. Stars are exactly 6,777 by the GitHub API; the repo page shows 6.8k. The README lists 29 agents by name, so \"about 30\" is fair, and it names Claude Code, Codex CLI, Copilot CLI, Gemini CLI and Cursor Agent. v1.6.0 was published 2026-11-08T03:22Z. The gaps between v1.1.0 and v1.6.0 were 10, 11, 9, 12 and 8 days, which fits \"every one to two weeks\". Earlier releases also came out about weekly or faster, apart from a few diagnostic builds. Two small caveats do not break the claim. First, only the source code is AGPL-3.0: the artwork and theme assets are excluded, with all rights reserved. Second, the README says some agents have no permission bubbles (see docs/guides/known-limitations.md). The repo was created 2026-03-18."
+  },
+  {
+   "claim": "Anthropic's claude-desktop-buddy repo (github.com/anthropics/claude-desktop-buddy) is MIT-licensed with about 2,721 stars and 474 forks as of 2026-11-18. It documents a Bluetooth LE 'Hardware Buddy' API in the Claude desktop app (developer mode) and reference ESP32 firmware for an M5StickC Plus (about $30) that shows session state and can approve or deny permission prompts.",
+   "id": "hardware-buddy",
+   "verdict": "confirmed",
+   "corrected": "Anthropic's claude-desktop-buddy repo (github.com/anthropics/claude-desktop-buddy) is MIT-licensed, with 2,721 stars and 474 forks as of 2026-11-18. The bundled third-party \"bufo\" GIF characters are excluded from the MIT license. The repo documents a Bluetooth LE \"Hardware Buddy\" API in the Claude desktop apps for macOS and Windows, which only works in developer mode. It also includes reference ESP32 (Arduino) firmware for the M5StickC Plus, a board that costs about $30 according to CNX Software and Yanko Design. The firmware shows session state and can approve or deny permission prompts.",
+   "evidence": [
+    {
+     "url": "https://api.github.com/repos/anthropics/claude-desktop-buddy",
+     "quote": "'stargazers_count': 2721, 'forks_count': 474, 'license': {'key': 'other', 'name': 'Other', 'spdx_id': 'NOASSERTION'}, 'created_at': '2026-04-09T18:08:19Z'",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/anthropics/claude-desktop-buddy",
+     "quote": "Stars: 2.7k ... Forks: 474",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/anthropics/claude-desktop-buddy/main/LICENSE",
+     "quote": "Copyright 2026 Anthropic, PBC. Permission is hereby granted, free of charge... The GIF assets in characters/bufo/ are from the community \"bufo\" emoji set ... and are not covered by the MIT license above",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/anthropics/claude-desktop-buddy/main/README.md",
+     "quote": "Claude for macOS and Windows can connect Claude Cowork and Claude Code to maker devices over BLE ... we built a desk pet on ESP32 that ... wakes when sessions start, gets visibly impatient when an approval prompt is waiting, and lets you approve or deny right from the device. ... The firmware targets ESP32 with the Arduino framework. As written, it depends on the M5StickCPlus library ... The BLE API is only available when the desktop apps are in developer mode",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/anthropics/claude-desktop-buddy/main/REFERENCE.md",
+     "quote": "# Hardware Buddy BLE Protocol. This is the wire protocol the Claude desktop apps speak over Bluetooth LE. ... Help → Troubleshooting → Enable Developer Mode ... Developer → Open Hardware Buddy…",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/anthropics/claude-desktop-buddy/main/platformio.ini",
+     "quote": "[env:m5stickc-plus] platform = espressif32 board = m5stick-c framework = arduino ... lib_deps = m5stack/M5StickCPlus",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.cnx-software.com/2026/05/16/anthropics-open-source-claude-desktop-buddy-turns-esp32-s3-devices-into-interactive-ai-desk-companions/",
+     "quote": "released a local Bluetooth Low Energy (BLE) API for its desktop apps ... [M5StickC Plus] about $30 on AliExpress ... you can approve or deny actions without going back to the desktop app",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.yankodesign.com/2026/05/20/this-30-gadget-gives-claude-a-face-that-reacts-to-what-its-doing/",
+     "quote": "The reference hardware is the M5StickC Plus, a pocket-sized board with a 135×240 color display ... costs around $30 and comes pre-supported by the firmware ... Button A approves. Button B denies.",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "I checked each part and found nothing that refutes the claim. Stars (2,721) and forks (474) match the GitHub API exactly as of 2026-11-18.\n\n1. **License:** the LICENSE file is the standard MIT text. Because it adds a clause excluding the third-party bufo GIF characters, GitHub's API reports the license as \"Other\" (NOASSERTION), not MIT. Someone checking the repo sidebar may see that label.\n2. **Price:** the README does not give a price. The \"about $30\" comes from CNX Software (\"about $30 on AliExpress\") and Yanko Design (\"costs around $30\"). I tried to check M5Stack's own store price, but the shop rate-limited the request (HTTP 429), so I could not confirm it.\n3. **CNX headline:** it says \"ESP32-S3 devices\", but the repo's firmware actually targets the original M5StickC Plus (PlatformIO board \"m5stick-c\").\n4. **Supported apps:** the API is in Claude for both macOS and Windows and connects Claude Cowork and Claude Code sessions. The repo was created 2026-04-09."
+  },
+  {
+   "claim": "Claude Code itself (first-party, free) now has: /stats with an activity heatmap and streaks, /insights which writes an HTML report on how you work, /recap which gives a one-line session summary, and a status line that receives live 5-hour and weekly rate-limit data. Remote Control sends push alerts to a phone.",
+   "id": "cc-native",
+   "verdict": "partly",
+   "corrected": "As of 2026-11-18, Claude Code ships these first-party features at no extra charge. Claude Code itself is not free: it needs a paid Claude plan (Pro, Max, Ultra, Team or Enterprise) or pay-per-token API billing. The features are: /stats, now an alias that opens the Stats tab of /usage, with an activity heatmap, a usage streak, active days and a most-active day; /insights, which analyzes up to 200 recent local sessions and writes an HTML report on how you work (~/.claude/usage-data/report.html), with the tokens counting against your plan or API usage; /recap, a one-line session summary capped at 400 characters (an automatic recap also appears when you return to an idle session); and a custom status line whose JSON input includes rate_limits.five_hour and rate_limits.seven_day (used_percentage and resets_at). That data is sent only to claude.ai Pro, Max and Ultra subscribers, or behind a Claude apps gateway, and only after the session's first API response. Remote Control can send push notifications to the Claude iOS/Android app when a task finishes or Claude needs a decision. It needs a Pro, Max, Ultra, Team or Enterprise plan (no API keys) and is opt-in under /config.",
+   "evidence": [
+    {
+     "url": "https://code.claude.com/docs/en/commands",
+     "quote": "| `/stats` | Alias for `/usage`. Opens on the Stats tab |  ...  | `/recap` | Generate a one-line summary of the current session on demand. ...  | `/insights` | Generate an HTML report analyzing your recent sessions on this machine: which projects you work in, how you use Claude Code, where things go wrong, and features to try.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://code.claude.com/docs/llms-full.txt",
+     "quote": "(changelog 2.1.246, August 25, 2026) \"Fixed `/stats` activity heatmap showing each day's activity one cell off (Sunday's count under Monday) in timezones east of UTC\"; (2.0.64, December 10, 2025) \"/stats now provides users with interesting CC stats, such as favorite model, usage graph, usage streak\"; (2.1.118, April 23, 2026) \"Merged `/cost` and `/stats` into `/usage` — both remain as typing shortcuts that open the relevant tab\"",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://code.claude.com/docs/en/changelog",
+     "quote": "2.1.325 (November 13, 2026): \"Fixed `/stats` showing an Active days total that was one day too high\"",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://code.claude.com/docs/en/costs",
+     "quote": "Run /insights for a report on how you work rather than how many tokens you've used. It analyzes your recent sessions on this machine and writes an HTML report ... You can run /insights on any plan and with any provider. ... the tokens count against your plan or API usage.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://code.claude.com/docs/en/costs",
+     "quote": "Claude Code charges by API token consumption. For subscription plan pricing (Pro, Max, Ultra, Team, Enterprise), see claude.com/pricing.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://code.claude.com/docs/en/interactive-mode",
+     "quote": "When you return to the terminal after stepping away, Claude Code shows a one-line recap of what happened in the session so far. ... Run /recap to generate a summary on demand. ... Claude Code caps both automatic recaps and /recap output at 400 characters.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://code.claude.com/docs/en/statusline",
+     "quote": "`rate_limits.five_hour.used_percentage`, `rate_limits.seven_day.used_percentage` | Percentage of the 5-hour or 7-day rate limit consumed ... `rate_limits`: appears only for claude.ai Pro, Max, and Ultra subscribers, or behind a Claude apps gateway that sets a spend limit for you. Even then, it appears only after the first API response in the session.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://code.claude.com/docs/en/remote-control",
+     "quote": "## Mobile push notifications  When Remote Control is active, Claude can send push notifications to your phone. A push can arrive when a long-running task finishes or when Claude needs a decision from you.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://code.claude.com/docs/en/remote-control",
+     "quote": "Subscription: available on Pro, Max, Ultra, Team, and Enterprise plans. API keys are not supported. ... In your terminal, run /config and enable Push when Claude decides ... Push when actions required ... or both.",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "Every feature is real and documented in first-party docs. The verdict is partly, not confirmed, for four reasons. (1) \"Free\" is misleading. Claude Code bills by tokens or needs a paid Claude plan. The features cost nothing extra, but /insights uses tokens against your plan or API usage. (2) /stats is no longer its own command. Since v2.1.118 (Apr 23, 2026) it is an alias that opens the Stats tab of /usage. (3) The status line rate-limit fields reach only Pro, Max and Ultra subscribers (or users behind a Claude apps gateway), and only after the first API response. API-key users get none, and the docs list no Team or Enterprise access. (4) Remote Control push needs a Pro, Max, Ultra, Team or Enterprise plan, the Claude mobile app, and opting in under /config. On Team and Enterprise, an Owner must also turn Remote Control on. The heatmap is confirmed by a changelog fix dated Aug 25, 2026. Streaks are confirmed by the Dec 10, 2025 changelog entry (\"usage streak\"), and I found no later note removing them. I did not see the current Stats tab UI directly: the locally installed CLI is v2.1.4, too old to check."
+  },
+  {
+   "claim": "Claude Code once shipped a /buddy companion pet that was later removed. GitHub issue anthropics/claude-code#45596 'Bring Back Buddy' has about 1,197 thumbs-up reactions, and some users pinned version 2.1.96 to keep /buddy.",
+   "id": "bring-back-buddy",
+   "verdict": "confirmed",
+   "corrected": "Claude Code shipped a /buddy companion pet in v2.1.89 as an April Fools' feature (\"hatch a small creature that watches you code\"). It disappeared in v2.1.97 on April 9, 2026, with no changelog entry. GitHub issue anthropics/claude-code#45596, \"Bring Back Buddy — A Consolidated Plea from the Community\", was opened on April 9, 2026 and is still open. As of 2026-11-18 it has 1,197 thumbs-up reactions (2,118 reactions in all, including 646 hearts) and 287 comments. Some users stayed on or pinned v2.1.96 to keep /buddy.",
+   "evidence": [
+    {
+     "url": "https://api.github.com/repos/anthropics/claude-code/issues/45596",
+     "quote": "\"title\": \"Bring Back Buddy — A Consolidated Plea from the Community\", state open, created 2026-04-09; reactions: \"total_count\": 2118, \"+1\": 1197, \"heart\": 646; comments: 287",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/anthropics/claude-code/issues/45596",
+     "quote": "On April 9, `/buddy` vanished from Claude Code v2.1.97. No changelog mention. ... Some users literally downgraded to v2.1.96 just to keep their buddy alive.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/anthropics/claude-code/issues/45596#issuecomment-4212027490",
+     "quote": "I was told it /buddy is not planned to come back. I am currently keeping v2.1.96 to keep /buddy.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/anthropics/claude-code/issues/45596#issuecomment-4222666089",
+     "quote": "claude code identified that it can simply pin down v2.1.96 to claude96 command which still has the buddy in its binary code",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+     "quote": "## 2.1.89 ... - `/buddy` is here for April 1st — hatch a small creature that watches you code",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "Every part of the claim held up. The thumbs-up count is exactly 1,197 today, both through the GitHub API and on the issue page. The official CHANGELOG confirms /buddy shipped in v2.1.89 as an April 1 feature, and the issue says it was removed in v2.1.97 on 2026-04-09 with no changelog mention. Several commenters say they downgraded to, kept or pinned v2.1.96 to keep it. One said they made a 'claude96' alias pinned to v2.1.96. Some context worth knowing: the issue is still open and carries a 'duplicate' label. One user says they were told /buddy is 'not planned to come back'. A non-Anthropic commenter (2026-10-03) says it returned 'in a different form' as a built-in plugin in v2.1.287 (cc-plugin-you-should-know@builtin). I did not check that claim and it does not change the verdict. No Anthropic member has commented on the issue."
+  },
+  {
+   "claim": "Pixel Agents (github.com/pablodelucca/pixel-agents) is a free MIT pixel-art office for Claude Code agents inside VS Code, with about 10.3k GitHub stars and about 98,475 VS Code Marketplace installs as of 2026-11-18. It supports Claude Code only, and its roadmap mentions future scores or game elements.",
+   "id": "pixel-agents",
+   "verdict": "partly",
+   "corrected": "Pixel Agents (github.com/pablodelucca/pixel-agents) is a free, MIT-licensed pixel-art office where Claude Code agents appear as animated characters. It runs as a VS Code extension, also listed on Open VSX, and as a standalone CLI: `npx pixel-agents` serves the same office as a browser app. As of 2026-11-18 it has 10,286 GitHub stars (about 10.3k) and 1,754 forks, and the VS Code Marketplace shows 98,492 installs. Today it supports only Claude Code. The README says Codex, Gemini, Cursor and others are on the roadmap. The roadmap section (\"Where This Is Going\") also aims to make it \"actually a game\", with \"Scores for whatever you care about.\"",
+   "evidence": [
+    {
+     "url": "https://api.github.com/repos/pablodelucca/pixel-agents",
+     "quote": "stargazers_count: 10286, forks_count: 1754, license spdx_id: MIT, description: \"A playful way to manage your AI workforce\"",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/pablodelucca/pixel-agents",
+     "quote": "Codex, Gemini, Cursor, and others are on the roadmap.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/pablodelucca/pixel-agents/main/README.md",
+     "quote": "Claude Code is supported today; Codex, Gemini, Cursor, and others are on the roadmap.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/pablodelucca/pixel-agents/main/README.md",
+     "quote": "Scores for whatever you care about.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/pablodelucca/pixel-agents/main/README.md",
+     "quote": "`npx pixel-agents` starts a local server and serves the same office as a browser app.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/pablodelucca/pixel-agents/main/README.md",
+     "quote": "Pixel Agents is available under the MIT License.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://marketplace.visualstudio.com/items?itemName=pablodelucca.pixel-agents",
+     "quote": "Pixel art office where your Claude Code agents come to life as animated characters (Installs: 98,492; Price: Free; Publisher: Pablo De Lucca)",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "Every stated part of the claim holds. The verdict is partly only because one detail is missing. Stars: 10,286 by the GitHub API, which matches \"about 10.3k\". Installs: 98,492 on the Marketplace against 98,475 claimed, a 0.02% difference. The MIT license, free price, Claude Code-only support and the roadmap's game and score elements are all confirmed in the README. The missing detail is that it no longer runs only inside VS Code. A standalone CLI (`npx pixel-agents`, needs Node.js 20+) serves the same office in a browser, and the extension is also on Open VSX. The roadmap also names other agents (Codex, Gemini, Cursor), not just game elements. The Marketplace rating is about 4.5 stars from 6 ratings. The install figure and the 1.6.0 version are as reported by the page fetch. No exact last-updated date was shown on the listing, and the repo was last pushed on 2026-11-10."
+  },
+  {
+   "claim": "CodexBar (github.com/steipete/CodexBar) is a free MIT macOS menu bar app showing usage and limits for Codex, Claude Code and many other providers (about 80), with about 23.2k GitHub stars as of 2026-11-18.",
+   "id": "codexbar",
+   "verdict": "partly",
+   "corrected": "CodexBar (github.com/steipete/CodexBar) is a free, open-source (MIT) macOS 14+ menu bar app that shows usage limits and reset times for Codex, Claude Code and many other providers: 114 as of 2026-11-18, up from 80 in September 2026. It also has a Linux desktop app and a CLI. The repo had 23,213 GitHub stars as of 2026-11-18 (latest release v0.84.0, 2026-11-07).",
+   "evidence": [
+    {
+     "url": "https://github.com/steipete/CodexBar",
+     "quote": "Show usage stats for OpenAI Codex and Claude Code, without having to login.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://api.github.com/repos/steipete/CodexBar",
+     "quote": "\"stargazers_count\": 23213, \"forks_count\": 2238, \"spdx_id\": \"MIT\"",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/steipete/CodexBar/main/README.md",
+     "quote": "CodexBar — every AI coding limit in your menu bar. 114 providers. ... Tiny macOS 14+ menu bar app that keeps AI coding-provider limits visible and shows when each window resets.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://codexbar.app",
+     "quote": "Free & open source · macOS 14+",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://runtimewire.com/article/codexbar-expands-to-80-ai-providers",
+     "quote": "CodexBar adds three providers, bringing its AI usage tracker to 80 (Sep 23rd, 2026, 1:45pm CT)",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "Stars hold: the API showed 23,213 today against the claimed ~23.2k. MIT is confirmed in the API, the README badge and the site footer. \"Free\" is confirmed by the site (\"Free & open source\") and no paid tier is listed. Codex and Claude Code are both listed providers. The provider count is out of date: 80 was right per RuntimeWire on 2026-09-23. Today the README banner and codexbar.app both say 114, and a count of the README provider list gives 114 entries (88 in the main list plus 26 generated additions). The app is no longer macOS-only: there is now a Qt 6 Linux desktop app and macOS/Linux CLI tarballs. The latest release is v0.84.0, published 2026-11-07, and the last push was 2026-11-14."
+  },
+  {
+   "claim": "Other coding-agent hardware campaigns raised little: CtrlVibe raised HK$80,514 (about US$10,261) from 59 backers, ending 2026-09-13; AgentDeck had CA$597 of a CA$71,000 goal from 3 backers with the campaign running to 2026-12-01; Token Monitor (Fractal Manifold) raised EUR 1,153 of a EUR 28,000 goal from 10 backers and was unsuccessful.",
+   "id": "small-campaigns",
+   "verdict": "confirmed",
+   "corrected": "Other coding-agent hardware campaigns raised little. CtrlVibe raised HK$80,514 (about US$10,261) from 59 backers and ended on 2026-09-13. That was 805% of a small HK$10,000 goal, so it was funded. As of 2026-11-18, AgentDeck had CA$597 of a CA$71,000 goal (1%) from 3 backers, with the campaign running to 2026-12-01. Token Monitor (Fractal Manifold, listed on Kickstarter under creator Jorge, Madrid) raised EUR 1,153 of a EUR 28,000 goal from 10 backers and ended unsuccessful on 2026-09-05.",
+   "evidence": [
+    {
+     "url": "https://www.kicktraq.com/projects/663521697/ctrlvibe-ai-keyboard-workflow-control-console-for-the-ai-era/",
+     "quote": "Backers 59; Pledged HK$80,514; Goal HK$10,000; 805%; Jul 30th -> Sep 13th (45 days); Funding Successful",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.pledgebox.com/projects/ctrlvibe-ai-keyboard-workflow-control-console-for-the-ai-era",
+     "quote": "HK$80,514 pledged of HK$10,000 goal, 59 backers, July 30 to September 13 (45 days), funding successful",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://cnx-software.com/2026/08/05/ctrlvibe-ai-console-keypad-an-openai-codex-micro-alternative-for-ai-workflows/",
+     "quote": "Posted on August 5, 2026 ... The CtrlVibe AI Console is now available on Kickstarter",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.kicktraq.com/projects/agentdeck/agentdeck-the-physical-control-deck-for-ai-coding-agents/",
+     "quote": "Funding: $597 CAD of $71,000 CAD; Backers 3; Oct 2nd -> Dec 1st (61 days); 012 days to go",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.pledgebox.com/projects/agentdeck-the-physical-control-deck-for-ai-coding-agents",
+     "quote": "CA$597 pledged of CA$71,000 goal, 3 backers, 1% funded, October 2 to December 1, 12 days to go",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.kicktraq.com/projects/jorgemf/token-monitor-see-your-ai-usage-on-your-desk/",
+     "quote": "Funded: €1,153 of €28,000 ... A project in Madrid, Spain by Jorge ... Aug 6 -> Sep 5 (30 days) ... Funding Unsuccessful, 10 backers",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.pledgebox.com/projects/token-monitor-see-your-ai-usage-on-your-desk",
+     "quote": "€1,153 pledged of €28,000 goal (4%), 10 backers, August 6 to September 5, unsuccessful",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.cnx-software.com/2026/08/07/token-monitor-an-esp32-s3-desktop-display-that-tracks-ai-coding-assistant-usage/",
+     "quote": "Fractal Manifold has introduced the Token Monitor, a 4-inch ESP32-S3-based desktop display ... now available on Kickstarter with a funding goal of €25,000.",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "I checked every figure against today's Kicktraq pages and PledgeBox mirrors, and they all match: CtrlVibe HK$80,514 from 59 backers; AgentDeck CA$597 of CA$71,000 from 3 backers; Token Monitor EUR 1,153 of EUR 28,000 from 10 backers.\n\nContext and caveats:\n\n1. **CtrlVibe was funded.** It reached 805% of its HK$10,000 goal, so \"raised little\" is true only in absolute terms.\n2. **The US$ figure is not on any page I could read.** Kicktraq shows HKD only, and the Kickstarter stats endpoint was blocked. HK$80,514 at about 7.85 HKD/USD comes to about US$10,260, so \"about US$10,261\" is consistent.\n3. **Years are inferred.** Kicktraq and PledgeBox give no year. 2026 comes from CNX articles dated August 5 and 7, 2026, and from AgentDeck showing 12 days left on 2026-11-18.\n4. **AgentDeck's length differs by source.** Kicktraq says 61 days and PledgeBox says 60. Both end on December 1.\n5. **Token Monitor's creator and goal differ by source.** Kicktraq names the creator only as \"Jorge\" (Madrid, Spain), while CNX names the company as Fractal Manifold. CNX gave the goal at launch as EUR 25,000, but Kicktraq and PledgeBox show EUR 28,000. The campaign ended on 2026-09-05."
+  },
+  {
+   "claim": "Agent Cat (agentcat.app) is a free Mac/Windows menu-bar cat for Claude Code, Codex and other agents. Former Pro features became free in v26.35.0 (2026-08-26). It shows usage and limits, has an AI 'Reflect' recap that runs through the user's own Claude CLI, streak pins, and phone/watch apps. The site counter showed about 9,766 downloads as of 2026-11-18.",
+   "id": "agent-cat",
+   "verdict": "confirmed",
+   "corrected": "Agent Cat (agentcat.app, by Trappist) is a free Mac menu-bar / Windows tray cat for Claude Code, Codex and other agents (OpenCode, Gemini CLI, Grok, Kimi Code). Former Pro features (reports, full recap, cost estimate, full history, Agent Hub) became free in v26.35.0, published 2026-08-26. It shows usage and limits, has an opt-in AI 'Reflect' analysis (macOS) that runs through the user's own logged-in Claude Code CLI, streak pins, and iPhone/Android plus Apple Watch/Wear OS apps. The site counter showed 9,766 total downloads as of 2026-11-18.",
+   "evidence": [
+    {
+     "url": "https://agentcat.app/en",
+     "quote": "Total downloads <strong>9,766</strong>",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://agentcat.app/en",
+     "quote": "No subscription, payments or locked features. Reports, full history, cost estimates, pins and teams are all included.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://agentcat.app/en",
+     "quote": "Claude Code, Codex, OpenCode… See your AI agents’ usage at a glance in the Mac menu bar. Use it on Windows, and keep up on iPhone and Android. All free.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://agentcat.app/en",
+     "quote": "Collect pins as you reach usage and streak milestones. Equip a favorite in the popover, or save a card to share.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://agentcat.app/en",
+     "quote": "Agent Cat Mobile shows limits and usage synced from your desktop ... Watches require a compatible paired phone.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://agentcat.app",
+     "quote": "계정마다 남은 한도와 리셋 시간을 보여주고 (shows remaining limit and reset time per account)",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/yong076/agent-cat-releases/releases/tag/v26.35.0",
+     "quote": "Every Pro surface — reports, full recap, cost estimate, full history, Agent Hub — unlocks without an account or payment.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://api.github.com/repos/yong076/agent-cat-releases/releases/tags/v26.35.0",
+     "quote": "published_at: 2026-08-26T08:56:09Z",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/yong076/agent-cat-releases/releases/tag/v26.37.1",
+     "quote": "Analysis requires a logged-in current Claude Code CLI and a supported model (validated with Claude Code 2.1.263).",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/yong076/agent-cat-releases/releases?page=3",
+     "quote": "26.36.3: \"Agent Cat is free, with no subscription or trial gate.\"",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "I tried to refute each part and none of it failed. The 9,766 figure is hard-coded in the page HTML that the server sends (span data-download-count). The landing page still shows \"v26.35.1\", while the newest GitHub release is 26.47.0 from 17 Nov 2026. The page's version label is out of date, so the counter may be out of date too. The 26.35.0 notes say sign-in is still needed for server-backed extras: the Pro connector install and cross-device sync. Reflect is opt-in, needs macOS 14+ and Python 3, and has automatic analysis off by default. On Windows the app sits in the system tray, not a menu bar. The landing page never mentions \"Reflect\" by name; the evidence for it comes from the release notes for 26.36.x through 26.42.0."
+  },
+  {
+   "claim": "CodeBurn is a free MIT usage/cost tracker for AI coding agents with about 11,859 GitHub stars as of 2026-11-18, and it detects looping tool calls and repeatedly failing commands.",
+   "id": "codeburn",
+   "verdict": "confirmed",
+   "corrected": "CodeBurn (github.com/getagentseal/codeburn) is a free, local, MIT-licensed tool that tracks AI coding token usage and cost across 37 tools and agents, with 11,859 GitHub stars as of 2026-11-18. Its opt-in Guard feature uses Claude Code hooks to catch looping tool calls (the same tool with the same input, warning at 4 in a row and stopping at 8) and repeatedly failing shell commands (warning at 3 failures and stopping at 5).",
+   "evidence": [
+    {
+     "url": "https://api.github.com/repos/getagentseal/codeburn",
+     "quote": "stargazers_count: 11859, forks_count: 913, description: 'Free, local tool to track AI coding token usage and cost across 37 tools and agents (Claude Code, Cursor, Codex, Gemini and more), by model, project, and task. npx codeburn', license: MIT License",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://github.com/getagentseal/codeburn",
+     "quote": "Stars: 11.9k ... License: MIT",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/getagentseal/codeburn/main/README.md",
+     "quote": "Guard is opt-in and local. `codeburn guard install` adds Claude Code hooks that warn a session once it passes $5 and stop it at $15, and do the same for a tool call stuck in a loop or a failing command retried over and over.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/getagentseal/codeburn/main/README.md",
+     "quote": "CodeBurn is MIT licensed and all of it is in this repository ... There is no account, no paid tier and no feature held back for one.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/getagentseal/codeburn/main/docs/guard.md",
+     "quote": "Loops (default warn at 4, stop at 8): the same tool called with the same input that many times in a row gets a one-time warning, then the call is stopped. ... Retries (default warn at 3, stop at 5): a shell command that already failed that many times in the session gets a one-time warning, then further runs of it are stopped.",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "Every part of the claim checks out. The GitHub API shows exactly 11,859 stars today, and the repo was last pushed on 2026-11-13, not archived. One limit worth knowing: loop and failing-command detection is the opt-in Guard feature, and it runs only as Claude Code hooks. It does not cover all the tracked agents. The repo description says 37 tools, while the README FAQ mentions 42 integrations."
+  },
+  {
+   "claim": "Usagebar (usagebar.com) costs $9 one-time for Mac. Vibe Buddy (vibebuddy.sh) is US$49 with a refundable US$5 deposit and expected shipping around November 2026. VibeKeys Pro is $39 on vibekeys.dev. Vibe Island costs $19.99 one-time for one Mac. FreakStudio's ClaudeAssistant is US$70 on Tindie.",
+   "id": "prices",
+   "verdict": "confirmed",
+   "corrected": "As of 2026-11-18: Usagebar (usagebar.com) costs $9 one-time for Mac, with lifetime updates and a free tier. Vibe Buddy (vibebuddy.sh) costs US$49, shipping not included. A fully refundable US$5 deposit reserves one and counts toward the price, and shipping is planned to start around November 2026. VibeKeys Pro is $39 on vibekeys.dev, with free worldwide shipping. Vibe Island costs $19.99 one-time for one Mac, includes 1 year of updates, and charges $10 for each extra Mac. FreakStudio's ClaudeAssistant is US$70.00 on Tindie.",
+   "evidence": [
+    {
+     "url": "https://usagebar.com",
+     "quote": "Get for Mac $9 — one-time, lifetime updates",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://vibebuddy.sh",
+     "quote": "Reserve one with a fully refundable US$5 deposit, credited toward the US$49 price. ... We're planning to start shipping around November 2026.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://vibekeys.dev",
+     "quote": "The VibeKeys Pro ($39) and VibeKeys Plus ($49) are in stock",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://vibeisland.app/",
+     "quote": "Vibe Island License $19.99 ... 1 Mac · one-time purchase ... Unlimited sessions & 1 year of updates",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://www.tindie.com/products/freakstudio/claudeassistant/",
+     "quote": "\"availability\": \"http://schema.org/InStock\" , \"priceCurrency\": \"USD\", \"price\": \"70.00\"",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "All five prices match the official pages and listing, read on 2026-11-18. I read each page's text and also checked its raw HTML and schema.org data. Extra details: (1) The Vibe Buddy price excludes shipping, and the site still calls it \"a working prototype\". November 2026 is when it plans to START shipping, so check whether units are actually shipping yet. (2) Vibe Island shows an \"EARLY BIRD · PRICING\" banner, and its page script can swap in an early-bird price. The full price in the script is 1999 cents, so $19.99, plus $10 for each extra Mac. The 1-Mac licence includes only 1 year of updates. (3) Usagebar also has a free tier. (4) The Tindie listing has no variant options and shows a single price of $70.00. Its schema data says InStock, but the page says shipping rates aren't set up for every country. (5) Possible mix-up: vibekeys.dev sells its own \"VibeBuddy\" desk buddy, marked in stock at $69 with free worldwide shipping. That is a separate listing from Vibe Buddy on vibebuddy.sh at US$49, so the report should keep the two apart."
+  },
+  {
+   "claim": "Clauddy (github.com/renatoaug/claude-usage-monitor, npm 'clauddy') is a free MIT pixel-art desktop pet in Rust (egui) for macOS, Windows and Linux that shows Claude Code session and weekly limit percentages, also supports Codex and Cursor, catches fire at 90%+ usage, and had about 125 GitHub stars as of 2026-11-18. It was shown on r/ClaudeAI on 2026-11-13 as 'Claude Code limits in a desktop pet'.",
+   "id": "clauddy",
+   "verdict": "partly",
+   "corrected": "Clauddy (github.com/renatoaug/claude-usage-monitor; the npm package 'clauddy' is a small launcher that downloads the app, run with `bunx clauddy`) is a free, MIT-licensed pixel-art desktop pet. It is a native Rust/egui app for macOS on Apple Silicon (the first-class build), Windows x64 and Linux x64. It shows the real Claude Code session and weekly limit percentages from your account and can also follow Codex and Cursor. The pet catches fire when session usage passes a fire threshold, 90% by default. As of 2026-11-18 the repo had 125 GitHub stars and 18 forks, and npm's latest version was 2.7.2, published 2026-11-17. A 2026-11-18 r/ClaudeAI post titled 'Claude Code limits in a desktop pet' is reported, but I could not verify it.",
+   "evidence": [
+    {
+     "url": "https://github.com/renatoaug/claude-usage-monitor",
+     "quote": "About: \"A cute pixel-art desktop pet for macOS that tracks your Claude Code usage\"; Stars 125, Forks 18; License MIT",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://api.github.com/repos/renatoaug/claude-usage-monitor",
+     "quote": "\"stargazers_count\": 125, \"language\": \"Rust\", \"forks_count\": 18, \"spdx_id\": \"MIT\", \"created_at\": \"2026-06-18T23:43:29Z\"",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/renatoaug/claude-usage-monitor/main/README.md",
+     "quote": "A pixel-art desktop pet that keeps an eye on your Claude Code usage: the real session and weekly % from your account... and a pet that works, sleeps and catches fire along with it. It can follow Codex and Cursor too ... A native app in Rust with egui, no browser engine ... macOS on Apple Silicon (the first-class build), Windows x64 or Linux x64 ... Clauddy is licensed under the MIT License.",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://raw.githubusercontent.com/renatoaug/claude-usage-monitor/main/docs/design/02-features.md",
+     "quote": "**on fire**: session past the fire threshold (90% by default), flames",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://registry.npmjs.org/clauddy",
+     "quote": "\"name\":\"clauddy\" ... latest 2.7.2 (2026-11-17T22:10:50Z), license MIT, \"A desktop pet that tracks your Claude Code usage\"",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://promppy.com/topic/claude-code",
+     "quote": "No item about Clauddy or a desktop pet; closest is /item/3136691 (Reddit, 11월 17일) on Fable 5.2 usage limits",
+     "seen": "2026-11-18"
+    },
+    {
+     "url": "https://promppy.com/rss.xml",
+     "quote": "50 most recent items (all Wed, 18 Nov 2026 afternoon GMT), none mention Clauddy or a desktop pet",
+     "seen": "2026-11-18"
+    }
+   ],
+   "note": "I checked every product detail against primary sources: the GitHub README, design docs, the GitHub API and the npm registry. These hold: MIT license, Rust/egui, macOS, Windows and Linux, session and weekly %, Codex and Cursor, and 125 stars as of 2026-11-18, an exact match. Two refinements. First, fire is tied to session usage passing a configurable threshold that defaults to 90%. Second, the npm package is only a launcher for the native app. The GitHub About line still says \"for macOS\", but the README lists all three platforms. I could not verify the r/ClaudeAI post (date and title). WebFetch cannot reach reddit.com, and permission was denied for the Reddit JSON search API and a Redlib mirror. promppy.com's /topic/claude-code page, /topic/claude page and RSS feed show no Clauddy item. Web searches for the post title and for 'Clauddy' returned nothing. Nothing contradicts the Reddit detail, but it is unconfirmed, so the verdict is partly rather than confirmed. Added after the check: the Arctic Shift Reddit archive shows the post went up on 2026-11-13 (not 11-18), by u/SuccessfulCress7441, with 179 points and 27 comments as archived."
+  }
+ ]
+}

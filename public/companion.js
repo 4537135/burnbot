@@ -11,9 +11,10 @@
 //
 // In a browser: ?demo=cycle | <level> | moments[&n=..] as the big scene, or none (fed by message
 // from the board that frames it, companion-board.html), plus &style=1..3, &scale=2..4, &right=0 (opens to the left), &down=1
-// (opens downward), &hover=1 (head open), &panel=1 (panel open).
+// (opens downward), &hover=1[&hold=1..7] (head open, or held partway), &panel=1 (panel open),
+// &progress=0..1[&verified=1] (a made-up estimate of the objective's progress, for the chest bar).
 
-import { drawRobot, drawSmoke, Fire, STATE_META, STATE_ORDER } from './robot.js';
+import { drawFurnace, drawRobot, drawSmoke, Fire, STATE_META, STATE_ORDER } from './robot.js';
 import { compact, duration } from './format.js';
 import { inApp, listen, tell } from './link.js';
 import { runDemo } from './demo.js';
@@ -27,13 +28,20 @@ const still = matchMedia('(prefers-reduced-motion: reduce)');
  * The ways the head turns into a screen (you pick one: Big, Wide, Compact; Companion.styleNames).
  * w × h: the head as a screen; bezel: its frame;
  * face: where the eyes go; title/now: where the text starts, in robot pixels from the screen's
- * left; foot: intensity blocks along the bottom (otherwise top right); rate: tokens/h beside them.
+ * left; nowLines: how many lines it may take; rate: tokens/h along the bottom;
+ * furnace: how hard it is going, inside the screen's right edge: its width, and the rows left
+ * free above and below it (Compact's sits under the title, which needs the whole width).
  */
 const STYLES = {
-  1: { w: 70, h: 40, bezel: 4, face: 'corner', title: 12, nowAt: 2, nowTop: 8, foot: true, rate: true },
-  2: { w: 88, h: 28, bezel: 4, face: 'edge', title: 20, nowAt: 20, nowTop: 6.5, foot: false, rate: false },
-  3: { w: 48, h: 34, bezel: 2, face: 'corner', title: 12, nowAt: 2, nowTop: 8, foot: true, rate: false },
+  1: { w: 70, h: 40, bezel: 4, face: 'corner', title: 12, titleTop: 1, nowAt: 2, nowTop: 8, nowLines: 2, rate: true, furnace: { w: 12, above: 3, below: 2 } },
+  2: { w: 88, h: 28, bezel: 4, face: 'edge', title: 20, titleTop: 0.5, nowAt: 20, nowTop: 6.5, nowLines: 2, rate: false, furnace: { w: 12, above: 1, below: 1 } },
+  3: { w: 48, h: 34, bezel: 2, face: 'corner', title: 12, titleTop: 1, nowAt: 2, nowTop: 8, nowLines: 3, rate: false, furnace: { w: 10, above: 8, below: 1 } },
 };
+/** Where the furnace goes on the screen `sc`, in robot pixels. */
+function furnaceBox(sc, style) {
+  const f = style.furnace;
+  return { x: sc.x + sc.w - 2 - f.w, y: sc.y + f.above, w: f.w, h: sc.h - f.above - f.below };
+}
 const REST = { w: 32, h: 22 };
 // Where the app puts the robot's feet in the window (Companion.swift): from the near side, from the bottom.
 const FEET_IN = { x: 52, y: 10 };
@@ -106,8 +114,11 @@ function shownArea() {
 let data = null;
 const closed = new Set(); // bubbles closed here, before the app has heard about it
 
+// &progress=0..1 (and &verified=1): a made-up estimate, with no session, so it shows whatever the session.
+const madeUp = params.has('progress') ? { progress: Number(params.get('progress')), basis: 'plan', verified: params.get('verified') === '1', label: '' } : null;
+
 function receive(next) {
-  data = next;
+  data = madeUp && next ? { ...next, objective: madeUp } : next;
   const state = data?.live?.state || 'asleep';
   document.documentElement.style.setProperty('--state', STATE_META[state].color);
   document.title = `${STATE_META[state].label} · Burnbot`;
@@ -149,12 +160,14 @@ let robotBox = null; // the robot, head to feet, in CSS pixels
 let headNow = null; // the head as drawn, in robot pixels
 
 const forcedOpen = () => params.get('hover') === '1' || Boolean(data?.knockTest);
+// &hold=1..7 with &hover=1: the head stopped partway open, for the board's step-by-step strip.
+const held = Math.min(7, Math.max(1, Number(params.get('hold')) || 7));
 const bubbleOn = () => $('bubble').classList.contains('on');
 
 function follow(now) {
   const over = !dragging && inside(robotBox, pointer);
   if (forcedOpen() && !panelOpen && !dragging) {
-    target = 7;
+    target = held;
   } else if (over && !panelOpen && !bubbleOn()) {
     awaySince = 0;
     if (!overSince) overSince = now;
@@ -218,6 +231,57 @@ function shownExpr() {
   return data?.expr || '';
 }
 
+/**
+ * How far the objective has got, in the chest bar's 10 pixels, or null when there is no estimate for
+ * the session the robot is about (data.objective: {progress 0..1, basis, verified, label, session}).
+ * One without a session is a preview's, and shows. Anything above nothing is at least a pixel, and
+ * the last pixel waits for a verified finish.
+ */
+function objectiveFill() {
+  const o = data?.objective;
+  if (!o || !Number.isFinite(o.progress)) return null;
+  if (o.session != null && o.session !== data?.glance?.session) return null;
+  // At least a pixel: an empty track would read as "no idea", and no idea is the lights, not a bar.
+  const p = Math.min(1, Math.max(0, o.progress));
+  const px = Math.max(1, Math.round(p * 10));
+  return o.verified ? px : Math.min(9, px);
+}
+
+// The fill as drawn: it walks to the estimate a pixel at a time, either way, without fuss.
+let chestPx = null;
+let chestAcc = 0;
+// How far the lights have turned into the bar (drawRobot's chest.step, 0 the lights). Opening, it
+// keeps step with the head; closing, the head drops its text at once, so the bar undoes itself a
+// step at a time, at the pace the head shrinks, and is gone when the head is.
+let chestStep = 0;
+let chestStepAt = 0;
+
+/** The chest as a progress bar ({fill, step} for drawRobot), or null for its lights as ever. */
+function chest(now, dt) {
+  const goal = objectiveFill();
+  const hidden = chestStep === 0;
+  if (goal === null) chestPx = null;
+  else if (chestPx === null || hidden || still.matches) chestPx = goal; // shown as it is when it comes into view
+  else if (chestPx !== goal) {
+    chestAcc += dt;
+    if (chestAcc >= 0.12) {
+      chestAcc = 0;
+      chestPx += Math.sign(goal - chestPx);
+    }
+  } else chestAcc = 0;
+
+  // Only with the head open, and never while it has something to say or the panel is up.
+  if (goal === null || bubbleOn() || panelOpen || dragging) chestStep = 0;
+  else {
+    const want = Math.max(0, stage - 2);
+    if (want >= chestStep || still.matches) chestStep = want;
+    else if (now - chestStepAt >= 45) chestStep--;
+    else return { fill: chestPx, step: chestStep };
+    chestStepAt = now;
+  }
+  return chestStep > 0 ? { fill: chestPx, step: chestStep } : null;
+}
+
 /** One frame. `now` in ms. */
 function tick(now) {
   const dt = Math.min(0.1, last ? (now - last) / 1000 : 0.033);
@@ -235,6 +299,8 @@ function tick(now) {
   const glance = stage >= 1 && stage < 3 ? -2 : panelOpen ? (place.right ? 2 : -2) : 0;
   // smoke is drawn after the outline: outlined, each puff would be a ring
   const opt = { head, bezel: k >= 2 ? style.bezel : 4, face: { mode: stage >= 3 ? style.face : 'face', glance }, smoke: false };
+  const bar = chest(now, dt);
+  if (bar) opt.chest = bar;
 
   octx.clearRect(0, 0, W, H);
   const drawn = drawRobot(octx, fx, gy, state, t, expr, opt);
@@ -260,7 +326,11 @@ function tick(now) {
   ctx.drawImage(off, 0, 0);
   if (drawn.ears) drawSmoke(ctx, drawn.ears, t);
   inFront(state, dt);
-  if (stage >= 7) blocks(drawn.screen, style, live, state);
+  // The furnace stands once the head is full size, its coals catch with the first line, then it burns.
+  if (stage >= 4) {
+    const f = furnaceBox(drawn.screen, style);
+    drawFurnace(ctx, f.x, f.y, f.w, f.h, state, t, { lit: Math.min(2, stage - 4), still: still.matches });
+  }
 
   const hw = Math.round(head.w / 2);
   const reach = Math.max(hw + 4, 18);
@@ -347,17 +417,6 @@ function orbit(front) {
   }
 }
 
-/** How hard it is going: five blocks on the screen, lit in the level's colour. */
-function blocks(sc, style, live, state) {
-  const lit = state === 'asleep' ? 0 : Math.max(state === 'idle' ? 0 : 1, Math.ceil((live?.intensity || 0) / 20));
-  const x = style.foot ? sc.x + 2 : sc.x + sc.w - 21;
-  const y = style.foot ? sc.y + sc.h - 5 : sc.y + 2;
-  for (let i = 0; i < 5; i++) {
-    ctx.fillStyle = i < lit ? STATE_META[state].color : '#2a3240';
-    ctx.fillRect(x + i * 4, y, 3, 3);
-  }
-}
-
 // ---------------------------------------------------------------- the head as a screen
 
 let screenKey = '';
@@ -396,10 +455,13 @@ function layoutScreen(sc, style) {
     e.style.width = `${Math.max(0, w) * s}px`;
     e.classList.toggle('on', on);
   };
-  const blocksW = style.foot ? 0 : 22;
-  set('sTitle', style.title, style.foot ? 1 : 0.5, sc.w - style.title - 1 - blocksW, lines >= 1);
-  set('sNow', style.nowAt, style.nowTop, sc.w - style.nowAt - 2, lines >= 2);
-  set('sRate', 24, sc.h - 6.5, sc.w - 26, lines >= 3 && style.rate);
+  // The text keeps to the left of the furnace, but for a title the furnace stands below (Compact's).
+  const f = furnaceBox(sc, style);
+  const left = f.x - sc.x - 2;
+  set('sTitle', style.title, style.titleTop, (style.furnace.above >= style.nowTop ? sc.w - 1 : left) - style.title, lines >= 1);
+  set('sNow', style.nowAt, style.nowTop, left - style.nowAt, lines >= 2);
+  $('sNow').style.webkitLineClamp = style.nowLines;
+  set('sRate', 2, sc.h - 6.5, left - 2, lines >= 3 && style.rate); // up against the furnace: both how hard it goes
 }
 
 // ---------------------------------------------------------------- the bubble

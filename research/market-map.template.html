@@ -1,0 +1,1411 @@
+<title>Agent Companion Market Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/*PIXEL_FONT*/
+/* Design plan
+   Story: one column read top to bottom, like a guided tour. A hero with Burnbot's own fire scene, then
+   numbered chapters strung on a dashed path. Burnbot (its real pixel robot, drawn from robot.js) opens
+   each chapter with a one-line takeaway in a speech bubble, then a picture made from the data, then the
+   words. Reference material (matrix, catalogue, method) waits in a toolbox at the end.
+   Colour: Burnbot's level ladder (slate, blue, teal, yellow, orange, pink, violet) for categories and
+   accents; orange marks "us". Light and dark from the same tokens.
+   Type: Burnbot's pixel face for headings and big numbers, IBM Plex Sans for reading, Plex Mono for data. */
+:root {
+  --page: #f2f4f8; --surface: #ffffff; --surface-2: #e7ebf2; --ink: #10141b; --ink-2: #3a4353; --muted: #657083; --line: #d3d9e3;
+  --yes: #17876a; --yes-bg: #d8f1e8; --part: #9a7300; --part-bg: #f8ecc4; --no: #b9c1ce; --unk: #8a94a6;
+  --us: #d4570f; --us-bg: #fde8d8; --hi: #c8244f; --hi-bg: #fbe1e8; --mid: #c25a10; --low: #4f6491; --link: #2457b8;
+  --c-desk: #d4570f; --c-disp: #2f7fd6; --c-ctrl: #7a5cd6; --c-use: #17876a; --c-appr: #b38600; --c-game: #c8244f;
+  --c-orch: #4f6491; --c-adj: #8a6d4b; --c-plat: #3a4353; --c-oth: #9aa3b1;
+  --stage: #0e131b;
+  --pixel: "Burnbot Pixel", ui-monospace, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --px: 2px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #0b0d12; --surface: #12161d; --surface-2: #1b212c; --ink: #eef1f6; --ink-2: #aab3c1; --muted: #7c8799; --line: #2a3140;
+  --yes: #4fc9a4; --yes-bg: #143529; --part: #f4c542; --part-bg: #3a3214; --no: #3a4352; --unk: #6b7689;
+  --us: #ff8030; --us-bg: #3a2414; --hi: #f43f6b; --hi-bg: #3a1620; --mid: #ff8030; --low: #8ea3d1; --link: #8cb8ff;
+  --c-desk: #ff8030; --c-disp: #62a8f5; --c-ctrl: #a78bfa; --c-use: #4fc9a4; --c-appr: #f4c542; --c-game: #f43f6b;
+  --c-orch: #8ea3d1; --c-adj: #c9a77c; --c-plat: #c9d1dd; --c-oth: #5b6577; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #0b0d12; --surface: #12161d; --surface-2: #1b212c; --ink: #eef1f6; --ink-2: #aab3c1; --muted: #7c8799; --line: #2a3140;
+  --yes: #4fc9a4; --yes-bg: #143529; --part: #f4c542; --part-bg: #3a3214; --no: #3a4352; --unk: #6b7689;
+  --us: #ff8030; --us-bg: #3a2414; --hi: #f43f6b; --hi-bg: #3a1620; --mid: #ff8030; --low: #8ea3d1; --link: #8cb8ff;
+  --c-desk: #ff8030; --c-disp: #62a8f5; --c-ctrl: #a78bfa; --c-use: #4fc9a4; --c-appr: #f4c542; --c-game: #f43f6b;
+  --c-orch: #8ea3d1; --c-adj: #c9a77c; --c-plat: #c9d1dd; --c-oth: #5b6577; color-scheme: dark }
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--page); color: var(--ink); font: 16px/1.6 var(--sans); }
+a { color: var(--link); text-underline-offset: 2px; }
+h1, h2, h3 { font-family: var(--pixel); font-weight: 400; margin: 0; letter-spacing: .04em; text-wrap: balance; -webkit-font-smoothing: none; }
+h1 { font-size: 46px; line-height: 1.05; text-transform: uppercase; }
+h2 { font-size: 30px; line-height: 1.15; }
+h3 { font-size: 17px; line-height: 1.3; }
+p { margin: 0; max-width: 68ch; }
+:focus-visible { outline: var(--px) solid var(--link); outline-offset: var(--px); }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; font-family: var(--mono); }
+.eyebrow { font-family: var(--pixel); font-size: 15px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); -webkit-font-smoothing: none; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.box { background: var(--surface); padding: 18px 20px; box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); min-width: 0; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; }
+.icon { width: 18px; height: 18px; flex: none; display: inline-block; vertical-align: -3px; }
+
+/* ---------- chapter nav ---------- */
+.nav { position: sticky; top: 0; z-index: 30; background: color-mix(in srgb, var(--page) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+.nav ol { list-style: none; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); max-width: 1120px; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.nav ol::-webkit-scrollbar { display: none; }
+.nav a { display: flex; gap: 6px; align-items: baseline; padding: 10px 8px 9px; white-space: nowrap; text-decoration: none; color: var(--muted); font: 13px var(--sans); border-bottom: 3px solid transparent; }
+.nav a b { font: 12px var(--pixel); -webkit-font-smoothing: none; }
+.nav a[aria-current="true"] { color: var(--ink); border-bottom-color: var(--us); }
+.progress { position: absolute; left: 0; bottom: -1px; height: 2px; width: 0; background: linear-gradient(90deg, #6f83ad, #62a8f5, #4fc9a4, #f4c542, #ff8030, #f43f6b); }
+
+/* ---------- hero ---------- */
+.hero { padding-block: 40px 16px; }
+.hero-in { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 32px; align-items: center; }
+.hero-text { display: grid; gap: 16px; }
+.ladder { display: flex; height: 6px; max-width: 360px; }
+.ladder i { flex: 1; }
+.lede { font-size: 19px; line-height: 1.55; }
+.short-head { margin: 0; font-size: 17px; line-height: 1.6; max-width: 72ch; color: var(--ink-2); }
+.short-head b { display: block; font: 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 400; margin-bottom: 4px; }
+.fview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 13px; color: var(--muted); }
+.dcase { display: grid; gap: 12px; }
+.answer { display: grid; gap: 2px; justify-self: start; text-decoration: none; color: var(--ink); background: var(--us-bg); padding: 12px 16px; box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--us), 0 var(--px) 0 0 var(--us), calc(-1 * var(--px)) 0 0 0 var(--us), var(--px) 0 0 0 var(--us); }
+.answer span { font: 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.answer b { font-size: 18px; }
+.answer em { font: 13px var(--sans); font-style: normal; color: var(--link); }
+.stage { background: var(--stage); aspect-ratio: 4 / 3; position: relative; overflow: hidden; box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stats { display: flex; flex-wrap: wrap; gap: 14px 34px; margin-top: 28px; }
+.stat { display: grid; }
+.stat b { font-family: var(--pixel); font-weight: 400; font-size: 34px; line-height: 1.1; -webkit-font-smoothing: none; }
+.stat span { color: var(--muted); font-size: 13px; }
+
+/* ---------- chapters on a path ---------- */
+.chapter { position: relative; padding: 72px 0 8px 76px; display: grid; gap: 22px; scroll-margin-top: 48px; min-width: 0; }
+.chapter::before { content: ""; position: absolute; left: 30px; top: 0; bottom: 0; border-left: 3px dashed var(--line); }
+.chapter:first-of-type::before { top: 96px; }
+.ch-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 18px; align-items: end; position: relative; }
+.ch-head .stop { position: absolute; left: -58px; top: 6px; width: 24px; height: 24px; background: var(--page); display: grid; place-items: center; }
+.ch-head .stop::after { content: ""; width: 14px; height: 14px; background: var(--ch, var(--us)); }
+canvas.bot { width: 112px; height: 112px; }
+.ch-title { display: grid; gap: 8px; padding-bottom: 6px; }
+.kicker { font: 12px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.bubble { position: relative; background: var(--surface); padding: 10px 14px; font-size: 16px; line-height: 1.5; max-width: 62ch; justify-self: start;
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--ink-2), 0 var(--px) 0 0 var(--ink-2), calc(-1 * var(--px)) 0 0 0 var(--ink-2), var(--px) 0 0 0 var(--ink-2); }
+.bubble::before { content: ""; position: absolute; left: -12px; bottom: 10px; width: 10px; height: 10px; background: var(--ink-2);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%, 0 80%, 40% 80%, 40% 60%, 60% 60%, 60% 40%, 80% 40%, 80% 20%, 100% 20%); }
+.lead-in { font-size: 17px; color: var(--ink-2); max-width: 68ch; }
+.sub { font-family: var(--pixel); font-size: 18px; font-weight: 400; margin: 10px 0 0; -webkit-font-smoothing: none; display: flex; gap: 10px; align-items: center; }
+.sub small { font: 13px var(--sans); color: var(--muted); letter-spacing: 0; }
+.note { font-size: 13px; color: var(--muted); max-width: 80ch; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
+.box > h3 { margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
+
+/* ---------- short version ---------- */
+.beats { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: beat; }
+.beats > li { counter-increment: beat; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: start; background: var(--surface); padding: 14px 18px 14px 12px; font-size: 16px;
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+.beats > li::before { content: counter(beat); font: 24px/1 var(--pixel); color: var(--us); text-align: center; padding-top: 2px; -webkit-font-smoothing: none; }
+.beats ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); display: grid; gap: 3px; font-size: 15px; }
+
+/* ---------- crowd ---------- */
+.funnel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+.funnel > div { position: relative; padding: 16px 26px 16px 18px; background: var(--surface); display: grid; gap: 2px; align-content: start;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%); margin-right: -6px; }
+.funnel > div:first-child { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%); }
+.funnel > div:nth-child(2) { background: var(--surface-2); }
+.funnel > div:nth-child(3) { background: var(--us-bg); }
+.funnel > div:nth-child(4) { background: var(--yes-bg); }
+.funnel b { font: 30px/1.1 var(--pixel); -webkit-font-smoothing: none; }
+.funnel span { font-size: 14px; color: var(--ink-2); padding-left: 10px; }
+.funnel > div:first-child span { padding-left: 0; }
+.funnel b { padding-left: 10px; }
+.funnel > div:first-child b { padding-left: 0; }
+.waffle-box { display: grid; gap: 12px; position: relative; }
+#waffle { width: 100%; display: block; cursor: crosshair; }
+.wtip { height: 4.9em; overflow: hidden; font-size: 14px; color: var(--ink-2); }
+.wtip .wone { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wpeek { position: absolute; z-index: 2; pointer-events: none; transform: translate(-50%, calc(-100% - 8px)); max-width: 260px; padding: 4px 8px; font: 12px/1.35 var(--sans); color: var(--page); background: var(--ink); box-shadow: 2px 2px 0 rgba(0,0,0,.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wpeek small { display: block; opacity: .7; font-size: 11px; }
+.wpeek::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -4px; width: 8px; height: 4px; margin-left: -4px; background: var(--ink); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.wtip b { color: var(--ink); }
+.wtip-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.wtip .lock { font: 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--us); border: 1px solid var(--us); padding: 0 5px; }
+.wtip .wrel { margin-left: auto; font: 12px var(--mono); background: none; border: 0; color: var(--link); cursor: pointer; padding: 2px 4px; }
+.wtip .wclick { margin-left: auto; font: 11px var(--mono); color: var(--muted); }
+#waffle:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; }
+.wlegend { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.wlegend button { all: unset; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; font-size: 13px; padding: 3px 8px 3px 4px; background: var(--surface-2); color: var(--ink); }
+.wlegend button:hover { background: var(--line); }
+.wlegend button:focus-visible { outline: var(--px) solid var(--link); }
+.wlegend i { width: 12px; height: 12px; display: inline-block; }
+.wlegend .n { font: 12px var(--mono); color: var(--muted); }
+
+/* ---------- who's who ---------- */
+.cats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+.cats .box { display: grid; gap: 12px; align-content: start; }
+.cats .box.home { box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--us), 0 var(--px) 0 0 var(--us), calc(-1 * var(--px)) 0 0 0 var(--us), var(--px) 0 0 0 var(--us); }
+.cat-head { display: flex; gap: 12px; align-items: center; }
+.cat-head svg { width: 36px; height: 36px; flex: none; }
+.cat-head h3 { font-size: 16px; }
+.home-tag { font: 11px var(--mono); color: var(--us); border: 1px solid var(--us); padding: 0 5px; margin-left: 6px; vertical-align: 2px; }
+.cats p { font-size: 15px; color: var(--ink-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 13px var(--sans); background: var(--surface-2); color: var(--ink); border: 0; padding: 3px 9px; cursor: pointer; }
+.chip:hover { background: var(--line); }
+.chip.lead { box-shadow: inset 0 0 0 1px var(--ink-2); font-weight: 600; }
+.obs { margin: 0; padding-left: 18px; display: grid; gap: 5px; color: var(--ink-2); font-size: 14px; }
+.obs ul { margin: 4px 0 0; padding-left: 16px; }
+
+/* ---------- what people want ---------- */
+.takeaways { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.takeaways > li { background: var(--surface); padding: 14px 16px 14px 18px; font-size: 15px; position: relative;
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+.takeaways > li::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c-disp); }
+.takeaways ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); }
+.votes { display: grid; gap: 7px; }
+.vote { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr) 54px; gap: 12px; align-items: center; font-size: 14px; text-decoration: none; color: var(--ink); }
+.vote:hover .vt { text-decoration: underline; }
+.vote .vt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vote .vt small { color: var(--muted); }
+.vote .vbar { height: 16px; background: var(--surface-2); position: relative; }
+.vote .vbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--c-disp); }
+.vote.talk .vbar i { background: var(--c-orch); }
+.vote.mine .vbar i { background: var(--us); }
+.vote.mine .vt { font-weight: 600; }
+.vote .vn { font: 13px var(--mono); text-align: right; }
+.vkey { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.vkey span { display: inline-flex; gap: 6px; align-items: center; }
+.vkey i { width: 12px; height: 12px; display: inline-block; }
+.themes { display: grid; gap: 18px; }
+.themes.folded .extra { display: none; }
+.more-themes { justify-self: start; }
+.theme-group h3 { font-size: 15px; margin-bottom: 8px; display: flex; gap: 8px; align-items: baseline; }
+.theme-group h3 small { font: 13px var(--sans); color: var(--muted); }
+.tlist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 8px 16px; }
+.tlist details { background: var(--surface); padding: 10px 14px; box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+.tlist summary { cursor: pointer; list-style: none; font-weight: 600; font-size: 15px; line-height: 1.4; }
+.tlist summary::-webkit-details-marker { display: none; }
+.tlist summary .lane { display: block; font: 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 400; margin-bottom: 2px; }
+.tlist summary .why::after { content: "More +"; margin-left: 8px; font: 400 11px var(--mono); color: var(--link); white-space: nowrap; }
+.tlist details[open] summary .why::after { content: "Less −"; }
+.tlist details > div { display: grid; gap: 8px; margin-top: 8px; font-size: 14px; color: var(--ink-2); }
+blockquote { margin: 0; padding-left: 12px; border-left: 3px solid var(--line); font-size: 14px; color: var(--ink-2); display: grid; gap: 2px; }
+blockquote a { font-size: 12px; }
+
+/* ---------- features: one square per product ---------- */
+.band { display: grid; gap: 6px; }
+.band + .band { margin-top: 18px; }
+.band-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.band-head h3 { font-size: 15px; }
+.band-head span { font-size: 13px; color: var(--muted); }
+.frow { display: grid; grid-template-columns: minmax(110px, 170px) auto 72px 132px; gap: 12px; align-items: center; font-size: 14px; }
+.dots { display: grid; grid-template-columns: repeat(27, 12px); gap: 3px; }
+.dots i { width: 12px; height: 12px; display: block; }
+.dots .y { background: var(--yes); }
+.dots .p { background: linear-gradient(135deg, var(--part) 50%, transparent 50%); box-shadow: inset 0 0 0 2px var(--part); }
+.dots .n { background: var(--surface-2); }
+.dots .u { box-shadow: inset 0 0 0 1px var(--unk); opacity: .7; }
+.frow .cnt { font: 13px var(--mono); color: var(--ink-2); text-align: right; }
+.usv { font: 12px var(--mono); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.usv i { width: 12px; height: 12px; display: inline-block; }
+.usv.yes { color: var(--us); } .usv.yes i { background: var(--us); }
+.usv.partial { color: var(--us); } .usv.partial i { background: linear-gradient(135deg, var(--us) 50%, transparent 50%); box-shadow: inset 0 0 0 2px var(--us); }
+.usv.no { color: var(--muted); } .usv.no i { height: 2px; width: 10px; background: var(--muted); }
+.band.ours { background: var(--us-bg); margin-inline: -12px; padding: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.bullets { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 80ch; }
+.bullets ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; color: var(--ink-2); }
+
+/* ---------- evidence lists (stand, risks, decision) ---------- */
+.ev { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.ev summary { cursor: pointer; list-style: none; font-weight: 600; line-height: 1.45; }
+.ev summary::-webkit-details-marker { display: none; }
+.ev .why::after { content: "Why +"; margin-left: 8px; font: 400 11px var(--mono); color: var(--link); white-space: nowrap; }
+.ev details[open] .why::after { content: "Hide −"; }
+.ev .who { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
+.ev details p { margin: 6px 0 2px; color: var(--ink-2); font-size: 14px; }
+.tools { display: flex; justify-content: flex-end; }
+.close { font: 13px var(--mono); background: var(--surface-2); color: var(--ink); border: 0; padding: 6px 10px; cursor: pointer; flex: none; }
+.tag { display: inline-block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border: 1px solid currentColor; margin-right: 6px; vertical-align: 1px; }
+.sev-high { color: var(--hi); } .sev-medium { color: var(--mid); } .sev-low { color: var(--low); }
+.tag.ok { color: var(--yes); border-color: var(--yes); }
+.box.good { box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--yes), 0 var(--px) 0 0 var(--yes), calc(-1 * var(--px)) 0 0 0 var(--yes), var(--px) 0 0 0 var(--yes); }
+.box.bad { box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--hi), 0 var(--px) 0 0 var(--hi), calc(-1 * var(--px)) 0 0 0 var(--hi), var(--px) 0 0 0 var(--hi); }
+.lanes { display: grid; gap: 14px; }
+.lane-box { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; background: var(--surface); padding: 16px 18px;
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+.lane-box .lane-name { display: grid; gap: 6px; align-content: start; }
+.lane-box .lane-name b { font: 16px var(--pixel); -webkit-font-smoothing: none; }
+.lane-box .lane-name span { font-size: 13px; color: var(--muted); }
+.heat { display: flex; gap: 3px; }
+.heat i { width: 14px; height: 8px; background: var(--surface-2); }
+.heat.l3 i, .heat.l2 i:nth-child(-n+2), .heat.l1 i:first-child { background: currentColor; }
+
+/* ---------- money ---------- */
+.ladder-chart { display: grid; gap: 10px; }
+.lrow { display: grid; grid-template-columns: minmax(0, 230px) minmax(0, 1fr); gap: 14px; align-items: center; font-size: 14px; }
+.lrow .ltrack { position: relative; height: 26px; }
+.lrow .ltrack::before { content: ""; position: absolute; left: 0; right: 0; top: 12px; height: 2px; background: var(--surface-2); }
+.lrow .lbar { position: absolute; top: 5px; height: 16px; min-width: 6px; background: var(--c-disp); }
+.lrow.soft .lbar { background: var(--c-use); }
+.lrow .llab { position: absolute; top: 4px; font: 12px var(--mono); color: var(--ink-2); white-space: nowrap; }
+.laxis { display: grid; grid-template-columns: minmax(0, 230px) minmax(0, 1fr); gap: 14px; }
+.laxis .ticks { position: relative; height: 20px; border-top: 1px solid var(--line); }
+.laxis .ticks span { position: absolute; top: 2px; font: 11px var(--mono); color: var(--muted); transform: translateX(-50%); }
+.laxis .ticks span:first-child { transform: none; }
+.usline { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--us); }
+.lkey { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.lkey span { display: inline-flex; gap: 6px; align-items: center; }
+.lkey i { width: 12px; height: 12px; display: inline-block; }
+.tbl-wrap { overflow-x: auto; }
+table.plain { border-collapse: collapse; width: 100%; font-size: 14px; }
+.plain th { text-align: left; font: 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); font-weight: 400; }
+.plain td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.plain td:first-child { font-weight: 600; }
+#price-tbl td:first-child { min-width: 170px; }
+#price-tbl td:nth-child(2) { min-width: 140px; }
+
+/* ---------- decision ---------- */
+.verdict { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; background: var(--us-bg); padding: 20px 22px;
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--us), 0 var(--px) 0 0 var(--us), calc(-1 * var(--px)) 0 0 0 var(--us), var(--px) 0 0 0 var(--us); }
+.verdict canvas.bot { width: 128px; height: 128px; }
+.verdict .vtext { display: grid; gap: 10px; }
+.verdict .vtext > span { font: 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+#dec-verdict { font-size: 20px; line-height: 1.5; font-weight: 600; max-width: 64ch; }
+#dec-framing { color: var(--ink-2); max-width: 76ch; }
+.calls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.callcard { background: var(--surface); padding: 14px 16px; display: grid; gap: 6px; align-content: start; border-top: 4px solid var(--cc, var(--line));
+  box-shadow: 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+.callcard b { font-size: 16px; }
+.callcard p { font-size: 14px; color: var(--ink-2); }
+.call { justify-self: start; display: inline-block; font: 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border: 1px solid currentColor; white-space: nowrap; }
+.call-do-now, .call-next { color: var(--yes); } .call-later, .call-fallback { color: var(--part); } .call-no { color: var(--hi); }
+.timeline { display: grid; gap: 10px; }
+.weeks { display: grid; grid-template-columns: repeat(var(--wk, 10), minmax(0, 1fr)); gap: 3px; }
+.weeks .wk { font: 11px var(--mono); color: var(--muted); text-align: center; }
+.weeks .ph { height: 30px; display: flex; align-items: center; padding: 0 10px; font: 12px var(--mono); color: #0b0d12; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.plan > li { background: var(--surface); padding: 14px 16px; border-top: 4px solid var(--pc, var(--line)); box-shadow: 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+.plan .when { font: 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.plan b { display: block; margin: 2px 0 6px; }
+.plan ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; color: var(--ink-2); }
+.signals ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 15px; }
+
+/* ---------- questions ---------- */
+.qs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: q; }
+.qs > li { counter-increment: q; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; background: var(--surface); padding: 14px 16px 14px 10px;
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+.qs > li::before { content: "?" counter(q); font: 18px/1.3 var(--pixel); color: var(--c-ctrl); text-align: center; -webkit-font-smoothing: none; }
+.qs ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); }
+
+/* ---------- toolbox ---------- */
+.toolbox { display: grid; gap: 16px; }
+.tool { background: var(--surface); box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--line), 0 var(--px) 0 0 var(--line), calc(-1 * var(--px)) 0 0 0 var(--line), var(--px) 0 0 0 var(--line); }
+.tool > summary { cursor: pointer; list-style: none; padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+.tool > summary::-webkit-details-marker { display: none; }
+.tool > summary h3 { font-size: 18px; }
+.tool > summary p { grid-column: 1; font-size: 14px; color: var(--muted); }
+.tool > summary .open-x { grid-row: 1 / span 2; grid-column: 2; font: 12px var(--mono); color: var(--link); }
+.tool > summary .open-x::after { content: "Open +"; }
+.tool[open] > summary .open-x::after { content: "Close −"; }
+.tool > .tool-body { padding: 4px 20px 20px; display: grid; gap: 14px; min-width: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.controls input[type=search], .controls select { font: 14px var(--sans); color: var(--ink); background: var(--surface); border: 1px solid var(--line); padding: 6px 8px; min-width: 0; }
+.controls input[type=search] { flex: 1 1 220px; }
+.seg { display: inline-flex; }
+.seg button { font: 13px var(--mono); color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; margin-left: -1px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); position: relative; }
+.btn-link { font: 13px var(--sans); background: none; border: 0; color: var(--link); cursor: pointer; padding: 6px 4px; text-decoration: underline; }
+.status { font-size: 13px; color: var(--muted); }
+.req { display: flex; flex-wrap: wrap; gap: 6px; }
+.req button { font: 12px var(--mono); background: var(--yes-bg); color: var(--ink); border: 1px solid var(--yes); padding: 2px 8px; cursor: pointer; }
+.scroller { overflow: auto; max-height: 78vh; border: 1px solid var(--line); background: var(--surface); }
+table.mx { border-collapse: separate; border-spacing: 0; font-size: 13px; width: max-content; min-width: 100%; }
+.mx th, .mx td { border-bottom: 1px solid var(--line); padding: 0; background: var(--surface); }
+.mx thead th { position: sticky; top: 0; z-index: 2; vertical-align: bottom; background: var(--surface-2); }
+.mx .name { position: sticky; left: 0; z-index: 1; min-width: 210px; max-width: 240px; border-right: 1px solid var(--line); }
+.mx thead .name { z-index: 3; }
+.mx td.name button { all: unset; display: grid; gap: 1px; padding: 7px 10px; cursor: pointer; width: 100%; box-sizing: border-box; }
+.mx td.name button:focus-visible { outline: var(--px) solid var(--link); outline-offset: -2px; }
+.mx td.name b { font-weight: 600; line-height: 1.25; }
+.mx td.name small { color: var(--muted); font-size: 11px; font-family: var(--mono); }
+.mx tr.us td { background: var(--us-bg); }
+.mx tr.us td.name b::after { content: "US"; font: 11px var(--mono); color: var(--us); border: 1px solid var(--us); padding: 0 4px; margin-left: 6px; vertical-align: 1px; }
+.mx th.f { width: 30px; min-width: 30px; height: 120px; cursor: pointer; }
+.mx th.f button { all: unset; cursor: pointer; display: block; width: 30px; height: 120px; position: relative; }
+.mx th.f span { position: absolute; left: 50%; bottom: 8px; transform: rotate(-90deg) translateY(-50%); transform-origin: left center; white-space: nowrap; font: 11px var(--mono); color: var(--ink-2); margin-left: 1px; }
+.mx th.f.on { background: var(--yes-bg); }
+.mx th.f.on span { color: var(--ink); font-weight: 500; }
+.mx th.t { font: 11px var(--mono); color: var(--ink-2); text-align: left; padding: 6px 8px; white-space: nowrap; font-weight: 400; }
+.mx td.c { text-align: center; width: 30px; }
+.cell { display: inline-block; width: 14px; height: 14px; vertical-align: middle; }
+.v-yes { background: var(--yes); }
+.v-partial { background: linear-gradient(135deg, var(--part) 50%, transparent 50%); box-shadow: inset 0 0 0 2px var(--part); }
+.v-no { width: 8px; height: 2px; background: var(--no); }
+.v-unknown { width: 6px; height: 6px; border: 1px dotted var(--unk); }
+.mx td.t { padding: 6px 8px; white-space: nowrap; color: var(--ink-2); font-size: 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.plain.posts td:first-child, .plain.posts td:nth-child(2) { font: 13px var(--mono); text-align: right; padding-right: 16px; }
+.plain.posts th:nth-child(-n+2) { text-align: right; padding-right: 16px; }
+.plain.posts td:nth-child(3) { min-width: 260px; }
+.plain.posts td small, .plain.cat td small { display: block; color: var(--muted); font-size: 12px; }
+.plain.posts tr.mine td { background: var(--us-bg); }
+.plain.posts td:last-child { white-space: nowrap; font: 13px var(--mono); color: var(--ink-2); }
+.plain.spot td { vertical-align: top; font-size: 14px; }
+.plain.spot td:first-child { white-space: nowrap; }
+.plain.spot td small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+.plain.cat td:first-child { min-width: 160px; }
+.plain.cat td:nth-child(2) { color: var(--ink-2); min-width: 260px; }
+.plain.cat td:nth-child(3), .plain.cat td:nth-child(4) { white-space: nowrap; font-size: 13px; color: var(--ink-2); }
+#adj-tbl td:first-child { min-width: 150px; }
+#adj-tbl td { min-width: 120px; }
+.pill { font: 11px var(--mono); color: var(--yes); border: 1px solid var(--yes); padding: 0 4px; margin-left: 6px; vertical-align: 1px; font-weight: 400; cursor: pointer; background: none; }
+.method-text { display: grid; gap: 12px; }
+.method-text details summary { cursor: pointer; font-weight: 600; }
+
+/* ---------- drawer ---------- */
+.scrim { position: fixed; inset: 0; background: rgba(5, 7, 10, .45); z-index: 40; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); z-index: 41; background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto;
+  padding-block: calc(18px + env(safe-area-inset-top, 0px)) calc(32px + env(safe-area-inset-bottom, 0px)); padding-left: 22px; padding-right: max(22px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; align-content: start; }
+.drawer header { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.drawer h2 { font-size: 22px; text-transform: uppercase; }
+.drawer h3 { font-size: 15px; }
+dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 14px; }
+dl.kv dt { color: var(--muted); font: 12px var(--mono); text-transform: uppercase; letter-spacing: .04em; padding-top: 2px; }
+dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.flist { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.flist li { display: grid; grid-template-columns: 18px 130px 1fr; gap: 8px; align-items: baseline; }
+.flist li .cell { margin-top: 3px; }
+.flist .fn { color: var(--ink-2); }
+.flist .note { color: var(--ink-2); font-size: 13px; overflow-wrap: anywhere; }
+.srcs { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; overflow-wrap: anywhere; }
+.verif { font-size: 13px; color: var(--ink-2); background: var(--surface-2); padding: 10px 12px; display: grid; gap: 4px; }
+.verif.overlap p { margin: 4px 0; }
+.verif.overlap ul { margin: 2px 0 6px; padding-left: 18px; display: grid; gap: 2px; }
+
+footer.end { padding: 56px 0 72px 76px; display: grid; gap: 10px; justify-items: start; color: var(--muted); font-size: 14px; }
+
+/* ---------- going forward ---------- */
+.notnow { margin: 0; font-size: 14px; color: var(--ink-2); padding: 10px 14px; background: var(--surface-2); max-width: max-content; }
+.notnow::before { content: "✕ "; color: var(--hi); font-weight: 700; }
+.tracks { display: grid; gap: 4px; }
+.tk-row { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 6px 24px; align-items: center; }
+.tk-head { font: 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-bottom: 2px; }
+.tk-head .tk-lead { font: 12px var(--sans); text-transform: none; letter-spacing: 0; }
+.tk-wks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.tk-head .tk-wks i { font-style: normal; }
+.tk-wks b { display: block; height: 14px; background: var(--surface-2); }
+.tk-wks b.on { background: var(--tc); }
+.tk { padding-top: 14px; }
+.tk h3 { margin: 0 0 4px; display: flex; align-items: center; gap: 10px; font: 16px var(--pixel); -webkit-font-smoothing: none; color: var(--ink); }
+.tk h3::before { content: ""; width: 12px; height: 12px; background: var(--tc); }
+.tk ul { list-style: none; margin: 0; padding: 0; }
+.tk li { padding: 8px 0; border-top: 1px dashed var(--line); font-size: 14px; color: var(--ink-2); }
+.after h3 { margin: 0 0 8px; font: 16px var(--pixel); -webkit-font-smoothing: none; }
+@media (max-width: 720px) {
+  .tk-row { grid-template-columns: minmax(0, 1fr) 96px; gap: 6px 12px; }
+  .tk-head .wl { display: none; }
+}
+.gauges { display: grid; gap: 18px; }
+.gauges h3 { margin: 0; font: 16px var(--pixel); -webkit-font-smoothing: none; }
+.gauge { display: grid; grid-template-columns: minmax(130px, 200px) minmax(0, 1fr); gap: 6px 16px; align-items: center; }
+.gauge .gl { font-weight: 600; font-size: 14px; }
+.gbar { position: relative; height: 14px; display: flex; margin: 22px 0 18px; }
+.gbar i { display: block; height: 100%; }
+.gbar i.stop { background: var(--hi-bg); box-shadow: inset 0 -3px 0 var(--hi); }
+.gbar i.mid { background: var(--surface-2); box-shadow: inset 0 -3px 0 var(--muted); }
+.gbar i.go { background: var(--yes-bg); box-shadow: inset 0 -3px 0 var(--yes); }
+.gbar .mk { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink-2); }
+.gbar .mk span { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); font: 11px var(--mono); color: var(--muted); white-space: nowrap; }
+.gbar .mk.ref { background: var(--us); }
+.gbar .mk.ref span { top: auto; bottom: 24px; color: var(--us); }
+.gbar .mk.below span { top: 24px; bottom: auto; }
+.gbar .mk.above2 span { top: auto; bottom: 38px; }
+.gbar .mk.r span { left: auto; right: -1px; transform: none; }
+.gbar .mk.l span { left: -1px; transform: none; }
+.gbar.tall { margin-top: 38px; }
+.gbar .mk.below2 span { top: 38px; }
+.gbar.deep { margin-bottom: 32px; }
+.gauge .gn { grid-column: 2; font-size: 13px; color: var(--muted); margin-top: -6px; }
+.gscale { font: 11px var(--mono); color: var(--muted); }
+.gkey { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.gkey i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+.watch { display: grid; gap: 6px; font-size: 14px; }
+.fw-more { margin: 0; font-size: 14px; }
+@media (max-width: 900px) {
+}
+@media (max-width: 720px) {
+  .gauge { grid-template-columns: minmax(0, 1fr); }
+  .gauge .gn { grid-column: 1; }
+}
+@media (max-width: 900px) {
+  .hero-in { grid-template-columns: 1fr; }
+  .stage { aspect-ratio: 16 / 9; }
+  .funnel { grid-template-columns: 1fr 1fr; row-gap: 6px; }
+  .funnel > div, .funnel > div:first-child { clip-path: none; margin: 0; }
+  .funnel b, .funnel span, .funnel > div:first-child b, .funnel > div:first-child span { padding-left: 0; }
+}
+@media (max-width: 720px) {
+  h1 { font-size: 32px; }
+  h2 { font-size: 23px; }
+  .chapter { padding: 56px 0 8px 0; }
+  .chapter::before, .ch-head .stop { display: none; }
+  footer.end { padding-left: 0; }
+  canvas.bot { width: 80px; height: 80px; }
+  .ch-head { gap: 4px 12px; }
+  .bubble { grid-column: 1 / -1; font-size: 15px; }
+  .bubble::before { left: 26px; bottom: auto; top: -12px; transform: rotate(-90deg) scaleY(-1); }
+  .vote { grid-template-columns: minmax(0, 1fr) 48px; gap: 2px 10px; }
+  .vote .vt { grid-column: 1 / -1; white-space: normal; }
+  .frow { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; }
+  .frow .dots { grid-column: 1 / -1; grid-template-columns: repeat(27, minmax(0, 1fr)); gap: 2px; }
+  .dots i { width: auto; height: 10px; }
+  .lane-box { grid-template-columns: 1fr; gap: 10px; }
+  .lrow, .laxis { grid-template-columns: 1fr; gap: 4px; }
+  .laxis > span:first-child { display: none; }
+  .verdict { grid-template-columns: 1fr; }
+  .verdict canvas.bot { width: 96px; height: 96px; }
+  .weeks .ph { font-size: 10px; padding: 0 4px; }
+  .flist li { grid-template-columns: 18px 1fr; row-gap: 0; }
+  .flist .note { grid-column: 2; }
+  .mx .name { min-width: 140px; max-width: 150px; }
+  .mx td.name button { padding: 6px 8px; }
+  .tool > summary { padding: 14px 16px; }
+  .tool > .tool-body { padding: 4px 14px 16px; }
+}
+@media (prefers-reduced-motion: no-preference) { .chip, .seg button, .wlegend button { transition: background .12s; } }
+</style>
+
+<script id="payload" type="application/json">__PAYLOAD__</script>
+
+<nav class="nav" aria-label="Chapters"><ol id="nav"></ol><div class="progress" id="progress"></div></nav>
+
+<header class="hero wrap" id="top">
+  <div class="hero-in">
+    <div class="hero-text">
+      <div class="eyebrow" id="asof"></div>
+      <h1>Agent companion<br>market map</h1>
+      <div class="ladder" aria-hidden="true"><i style="background:#6f83ad"></i><i style="background:#62a8f5"></i><i style="background:#4fc9a4"></i><i style="background:#f4c542"></i><i style="background:#ff8030"></i><i style="background:#f43f6b"></i></div>
+      <p class="lede" id="headline"></p>
+      <a class="answer" href="#forward" id="hero-answer"><span>If we go ahead</span><b>The next four weeks, four tracks at once</b><em>See what they could hold ↓</em></a>
+    </div>
+    <div class="stage" aria-hidden="true"><canvas id="hero-scene" class="px"></canvas></div>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<main class="wrap">
+
+  <section class="chapter" id="short" style="--ch:#62a8f5">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="idle" data-expr="smile" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Start here</div><h2>The short version</h2><p class="bubble" id="b-short"></p></div></div>
+    <p class="short-head" id="short-head"></p>
+    <ol class="beats" id="bullets"></ol>
+  </section>
+
+  <section class="chapter" id="forward" style="--ch:#4fc9a4">
+    <div class="ch-head"><canvas class="bot px" data-state="warming" data-expr="smile" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Then</div><h2 id="fw-title">Going forward</h2><p class="bubble" id="fw-intro"></p></div></div>
+    <div class="box tracks" id="fw-tracks"></div>
+    <div class="box after"><h3 id="fw-after-t"></h3><ul class="bullets" id="fw-after"></ul></div>
+    <p class="notnow" id="fw-notnow"></p>
+    <div class="box gauges"><h3 id="fw-gtitle">How we'd know it's working</h3><div id="fw-gauges"></div>
+      <div class="watch"><b>Also listen for</b><ul class="bullets" id="fw-watch"></ul></div></div>
+    <p class="muted fw-more">Why we might go ahead at all, and every option we weighed: <a href="#decision">chapter 8</a>.</p>
+  </section>
+
+  <section class="chapter" id="crowd" style="--ch:#4fc9a4">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="cruising" data-expr="puzzled" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Chapter 1</div><h2>A crowded room</h2><p class="bubble" id="b-crowd"></p></div></div>
+    <div class="funnel" id="funnel"></div>
+    <div class="box waffle-box">
+      <h3 class="sub" style="margin:0">Every product we found, one square each <small id="waffle-sub"></small></h3>
+      <canvas id="waffle" role="img" aria-label="One square per product, coloured by category"></canvas>
+      <div class="wpeek" id="wpeek" hidden aria-hidden="true"></div>
+      <div class="wtip" id="wtip" aria-live="polite"><span class="muted">Hover a square to see the product. Click one to lock it here.</span></div>
+      <div class="wlegend" id="wlegend"></div>
+    </div>
+  </section>
+
+  <section class="chapter" id="who" style="--ch:#f4c542">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="warming" data-expr="" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Chapter 2</div><h2>Who's who</h2><p class="bubble" id="b-who"></p></div></div>
+    <p class="note">Names in bold lead their group. Click any name for its profile and sources.</p>
+    <div class="cats" id="cats"></div>
+  </section>
+
+  <section class="chapter" id="want" style="--ch:#62a8f5">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="cruising" data-expr="waiting" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Chapter 3</div><h2>What people actually want</h2><p class="bubble" id="b-want"></p></div></div>
+    <ul class="takeaways" id="demand-take"></ul>
+    <div class="box" style="display:grid;gap:14px">
+      <h3 class="sub" style="margin:0">What gets upvoted on Reddit <small id="votes-sub"></small></h3>
+      <div class="vkey"><span><i style="background:var(--c-disp)"></i>Someone built something</span><span><i style="background:var(--c-orch)"></i>A discussion</span><span><i style="background:var(--us)"></i>The post that started this</span></div>
+      <div class="votes" id="votes"></div>
+      <ul class="bullets" id="community-notes"></ul>
+      <details id="posts-wrap"><summary style="cursor:pointer;font-weight:600" id="posts-sum">All posts, with comments and dates</summary>
+        <div style="display:grid;gap:12px;margin-top:12px">
+          <p class="note" id="community-sub"></p>
+          <div class="controls"><div class="seg" role="group" aria-label="Post type" id="c-kind">
+            <button type="button" data-kind="all" aria-pressed="true">All</button>
+            <button type="button" data-kind="built" aria-pressed="false">Built something</button>
+            <button type="button" data-kind="talk" aria-pressed="false">Discussion</button></div></div>
+          <div class="tbl-wrap"><table class="plain posts" id="post-tbl"><thead><tr><th class="num">Score</th><th class="num">Comments</th><th>Post</th><th>Topic</th><th>Posted</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </details>
+    </div>
+    <h3 class="sub">Every theme we heard <small>From Reddit, Hacker News, crowdfunding comments and the skeptics. Open one for the quotes.</small></h3>
+    <div class="themes" id="themes"></div>
+  </section>
+
+  <section class="chapter" id="features" style="--ch:#ff8030">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="locked" data-expr="" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Chapter 4</div><h2>What everyone has, and what nobody has</h2><p class="bubble" id="b-features"></p></div></div>
+    <div class="box" style="display:grid;gap:14px">
+      <div class="fview"><div class="seg" role="group" aria-label="Which products" id="fview"><button type="button" data-v="dev" aria-pressed="true">Desk devices</button><button type="button" data-v="all" aria-pressed="false">All direct products</button></div><span id="fview-n"></span></div>
+      <div class="legend" id="dots-legend"></div>
+      <div id="fbands"></div>
+    </div>
+    <p class="note" id="landscape-note">The notes below cover all 27 direct products, not only the desk devices.</p>
+    <ul class="bullets" id="landscape"></ul>
+    <p class="note">Want every product side by side? The full feature matrix is in the <a href="#toolbox" data-open="tool-matrix">toolbox</a>.</p>
+  </section>
+
+  <section class="chapter" id="spot" style="--ch:#4fc9a4">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="cruising" data-expr="happy" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Chapter 5</div><h2>Where Burnbot stands</h2><p class="bubble" id="b-spot"></p></div></div>
+    <div class="tools"><button type="button" class="close why-all" data-scope="spot">Show all evidence</button></div>
+    <div class="two">
+      <div class="box good"><h3>Only us, or nearly</h3><ul class="ev" id="unique"></ul></div>
+      <div class="box bad"><h3>Where we're behind</h3><ul class="ev" id="behind"></ul></div>
+    </div>
+  </section>
+
+  <section class="chapter" id="risks" style="--ch:#f43f6b">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="warming" data-expr="worried" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Chapter 6</div><h2>Risks and openings</h2><p class="bubble" id="b-risks"></p></div></div>
+    <div class="tools"><button type="button" class="close why-all" data-scope="risks">Show all evidence</button></div>
+    <h3 class="sub" style="margin:0">What could hurt us</h3>
+    <div class="lanes" id="threats"></div>
+    <h3 class="sub">Openings, cheapest first</h3>
+    <div class="lanes" id="opps"></div>
+  </section>
+
+  <section class="chapter" id="money" style="--ch:#f4c542">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="cruising" data-expr="" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Chapter 7</div><h2>Follow the money</h2><p class="bubble" id="b-money"></p></div></div>
+    <div class="box" style="display:grid;gap:12px">
+      <h3 class="sub" style="margin:0">What things cost <small>US dollars, as listed</small></h3>
+      <div class="lkey"><span><i style="background:var(--c-use)"></i>Software</span><span><i style="background:var(--c-disp)"></i>Hardware</span><span><i style="background:var(--us);width:3px"></i>Burnbot today: free</span></div>
+      <div class="ladder-chart" id="ladder"></div>
+      <ul class="bullets" id="ladder-notes" style="font-size:14px"></ul>
+    </div>
+    <div class="tbl-wrap"><table class="plain" id="price-tbl"><thead><tr><th>Segment</th><th>Range</th><th>Examples</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="chapter" id="decision" style="--ch:#ff8030">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="warming" data-expr="puzzled" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Chapter 8</div><h2>Should we enter?</h2><p class="bubble" id="dec-note"></p></div></div>
+    <div class="verdict">
+      <canvas class="bot px" data-state="cruising" data-expr="" aria-hidden="true"></canvas>
+      <div class="vtext"><span>How we see it</span><p id="dec-framing"></p></div>
+    </div>
+    <div class="tools"><button type="button" class="close why-all" data-scope="decision">Show all evidence</button></div>
+    <div class="two">
+      <div class="box good"><h3><span id="i-for"></span>For</h3><ul class="ev" id="dec-pros"></ul></div>
+      <div class="box bad"><h3><span id="i-against"></span>Against</h3><ul class="ev" id="dec-cons"></ul></div>
+    </div>
+    <div class="dcase" id="dcase">
+      <h3 class="sub" id="dc-title"></h3><p class="note" id="dc-intro" style="margin:-6px 0 0"></p>
+      <div class="two">
+        <div class="box good"><h3><span id="i-dfor"></span>For a device</h3><ul class="ev" id="dc-pros"></ul></div>
+        <div class="box bad"><h3><span id="i-dagainst"></span>Against selling one</h3><ul class="ev" id="dc-cons"></ul></div>
+      </div>
+    </div>
+    <h3 class="sub">The options, and our call on each</h3>
+    <div class="calls" id="dec-options"></div>
+    <div class="two signals">
+      <div class="box good"><h3><span id="i-go"></span>Keep going if</h3><ul id="dec-go"></ul></div>
+      <div class="box bad"><h3><span id="i-stop"></span>Stop or shrink if</h3><ul id="dec-stop"></ul></div>
+    </div>
+    <h3 class="sub">Best bets, cheapest first</h3>
+    <div class="box"><ul class="ev" id="dec-bets"></ul></div>
+  </section>
+
+  <section class="chapter" id="questions" style="--ch:#a78bfa">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="idle" data-expr="puzzled" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">Chapter 9</div><h2>What we still don't know</h2><p class="bubble" id="b-questions"></p></div></div>
+    <ol class="qs" id="openq"></ol>
+  </section>
+
+  <section class="chapter" id="toolbox" style="--ch:#6f83ad">
+    <div class="ch-head"><span class="stop"></span><canvas class="bot px" data-state="asleep" data-expr="" aria-hidden="true"></canvas>
+      <div class="ch-title"><div class="kicker">After the story</div><h2>The toolbox</h2><p class="bubble" id="b-toolbox"></p></div></div>
+    <div class="toolbox">
+      <details class="tool" id="tool-matrix">
+        <summary><h3>Feature matrix</h3><p>Every direct (T1) and same-job (T2) product, checked against its own pages. Click a product for details and sources. Click a feature heading to show only products that have it.</p><span class="open-x"></span></summary>
+        <div class="tool-body">
+          <div class="controls">
+            <input type="search" id="q" placeholder="Search products, makers, notes" aria-label="Search products">
+            <div class="seg" role="group" aria-label="Tier" id="tier-seg">
+              <button type="button" data-tier="all" aria-pressed="true">All</button>
+              <button type="button" data-tier="T1" aria-pressed="false">T1 direct</button>
+              <button type="button" data-tier="T2" aria-pressed="false">T2 same job</button>
+            </div>
+            <select id="f-cat" aria-label="Category"></select>
+            <select id="f-form" aria-label="Form factor"></select>
+            <select id="f-stage" aria-label="Stage"></select>
+            <select id="f-os" aria-label="Platform"></select>
+            <select id="f-sort" aria-label="Sort by">
+              <option value="features">Sort: most features</option>
+              <option value="name">Sort: name</option>
+              <option value="price">Sort: price, low to high</option>
+              <option value="traction">Sort: traction</option>
+              <option value="overlap">Sort: closest to Burnbot</option>
+            </select>
+            <button type="button" class="btn-link" id="reset">Reset</button>
+          </div>
+          <div class="req" id="req"></div>
+          <div class="legend">
+            <span><i class="cell v-yes"></i>Yes</span>
+            <span><i class="cell v-partial"></i>Partly</span>
+            <span><i class="cell v-no"></i>No</span>
+            <span><i class="cell v-unknown"></i>Not shown anywhere</span>
+            <span class="status" id="count"></span>
+          </div>
+          <div class="scroller"><table class="mx" id="mx"><thead></thead><tbody></tbody></table></div>
+        </div>
+      </details>
+
+      <details class="tool" id="tool-catalogue">
+        <summary><h3>Everything we found</h3><p id="cat-sub"></p><span class="open-x"></span></summary>
+        <div class="tool-body">
+          <div class="controls">
+            <input type="search" id="cq" placeholder="Search all names and descriptions" aria-label="Search the catalogue">
+            <select id="c-cat" aria-label="Category"></select>
+            <select id="c-tier" aria-label="Tier"><option value="">All tiers</option><option value="T1">T1 direct</option><option value="T2">T2 same job</option><option value="T3">T3 adjacent</option></select>
+            <span class="status" id="c-count"></span>
+          </div>
+          <div class="tbl-wrap"><table class="plain cat" id="cat-tbl"><thead><tr><th>Name</th><th>What it is</th><th>Category</th><th>Tier</th></tr></thead><tbody></tbody></table></div>
+          <button type="button" class="close" id="c-more" style="justify-self:start">Show more</button>
+        </div>
+      </details>
+
+      <details class="tool" id="tool-adjacent">
+        <summary><h3>Next door</h3><p>General desk gadgets and platform features (T3). Not made for coding agents, but they shape what people expect and what they already own.</p><span class="open-x"></span></summary>
+        <div class="tool-body"><div class="tbl-wrap"><table class="plain" id="adj-tbl"><thead><tr><th>Name</th><th>What it is</th><th>Price</th><th>Agent tie-in</th><th>Why it matters</th></tr></thead><tbody></tbody></table></div></div>
+      </details>
+
+      <details class="tool" id="tool-method">
+        <summary><h3>How this was made</h3><p>How we searched, how we checked, and what this research does not cover well.</p><span class="open-x"></span></summary>
+        <div class="tool-body method-text">
+          <p id="method-text"></p>
+          <details id="spot-wrap"><summary>The headline claims, checked a second time</summary>
+            <div class="tbl-wrap"><table class="plain spot"><thead><tr><th>Result</th><th>Claim</th></tr></thead><tbody id="spot-tbl"></tbody></table></div>
+          </details>
+          <details id="gaps-wrap"><summary>What this research does not cover well</summary>
+            <ul class="bullets" id="gaps" style="margin-top:8px"></ul>
+          </details>
+          <p class="note">Prices, backer counts and star counts move. Each one is as of the date shown in its source note. A feature marked "not shown anywhere" means no primary source showed it, not that the product lacks it.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer class="end wrap"><span>End of the tour.</span><a href="#top">Back to the top ↑</a></footer>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="d-title"></aside>
+
+<script>
+(() => {
+  const P = JSON.parse(document.getElementById('payload').textContent);
+  const D = P.data, A = P.analysis || {}, S = A.synthesis || {};
+  const FEATS = [
+    ['agent_status', 'Status', 'Shows what the agent is doing right now'],
+    ['multi_session', 'Several sessions', 'Shows or handles several sessions at once'],
+    ['permission_alert', 'Needs-you alert', 'Tells you when the agent needs permission or input'],
+    ['approve_from_device', 'Approve from it', 'Approve, deny or answer from the product itself'],
+    ['jump_to_session', 'Jump to session', 'Brings the right terminal or window forward'],
+    ['token_usage_cost', 'Tokens / cost', 'Shows tokens, usage or money spent'],
+    ['plan_limits', 'Plan limits', 'Tracks subscription limits, quota left, reset time'],
+    ['personal_baseline_levels', 'Levels vs you', 'Activity levels against your own history'],
+    ['test_build_red_green', 'Red to green', 'Notices test and build results'],
+    ['loop_stuck_detection', 'Loops / stuck', 'Notices going in circles'],
+    ['drift_away_detection', 'Drift / away', 'Notices you left while the agent waits'],
+    ['ai_session_recap', 'AI recap', 'AI-written session summary or next step'],
+    ['history_dashboard', 'History', 'History across days or weeks'],
+    ['streaks_goals_achievements', 'Streaks / goals', 'Streaks, daily goals, XP or badges'],
+    ['leaderboard', 'Leaderboard', 'Compares you with others'],
+    ['character_personality', 'Character', 'A face, pet or robot that emotes'],
+    ['sound_voice_out', 'Sound', 'Plays sounds or speaks'],
+    ['voice_input', 'Voice input', 'Dictation or voice prompts'],
+    ['physical_controls', 'Buttons', 'Physical keys, knob, joystick, touch'],
+    ['second_screen_mode', 'Own screen', 'A display of its own, or a second-monitor mode'],
+  ];
+  const CAT = {
+    'agent-hardware-display': 'Agent desk displays and lights', 'agent-hardware-controller': 'Agent controllers and keypads',
+    'desktop-companion': 'Desktop companions', 'usage-monitor': 'Usage and cost monitors', 'approval-remote': 'Alerts, approvals, remote',
+    'orchestration': 'Multi-session orchestrators', 'gamification-analytics': 'Gamification and analytics', 'adjacent-desk-gadget': 'Adjacent desk gadgets',
+    'platform-feature': 'Platform features', 'other': 'Other',
+  };
+  const CAT_VAR = {
+    'desktop-companion': '--c-desk', 'agent-hardware-display': '--c-disp', 'agent-hardware-controller': '--c-ctrl', 'usage-monitor': '--c-use',
+    'approval-remote': '--c-appr', 'gamification-analytics': '--c-game', 'orchestration': '--c-orch', 'adjacent-desk-gadget': '--c-adj',
+    'platform-feature': '--c-plat', 'other': '--c-oth',
+  };
+  const STAGE = {
+    'concept': 'Concept', 'prototype': 'Prototype', 'crowdfunding-upcoming': 'Crowdfunding soon', 'crowdfunding-live': 'Crowdfunding now',
+    'crowdfunding-ended': 'Crowdfunded', 'preorder': 'Pre-order', 'shipping': 'Shipping', 'released': 'Released', 'hobby-project': 'Hobby project',
+    'abandoned': 'Abandoned', 'announced': 'Announced', 'unknown': 'Unknown',
+  };
+  const FORM = {
+    'desktop-overlay': 'Desktop overlay', 'desktop-pet': 'Desktop pet', 'menu-bar': 'Menu bar', 'notch-app': 'Notch app', 'hardware-display': 'Desk display',
+    'hardware-controller': 'Controller / keypad', 'status-light': 'Status light', 'desk-robot': 'Desk robot', 'mobile-app': 'Phone app', 'watch-app': 'Watch app',
+    'web-app': 'Web app', 'cli-statusline': 'CLI / statusline', 'ide-extension': 'IDE extension', 'protocol-sdk': 'Protocol / SDK', 'other': 'Other',
+  };
+
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : null;
+  const link = (u, t) => safeUrl(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t || u)}</a>` : esc(t || u || '');
+  const fv = (p, k) => (p.features && p.features[k] && p.features[k].v) || 'unknown';
+  const score = p => FEATS.reduce((n, [k]) => n + (fv(p, k) === 'yes' ? 1 : fv(p, k) === 'partial' ? .5 : 0), 0);
+  const ref = D.products.find(p => p.is_reference);
+  const products = D.products.filter(p => p.in_scope !== false && (p.tier === 'T1' || p.tier === 'T2'));
+  const byId = Object.fromEntries(D.products.concat(D.adjacent || []).map(p => [p.id, p]));
+  const traction = p => { const t = p.traction || {}; return Math.max(t.github_stars || 0, (t.backers || 0) * 10, (t.raised_usd || 0) / 50); };
+  const overlap = p => FEATS.reduce((n, [k]) => n + ((fv(ref, k) === 'yes' && (fv(p, k) === 'yes' || fv(p, k) === 'partial')) ? 1 : 0), 0);
+  const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const firstSentence = s => (String(s || '').match(/^.*?[.!?](\s|$)/) || [String(s || '')])[0].trim();
+  const fmt = n => n.toLocaleString('en-US');
+  const usd = n => '$' + (Number.isInteger(n) ? fmt(n) : n.toFixed(2));
+
+  // Tiny pixel icons, one character per pixel ('#' on), drawn as SVG in the current text colour.
+  const ICONS = {
+    pet: ['.#.....#.', '.##...##.', '.#######.', '##.###.##', '#########', '###...###', '#########', '#.#.#.#.#'],
+    notch: ['#########', '###...###', '#.......#', '#.......#', '#.......#', '#.......#', '#########', '.........'],
+    monitor: ['#########', '#.......#', '#.#...#.#', '#.......#', '#..###..#', '#########', '...###...', '.#######.'],
+    keypad: ['#########', '#.#.#.#.#', '#########', '#.#.#.#.#', '#########', '#.#.#.#.#', '#########', '.........'],
+    gauge: ['..#####..', '.#.....#.', '#...#...#', '#....#..#', '#.....#.#', '#.......#', '#########', '.........'],
+    trophy: ['#########', '#.#####.#', '#.#####.#', '.#.###.#.', '...###...', '....#....', '...###...', '..#####..'],
+    windows: ['#####....', '#...#....', '#.#####..', '###...#..', '..#.#####', '..###...#', '....#...#', '....#####'],
+    building: ['....#....', '..#####..', '#########', '.#.#.#.#.', '.#.#.#.#.', '.#.#.#.#.', '#########', '#########'],
+    plus: ['.........', '...###...', '...###...', '#########', '#########', '...###...', '...###...', '.........'],
+    minus: ['.........', '.........', '.........', '#########', '#########', '.........', '.........', '.........'],
+    lamp: ['...###...', '.#######.', '.#######.', '#########', '#########', '.#######.', '.#######.', '...###...'],
+  };
+  const icon = (name, color, cls = 'icon') => {
+    const rows = ICONS[name] || ICONS.lamp, w = rows[0].length, h = rows.length;
+    let r = '';
+    rows.forEach((row, y) => [...row].forEach((c, x) => { if (c === '#') r += `<rect x="${x}" y="${y}" width="1.02" height="1.02"/>`; }));
+    return `<svg class="${cls}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" fill="${color || 'currentColor'}" aria-hidden="true">${r}</svg>`;
+  };
+  const catIcon = name => { const n = name.toLowerCase();
+    return /pet|overlay/.test(n) ? 'pet' : /notch|menu/.test(n) ? 'notch' : /display/.test(n) ? 'monitor' : /controller|keypad/.test(n) ? 'keypad'
+      : /usage|cost/.test(n) ? 'gauge' : /gamif|leader/.test(n) ? 'trophy' : /orchestr|remote/.test(n) ? 'windows' : /platform/.test(n) ? 'building' : 'lamp'; };
+  const catColor = name => { const n = name.toLowerCase();
+    return /pet|overlay/.test(n) ? 'var(--c-desk)' : /notch|menu/.test(n) ? 'var(--c-appr)' : /display/.test(n) ? 'var(--c-disp)' : /controller|keypad/.test(n) ? 'var(--c-ctrl)'
+      : /usage|cost/.test(n) ? 'var(--c-use)' : /gamif|leader/.test(n) ? 'var(--c-game)' : /orchestr|remote/.test(n) ? 'var(--c-orch)' : 'var(--c-plat)'; };
+
+  // A bullet may carry its own sub-points as "\n- " lines; show them as a nested list.
+  const splitPoints = b => { b = String(b); let m = b.split(/\n\s*[-•]\s+/); if (m.length > 1) return m; const i = b.search(/:\s+-\s+/); if (i < 0) return [b]; return [b.slice(0, i + 1), ...b.slice(i + 1).replace(/^\s+-\s+/, '').split(/\s+-\s+(?=\S)/)]; };
+  const overlapHtml = t => {
+    const parts = String(t).split(/\s+-\s+(?=[A-Z0-9'"(])/);
+    let html = `<p>${esc(parts.shift())}</p>`, items = [];
+    const flush = () => { if (items.length) html += `<ul>${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`; items = []; };
+    for (const x of parts) {
+      const m = x.match(/^(.*?[.)])\s+([^.]{3,80}:)$/);
+      if (m) { items.push(m[1]); flush(); html += `<p>${esc(m[2])}</p>`; } else items.push(x);
+    }
+    flush();
+    return html;
+  };
+  const bullet = b => { const [head, ...subs] = splitPoints(b); return `<li>${esc(head)}${subs.length ? `<ul>${subs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</li>`; };
+  const bulletInner = b => { const [head, ...subs] = splitPoints(b); return `<div>${esc(head)}${subs.length ? `<ul>${subs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`; };
+  const names = ids => (ids || []).map(id => (byId[id] || {}).name || id).join(', ');
+  const li = (tag, title, who, body) => `<li><details><summary>${tag}${esc(title)}${body ? '<span class="why"></span>' : ''}${who ? `<span class="who">${esc(who)}</span>` : ''}</summary>${body ? `<p>${esc(body)}</p>` : ''}</details></li>`;
+  const fmtDate = s => { const d = new Date(s + 'T12:00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); };
+  const say = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+
+  // ---------- nav ----------
+  const chapters = [...document.querySelectorAll('section.chapter')];
+  const NAVNAME = { short: 'Short version', forward: 'Going forward', crowd: 'The crowd', who: "Who's who", want: 'What people want', features: 'Features', spot: 'Our spot', risks: 'Risks', money: 'Money', decision: 'Decision', questions: 'Questions', toolbox: 'Toolbox' };
+  const NAVMARK = { short: '0', forward: '→', toolbox: '+' };
+  let navN = 0;
+  $('#nav').innerHTML = chapters.map(c => `<li><a href="#${c.id}" data-for="${c.id}"><b>${NAVMARK[c.id] || ++navN}</b>${esc(NAVNAME[c.id] || c.id)}</a></li>`).join('');
+  const navLinks = [...document.querySelectorAll('#nav a')];
+  const setCurrent = id => navLinks.forEach(a => {
+    const on = a.dataset.for === id; a.setAttribute('aria-current', on);
+    if (on) { const ol = $('#nav'), r = a.getBoundingClientRect(), o = ol.getBoundingClientRect(); if (r.left < o.left || r.right > o.right) ol.scrollLeft += r.left - o.left - 24; }
+  });
+  const onScroll = () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    $('#progress').style.width = (h > 0 ? Math.min(100, scrollY / h * 100) : 0) + '%';
+    let cur = null;
+    for (const c of chapters) if (c.getBoundingClientRect().top < innerHeight * 0.35) cur = c.id;
+    setCurrent(cur);
+  };
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+
+  // ---------- hero ----------
+  $('#asof').textContent = `Research as of ${fmtDate(D.as_of)}`;
+  $('#headline').textContent = (P.decision && P.decision.lede) || S.headline || '';
+  const DEC = P.decision;
+  if (!(DEC && DEC.forward)) $('#hero-answer').hidden = true;
+  // ---------- going forward ----------
+  const FW = DEC && DEC.forward;
+  if (FW) {
+    $('#fw-title').textContent = FW.title || 'Going forward';
+    say('#fw-intro', FW.intro || '');
+    const WKN = 4;
+    $('#fw-tracks').innerHTML = `<div class="tk-row tk-head"><span class="tk-lead">All four tracks can start on day one.</span><span class="tk-wks">${Array.from({ length: WKN }, (_, i) => `<i><span class="wl">Week </span>${i + 1}</i>`).join('')}</span></div>`
+      + (FW.tracks || []).map(t => `<div class="tk" style="--tc:${esc(t.color)}"><h3>${esc(t.name)}</h3><ul>${(t.items || []).map(it => {
+          const [a, b] = it.weeks, when = a === b ? `Week ${a}` : `Weeks ${a} to ${b}`;
+          return `<li class="tk-row"><span>${esc(it.text)}</span><span class="tk-wks" role="img" aria-label="${when}">${Array.from({ length: WKN }, (_, i) => `<b class="${i + 1 >= a && i + 1 <= b ? 'on' : ''}"></b>`).join('')}</span></li>`;
+        }).join('')}</ul></div>`).join('');
+    if (FW.after) { $('#fw-after-t').textContent = FW.after.title || ''; $('#fw-after').innerHTML = (FW.after.points || []).map(x => `<li>${esc(x)}</li>`).join(''); }
+    else $('#fw-after').closest('.box').hidden = true;
+    if (FW.gauges_title) $('#fw-gtitle').textContent = FW.gauges_title;
+    $('#fw-notnow').textContent = FW.not_now || ''; $('#fw-notnow').hidden = !FW.not_now;
+    const ZN = { stop: 'Warning sign', mid: 'Wait and see', go: 'Keep going' };
+    const kinds = [...new Set((FW.gauges || []).flatMap(g => g.zones.map(z => z.kind)))];
+    $('#fw-gauges').innerHTML = `<div class="gkey">${['stop', 'mid', 'go'].filter(k => kinds.includes(k)).map(k => `<span><i class="${k}" style="background:var(--${k === 'stop' ? 'hi' : k === 'go' ? 'yes' : 'muted'})"></i>${ZN[k]}</span>`).join('')}</div>`
+      + (FW.gauges || []).map(g => {
+        // Log scale when asked for, so a 3 and a 1,674 can share one bar.
+        const lo = g.scale === 'log' ? 1 : 0;
+        const pos = v => g.scale === 'log' ? Math.log10(Math.max(1, v)) / Math.log10(g.max) * 100 : v / g.max * 100;
+        let prev = lo;
+        const zones = g.zones.map(z => { const w = pos(z.to) - pos(prev); prev = z.to; return `<i class="${esc(z.kind)}" style="width:${w}%" title="${esc(ZN[z.kind] || z.kind)}"></i>`; }).join('');
+        // Labels: references above (alternating rows if they crowd), thresholds below; pin edge labels inward.
+        const marks = (g.marks || []).slice().sort((x, y) => x.at - y.at).map(m => {
+          const x = pos(m.at);
+          let cls = m.ref ? ' ref' : '';
+          if (m.below) cls += ' below';
+          if (x > 88) cls += ' r'; else if (x < 6) cls += ' l';
+          return `<span class="mk${cls}" style="left:calc(${x}% - 1px)"><span>${esc(m.label)}</span></span>`;
+        }).join('');
+        return `<div class="gauge"><span class="gl">${esc(g.label)}${g.scale === 'log' ? '<br><span class="gscale">log scale</span>' : ''}</span><div class="gbar" role="img" aria-label="${esc(g.label)}: ${esc(g.note)}">${zones}${marks}</div><span class="gn">${esc(g.note)}</span></div>`;
+      }).join('');
+    // Labels above the bar (references) and below it (thresholds, some references) must not overlap:
+    // measure them, and lift or drop any that would touch its neighbour onto a second row.
+    const unclash = () => document.querySelectorAll('#fw-gauges .gbar').forEach(bar => {
+      bar.classList.remove('tall', 'deep');
+      bar.querySelectorAll('.mk').forEach(m => m.classList.remove('above2', 'below2'));
+      const up = [...bar.querySelectorAll('.mk.ref:not(.below)')], down = [...bar.querySelectorAll('.mk:not(.ref), .mk.ref.below')];
+      const lay = (ms, cls) => { let last = null; ms.forEach(m => { const r = m.firstElementChild.getBoundingClientRect(); if (last && r.left < last.right + 6) { m.classList.add(cls); last = null; } else last = r; }); return ms.some(m => m.classList.contains(cls)); };
+      if (lay(up, 'above2')) bar.classList.add('tall');
+      if (lay(down, 'below2')) bar.classList.add('deep');
+    });
+    requestAnimationFrame(unclash); setTimeout(unclash, 0);
+    addEventListener('resize', unclash);
+    $('#fw-watch').innerHTML = (FW.also_watch || []).map(x => `<li>${esc(x)}</li>`).join('');
+  } else $('#forward').hidden = true;
+
+  const t1 = products.filter(p => p.tier === 'T1' && !p.is_reference), t2 = products.filter(p => p.tier === 'T2');
+  const crowd = t1.filter(p => /crowdfunding|preorder/.test(p.stage || '')).length;
+  const CATL = D.catalogue || [];
+  const stats = [[fmt(CATL.length), 'products found'], [t1.length, 'direct products profiled (T1)'], [t2.length, 'same-job tools profiled (T2)'], [(D.adjacent || []).length, 'adjacent (T3)'], [crowd, 'T1 crowdfunding or on pre-order']];
+  $('#stats').innerHTML = stats.map(([n, l]) => `<div class="stat"><b>${n}</b><span>${esc(l)}</span></div>`).join('');
+
+  // ---------- 0. short version ----------
+  const SB = S.summary_bullets || [];
+  say('#b-short', `Hi, I'm Burnbot. I live on your Mac and on a little screen on your desk. This is what already exists around me, and whether we should go for it. Here it is in ${SB.length} lines, if you only have a minute.`);
+  $('#bullets').innerHTML = SB.map(b => `<li>${bulletInner(b)}</li>`).join('');
+  if (P.decision && P.decision.lede && S.headline) $('#short-head').innerHTML = `<b>What the research says</b>${esc(S.headline)}`; else $('#short-head').hidden = true;
+
+  // ---------- 1. the crowd ----------
+  const c = D.counts || {};
+  const profiledN = c.profiled || (t1.length + t2.length);
+  say('#b-crowd', `I found ${fmt(CATL.length)} products that do some part of my job. We looked closely at ${profiledN} of them.`);
+  const steps = [
+    [c.candidates, 'mentions turned up by 24 searches'.replace('24', (A.finders || []).length || 24)],
+    [c.catalogue || CATL.length, 'products, once duplicates were merged'],
+    [profiledN, `profiled in depth, plus ${c.adjacent || (D.adjacent || []).length} adjacent ones lightly`],
+    [c.spot_checked || (P.spot || []).length, `headline claims checked twice, after ${fmt(c.verify_changes || 0)} corrections`],
+  ].filter(s => s[0]);
+  $('#funnel').innerHTML = steps.map(([n, l]) => `<div><b>${fmt(n)}</b><span>${esc(l)}</span></div>`).join('');
+
+  // Waffle: one square per catalogue product, grouped by category (largest first), profiled ones first in each group.
+  const catCount = {};
+  CATL.forEach(p => { const k = p.category || 'other'; catCount[k] = (catCount[k] || 0) + 1; });
+  const catOrder = Object.keys(catCount).sort((a, b) => catCount[b] - catCount[a]);
+  const wItems = CATL.slice().sort((a, b) => catOrder.indexOf(a.category || 'other') - catOrder.indexOf(b.category || 'other') || (b.profiled ? 1 : 0) - (a.profiled ? 1 : 0));
+  const profiledInCat = CATL.filter(p => p.profiled).length;
+  $('#waffle-sub').textContent = `${fmt(CATL.length)} squares. A dot means we profiled it (${profiledInCat}). Hover to see a product, click to lock one in place.`;
+  $('#wlegend').innerHTML = catOrder.map(k => `<button type="button" data-cat="${esc(k)}" title="List these in the toolbox"><i style="background:var(${CAT_VAR[k] || '--c-oth'})"></i>${esc(CAT[k] || k)} <span class="n">${catCount[k]}</span></button>`).join('');
+  const wf = $('#waffle');
+  wf.tabIndex = 0;
+  // Hover shows a product in the card right away; click locks it: brackets close in, the rest dims,
+  // and the card stays put (hovering others then shows a small label) until released.
+  let wGeom = null, wCtx = null, wCol = null;
+  let wHover = -1, wShown = -1, wPin = -1, wLockT0 = 0, wLockRaf = 0;
+  const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function drawWaffle() {
+    const W = wf.parentElement.clientWidth - 40 > 0 ? wf.clientWidth : 300;
+    const pitch = W < 520 ? 7 : 9, sq = pitch - 2;
+    const cols = Math.max(10, Math.floor(W / pitch)), rows = Math.ceil(wItems.length / cols);
+    const dpr = window.devicePixelRatio || 1;
+    wf.width = Math.round(cols * pitch * dpr); wf.height = Math.round(rows * pitch * dpr);
+    wf.style.height = rows * pitch + 'px'; wf.style.width = cols * pitch + 'px';
+    wCtx = wf.getContext('2d'); wCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    wCol = { cats: Object.fromEntries(Object.entries(CAT_VAR).map(([k, v]) => [k, cssVar(v)])), dot: cssVar('--surface'), ink: cssVar('--ink'), muted: cssVar('--muted'), us: cssVar('--us') };
+    wGeom = { pitch, cols, rows, sq };
+    paintWaffle();
+  }
+  function paintWaffle() {
+    if (!wCtx) return;
+    const { pitch, cols, rows, sq } = wGeom, ctx = wCtx, locked = wPin >= 0;
+    const at = i => [(i % cols) * pitch, Math.floor(i / cols) * pitch];
+    ctx.clearRect(0, 0, cols * pitch, rows * pitch);
+    wItems.forEach((p, i) => {
+      const [x, y] = at(i);
+      ctx.globalAlpha = locked && i !== wPin && i !== wHover ? 0.3 : 1;
+      ctx.fillStyle = wCol.cats[p.category || 'other'] || wCol.cats.other; ctx.fillRect(x, y, sq, sq);
+      if (p.profiled) { ctx.fillStyle = wCol.dot; ctx.fillRect(x + Math.floor(sq / 2) - 1, y + Math.floor(sq / 2) - 1, 2, 2); }
+    });
+    ctx.globalAlpha = 1;
+    const ring = (i, c) => { const [x, y] = at(i); ctx.fillStyle = c; ctx.fillRect(x - 1, y - 1, sq + 2, 1); ctx.fillRect(x - 1, y + sq, sq + 2, 1); ctx.fillRect(x - 1, y, 1, sq); ctx.fillRect(x + sq, y, 1, sq); };
+    if (wShown >= 0 && !locked) ring(wShown, wCol.ink);
+    if (wHover >= 0 && wHover !== wPin && (locked || wHover !== wShown)) ring(wHover, locked ? wCol.ink : wCol.muted);
+    if (locked) {
+      // Pixel brackets that close in on the square when it locks.
+      const k = calm() ? 1 : Math.min(1, (performance.now() - wLockT0) / 220), ease = 1 - Math.pow(1 - k, 3);
+      const [x, y] = at(wPin), o = Math.round(3 + 9 * (1 - ease)), L = 4;
+      ring(wPin, wCol.us);
+      ctx.fillStyle = wCol.us;
+      [[x - o, y - o, 1, 1], [x + sq + o - 1, y - o, -1, 1], [x - o, y + sq + o - 1, 1, -1], [x + sq + o - 1, y + sq + o - 1, -1, -1]].forEach(([cx, cy, dx, dy]) => {
+        ctx.fillRect(dx > 0 ? cx : cx - L + 1, cy, L, 1);
+        ctx.fillRect(cx, dy > 0 ? cy : cy - L + 1, 1, L);
+      });
+      if (k < 1) wLockRaf = requestAnimationFrame(() => paintWaffle());
+    }
+  }
+  const wIdx = e => { if (!wGeom) return -1; const r = wf.getBoundingClientRect(); const c = Math.floor((e.clientX - r.left) / wGeom.pitch), rw = Math.floor((e.clientY - r.top) / wGeom.pitch); if (c < 0 || c >= wGeom.cols || rw < 0) return -1; const i = rw * wGeom.cols + c; return i < wItems.length ? i : -1; };
+  const wHint = '<span class="muted">Hover a square to see the product. Click one to lock it here.</span>';
+  function wCard(i) {
+    const p = wItems[i];
+    if (!p) { $('#wtip').innerHTML = wHint; return; }
+    const locked = i === wPin, pid = p.pid || p.id;
+    $('#wtip').innerHTML = `<div class="wtip-head">${locked ? '<span class="lock">Locked</span>' : ''}<b>${link(p.primary_url, p.name)}</b><span class="muted">· ${esc(CAT[p.category] || p.category || '')}</span>${p.profiled && byId[pid] ? `<button type="button" class="pill" data-id="${esc(pid)}">profiled</button>` : ''}${locked ? '<button type="button" class="wrel" data-wrel>Release ×</button>' : '<span class="wclick">click the square to lock</span>'}</div><span class="wone">${esc(p.one_liner || '')}</span>`;
+  }
+  function setPin(i) {
+    cancelAnimationFrame(wLockRaf);
+    wPin = i;
+    if (i >= 0) { wShown = i; wLockT0 = performance.now(); setTimeout(() => { if (wPin === i) paintWaffle(); }, 260); }  // settle even if frames are throttled
+    wCard(wShown); paintWaffle();
+  }
+  // While a square is locked, hovering others shows a small label over the grid
+  // instead of replacing the card, so the locked card stays put.
+  const wpeek = $('#wpeek');
+  function wPeek(i) {
+    const p = wItems[i];
+    if (wPin < 0 || i < 0 || i === wPin || !p) { wpeek.hidden = true; return; }
+    const { pitch, cols, sq } = wGeom, box = wf.parentElement;
+    const x = wf.offsetLeft + (i % cols) * pitch + sq / 2, y = wf.offsetTop + Math.floor(i / cols) * pitch;
+    wpeek.innerHTML = `${esc(p.name)}<small>${esc(CAT[p.category] || p.category || '')} · click to lock this one</small>`;
+    wpeek.hidden = false;
+    const half = wpeek.offsetWidth / 2, left = Math.min(box.clientWidth - half - 4, Math.max(half + 4, x));
+    wpeek.style.left = left + 'px'; wpeek.style.top = y + 'px';
+    wpeek.style.setProperty('--tail', `${50 + (x - left) / wpeek.offsetWidth * 100}%`);
+  }
+  wf.addEventListener('mousemove', e => {
+    const i = wIdx(e); if (i === wHover) return;
+    wHover = i;
+    if (wPin < 0 && i >= 0) { wShown = i; wCard(i); }
+    wPeek(i); paintWaffle();
+  });
+  wf.addEventListener('mouseleave', () => { wHover = -1; wPeek(-1); paintWaffle(); });
+  wf.addEventListener('click', e => { const i = wIdx(e); if (i < 0) return; setPin(i === wPin ? -1 : i); wPeek(wHover); });
+  $('#wtip').addEventListener('click', e => { if (e.target.closest('[data-wrel]')) { setPin(-1); wf.focus({ preventScroll: true }); } });
+  wf.addEventListener('keydown', e => {
+    const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: wGeom ? wGeom.cols : 0, ArrowUp: wGeom ? -wGeom.cols : 0 }[e.key];
+    if (step) { e.preventDefault(); const from = wPin >= 0 ? wPin : Math.max(0, wShown); setPin(Math.min(wItems.length - 1, Math.max(0, wPin < 0 && wShown < 0 ? 0 : from + step))); }
+    else if (e.key === 'Escape' && wPin >= 0) { e.stopPropagation(); setPin(-1); }
+    else if ((e.key === 'Enter' || e.key === ' ') && wShown >= 0) { e.preventDefault(); setPin(wPin === wShown ? -1 : wShown); }
+  });
+  $('#wlegend').addEventListener('click', e => { const b = e.target.closest('button[data-cat]'); if (!b) return; catState.cat = b.dataset.cat; $('#c-cat').value = b.dataset.cat; catState.shown = 60; renderCat(); openTool('tool-catalogue'); });
+  drawWaffle();
+  let wRaf = 0;
+  new ResizeObserver(() => { cancelAnimationFrame(wRaf); wRaf = requestAnimationFrame(drawWaffle); }).observe(wf.parentElement);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawWaffle);
+  new MutationObserver(drawWaffle).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // ---------- 2. who's who ----------
+  const CATS = S.categories || [];
+  say('#b-who', `They fall into ${CATS.length} groups. I live in two: on your Mac with the desktop pets, and on your desk with the hardware displays, the most crowded group of all.`);
+  $('#cats').innerHTML = CATS.map(cg => {
+    const leaders = new Set(cg.leaders || []);
+    const homeTag = /pet|overlay/i.test(cg.name) ? 'Burnbot lives here' : /hardware displays/i.test(cg.name) ? 'Our desk screen goes here' : '';
+    const home = !!homeTag;
+    const chips = (cg.product_ids || []).map(id => { const p = byId[id]; if (!p) return ''; const lead = leaders.has(id) || leaders.has(p.name); return `<button type="button" class="chip${lead ? ' lead' : ''}" data-id="${esc(id)}">${esc(p.name)}</button>`; }).join('');
+    return `<div class="box${home ? ' home' : ''}"><div class="cat-head">${icon(catIcon(cg.name), catColor(cg.name), 'px')}<h3>${esc(cg.name)}${home ? `<span class="home-tag">${homeTag}</span>` : ''}</h3></div><p>${esc(cg.description)}</p><div class="chips">${chips}</div>${(cg.observations || []).length ? `<ul class="obs">${cg.observations.map(bullet).join('')}</ul>` : ''}</div>`;
+  }).join('');
+
+  // ---------- 3. what people want ----------
+  say('#b-want', 'Two things above all: to know the moment the agent needs them, and how much of their limit is left. And they upvote it most when it sits on the desk.');
+  $('#demand-take').innerHTML = (S.demand_takeaways || []).map(b => `<li>${bulletInner(b)}</li>`).join('');
+  const C = P.community || { posts: [] };
+  const top = C.posts.slice().sort((a, b) => b.score - a.score);
+  const shown = top.slice(0, 14);
+  const mine = top.find(p => p.highlight);
+  if (mine && !shown.includes(mine)) shown.push(mine);
+  const maxS = Math.max(1, ...top.map(p => p.score));
+  $('#votes-sub').textContent = `The top ${shown.length} of ${C.posts.length} posts the research cited, by score`;
+  $('#votes').innerHTML = shown.map(p => `<a class="vote ${p.kind === 'talk' ? 'talk' : ''} ${p.highlight ? 'mine' : ''}" href="${esc(safeUrl(p.url) || '#')}" target="_blank" rel="noopener">
+    <span class="vt" title="${esc(p.title)}">${esc(p.topic || p.title)} <small>r/${esc(p.subreddit)}</small></span>
+    <span class="vbar"><i style="width:${(p.score / maxS * 100).toFixed(1)}%"></i></span><span class="vn">${fmt(p.score)}</span></a>`).join('');
+  $('#community-notes').innerHTML = (C.notes || []).map(b => `<li>${esc(b)}</li>`).join('');
+  $('#community-sub').textContent = `${C.posts.length} Reddit posts the research cited, with their score and comment count from ${C.source || 'a Reddit archive'}, as of ${fmtDate(C.as_of || D.as_of)}. Highlighted: the post that started this.`;
+  $('#posts-sum').textContent = `All ${C.posts.length} posts, with comments and dates`;
+  const cState = { kind: 'all' };
+  function renderPosts() {
+    const rows = C.posts.filter(p => cState.kind === 'all' || p.kind === cState.kind);
+    $('#post-tbl tbody').innerHTML = rows.map(p => `<tr class="${p.highlight ? 'mine' : ''}"><td>${fmt(p.score)}</td><td>${fmt(p.comments)}</td>
+      <td>${link(p.url, p.title)}<small>r/${esc(p.subreddit)}${p.product && byId[p.product] ? ` · <button type="button" class="pill" data-id="${esc(p.product)}">${esc(byId[p.product].name)}</button>` : ''}</small></td>
+      <td>${esc(p.topic)}<small>${p.kind === 'built' ? 'Built something' : 'Discussion'}</small></td><td class="num">${esc(p.date)}</td></tr>`).join('');
+  }
+  document.querySelectorAll('#c-kind button').forEach(b => b.addEventListener('click', () => {
+    cState.kind = b.dataset.kind;
+    document.querySelectorAll('#c-kind button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    renderPosts();
+  }));
+  renderPosts();
+  const sRank = { strong: 0, moderate: 1, weak: 2 };
+  const laneName = { reddit: 'Reddit', crowdfunding: 'Crowdfunding comments', hn: 'Hacker News', skeptics: 'The skeptics' };
+  const themes = (A.demand || []).flatMap(d => (d.themes || []).map(t => Object.assign({ lane: d.lane }, t)));
+  const STRENGTH = [['strong', 'Heard loudly'], ['moderate', 'Heard often'], ['weak', 'Heard now and then']];
+  $('#themes').innerHTML = STRENGTH.map(([k, label]) => {
+    const list = themes.filter(t => (t.strength || 'weak') === k);
+    if (!list.length) return '';
+    return `<div class="theme-group${k === 'strong' ? '' : ' extra'}"><h3>${esc(label)} <small>${list.length} theme${list.length === 1 ? '' : 's'}</small></h3><ul class="tlist">${list.map((t, i) => `<li${k === 'strong' && i >= 6 ? ' class="extra"' : ''}><details><summary><span class="lane">${esc(laneName[t.lane] || t.lane)}</span>${esc(t.theme)}<span class="why"></span></summary>
+      <div><p>${esc(t.summary)}</p>${(t.quotes || []).slice(0, 2).map(q => `<blockquote>“${esc(q.text)}”<span>${link(q.url, [q.where, q.date].filter(Boolean).join(', ') || 'source')}</span></blockquote>`).join('')}</div></details></li>`).join('')}</ul></div>`;
+  }).join('') + `<button type="button" class="close more-themes" id="more-themes">Show all ${themes.length} themes</button>`;
+  $('#themes').classList.add('folded');
+  $('#more-themes').addEventListener('click', e => { const f = $('#themes').classList.toggle('folded'); e.currentTarget.textContent = f ? `Show all ${themes.length} themes` : 'Show only the loudest'; });
+
+  // ---------- 4. features ----------
+  // Desk devices: anything sold or built as a screen, light, robot or controller for agents.
+  const HWF = new Set(['hardware-display', 'hardware-controller', 'status-light', 'desk-robot']);
+  const isDevice = p => /agent-hardware/.test(p.category || '') || (p.form_factors || []).some(f => HWF.has(f));
+  const t1s = t1.filter(p => p.in_scope !== false), devs = t1s.filter(isDevice);
+  const BANDS = [
+    [.7, 'Table stakes', 'Most of them have these'],
+    [.4, 'About half have it', ''],
+    [.15, 'A few have it', ''],
+    [-1, 'Almost nobody', 'This is where Burnbot is different'],
+  ];
+  const usLabel = { yes: 'Burnbot: yes', partial: 'Burnbot: partly', no: 'Burnbot: no', unknown: 'Burnbot: ?' };
+  function drawBands(view) {
+    const set = view === 'dev' ? devs : t1s, N1 = set.length || 1;
+    const what = view === 'dev' ? `the ${N1} desk devices` : `the ${N1} direct products`;
+    say('#b-features', view === 'dev'
+      ? `On the ${N1} desk devices, status, a needs-you alert and buttons are table stakes. Noticing progress? None of them do it. That's my spot.`
+      : 'Status and a needs-you alert are table stakes. Ranking you against your own history? Nobody has that but me.');
+    $('#fview-n').textContent = view === 'dev' ? 'Screens, lights, robots and keypads made for coding agents.' : 'Every direct product: apps, pets and devices.';
+    $('#landscape-note').hidden = view !== 'dev';
+    const rowsF = FEATS.map(([k, s, l]) => {
+      const vals = set.map(p => fv(p, k));
+      const cnt = v => vals.filter(x => x === v).length;
+      return { k, s, l, y: cnt('yes'), pa: cnt('partial'), no: cnt('no'), un: cnt('unknown'), us: fv(ref, k) };
+    }).sort((a, b) => b.y - a.y || b.pa - a.pa);
+    const bandOf = r => BANDS.findIndex(([t]) => r.y / N1 >= t);
+    $('#dots-legend').innerHTML = `<span>Each row is one feature. Each square is one of ${what}:</span><span><i class="cell v-yes"></i>Has it</span><span><i class="cell v-partial"></i>Partly</span><span><i class="cell" style="background:var(--surface-2)"></i>No</span><span><i class="cell" style="box-shadow:inset 0 0 0 1px var(--unk)"></i>Not shown</span>`;
+    $('#fbands').innerHTML = BANDS.map(([, title, sub], bi) => {
+      const rs = rowsF.filter(r => bandOf(r) === bi);
+      if (!rs.length) return '';
+      return `<div class="band${bi === BANDS.length - 1 ? ' ours' : ''}"><div class="band-head"><h3>${esc(title)}</h3>${sub ? `<span>${esc(sub)}</span>` : ''}</div>${rs.map(r => {
+        const seq = [].concat(Array(r.y).fill('y'), Array(r.pa).fill('p'), Array(r.no).fill('n'), Array(r.un).fill('u'));
+        return `<div class="frow" title="${esc(r.l)}"><span>${esc(r.s)}</span><span class="dots" role="img" aria-label="${esc(r.s)}: ${r.y} have it, ${r.pa} partly, ${r.no} no, ${r.un} not shown, of ${N1}">${seq.map(v => `<i class="${v}"></i>`).join('')}</span><span class="cnt">${r.y}/${N1}${r.pa ? ` +${r.pa}` : ''}</span><span class="usv ${esc(r.us)}"><i></i>${esc(usLabel[r.us] || r.us)}</span></div>`;
+      }).join('')}</div>`;
+    }).join('');
+    document.querySelectorAll('#fview button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === view)));
+  }
+  $('#fview').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) drawBands(b.dataset.v); });
+  drawBands(devs.length ? 'dev' : 'all');
+  if (!devs.length) $('#fview').parentElement.hidden = true;
+  $('#landscape').innerHTML = (S.feature_landscape || []).map(bullet).join('');
+
+  // ---------- 5. where Burnbot stands ----------
+  const U = S.reference_unique || [], B = S.reference_behind || [];
+  say('#b-spot', `${U.length} things only I do, or nearly. ${B.length} places where I'm behind.`);
+  $('#unique').innerHTML = U.map(x => li('', x.point, '', x.evidence)).join('');
+  $('#behind').innerHTML = B.map(x => li('', x.point, names(x.who_does_it), x.evidence)).join('');
+
+  // ---------- 6. risks and openings ----------
+  const TH = (S.threats || []).slice(), OP = (S.opportunities || []).slice();
+  const sevOrder = { high: 0, medium: 1, low: 2 }, effOrder = { small: 0, medium: 1, large: 2 };
+  TH.sort((a, b) => sevOrder[a.severity] - sevOrder[b.severity]);
+  const nHigh = TH.filter(t => t.severity === 'high').length;
+  say('#b-risks', `${nHigh} big risks and ${OP.length} openings. The biggest risk: ${TH[0] ? `“${TH[0].threat}”` : ''}.`);
+  const lane = (key, title, sub, cls, heat, items) => items.length ? `<div class="lane-box"><div class="lane-name ${cls}"><span class="heat l${heat}" style="color:inherit"><i></i><i></i><i></i></span><b>${esc(title)}</b><span>${esc(sub)}</span></div><ul class="ev">${items.join('')}</ul></div>` : '';
+  $('#threats').innerHTML = [['high', 'High', 3], ['medium', 'Medium', 2], ['low', 'Low', 1]].map(([k, t, h]) => {
+    const items = TH.filter(x => x.severity === k).map(x => li('', x.threat, names(x.who), x.why));
+    return lane(k, t, `${items.length} risk${items.length === 1 ? '' : 's'}`, `sev-${k}`, h, items);
+  }).join('');
+  $('#opps').innerHTML = [['small', 'Small', 'Quick wins', 1], ['medium', 'Medium', 'Bigger pieces', 2], ['large', 'Large', 'Big bets', 3]].map(([k, t, sub, h]) => {
+    const items = OP.filter(x => (x.effort || 'medium') === k).map(x => li('', x.opportunity, '', x.evidence));
+    return lane(k, t, `${sub} · ${items.length}`, '', h, items);
+  }).join('') + OP.filter(x => x.effort && !(x.effort in effOrder)).map(x => li('', x.opportunity, '', x.evidence)).join('');
+  document.querySelectorAll('#opps .lane-name').forEach(el => { el.style.color = 'var(--yes)'; });
+
+  // ---------- 7. money ----------
+  const PB = S.pricing_benchmarks || [];
+  const parsed = PB.map(r => { const nums = (String(r.range).match(/\$\s?(\d+(?:\.\d+)?)/g) || []).map(x => parseFloat(x.replace(/[^\d.]/g, ''))); return Object.assign({ lo: nums.length ? Math.min(...nums) : null, hi: nums.length ? Math.max(...nums) : null }, r); });
+  const numeric = parsed.filter(r => r.lo != null);
+  const isSoft = r => /software|monitor|app|pets|companion/i.test(r.segment) && !/board|display|keypad|controller|hardware/i.test(r.segment);
+  const soft = numeric.filter(isSoft), hard = numeric.filter(r => !isSoft(r));
+  if (soft.length && hard.length) say('#b-money', `A desk device runs from about ${usd(Math.min(...hard.map(r => r.lo)))} for the boards people build on, to ${usd(Math.max(...hard.map(r => r.hi)))} for the premium ones. Software here is free, or ${usd(Math.max(...soft.map(r => r.hi)))} at most.`);
+  else say('#b-money', 'What everything costs, from free apps to premium desk hardware.');
+  const MAXP = Math.max(50, Math.ceil(Math.max(...numeric.map(r => r.hi), 0) / 50) * 50);
+  const pos = v => (v / MAXP * 100).toFixed(2) + '%';
+  $('#ladder').innerHTML = numeric.map(r => `<div class="lrow ${isSoft(r) ? 'soft' : ''}"><span>${esc(r.segment)}</span><div class="ltrack"><span class="usline" style="left:0"></span>
+      <span class="lbar" style="left:${pos(r.lo)};width:calc(${pos(r.hi - r.lo)})"></span>
+      <span class="llab" style="${r.hi / MAXP > .7 ? `right:calc(100% - ${pos(r.lo)} + 6px)` : `left:calc(${pos(r.hi)} + 8px)`}">${r.lo === r.hi ? usd(r.lo) : `${usd(r.lo)}–${usd(r.hi)}`}</span></div></div>`).join('')
+    + `<div class="laxis"><span></span><div class="ticks">${Array.from({ length: MAXP / 50 + 1 }, (_, i) => `<span style="left:${pos(i * 50)}">$${i * 50}</span>`).join('')}</div></div>`;
+  $('#ladder-notes').innerHTML = parsed.filter(r => r.lo == null).map(r => `<li><b>${esc(r.segment)}:</b> ${esc(r.range)}</li>`).join('');
+  $('#price-tbl tbody').innerHTML = PB.map(r => `<tr><td>${esc(r.segment)}</td><td class="num">${esc(r.range)}</td><td>${esc((r.examples || []).join(', '))}</td></tr>`).join('');
+
+  // ---------- 8. should we enter ----------
+  if (DEC) {
+    $('#dec-note').textContent = DEC.note || '';
+    $('#dec-framing').textContent = DEC.framing || '';
+    $('#i-for').innerHTML = icon('plus', 'var(--yes)'); $('#i-against').innerHTML = icon('minus', 'var(--hi)');
+    $('#i-go').innerHTML = icon('lamp', 'var(--yes)'); $('#i-stop').innerHTML = icon('lamp', 'var(--hi)');
+    $('#dec-pros').innerHTML = (DEC.pros || []).map(x => li('', x.point, '', x.evidence)).join('');
+    $('#dec-cons').innerHTML = (DEC.cons || []).map(x => li('', x.point, '', x.evidence)).join('');
+    const DC = DEC.device_case;
+    if (DC) {
+      $('#dc-title').textContent = DC.title || '';
+      $('#dc-intro').textContent = DC.intro || '';
+      $('#i-dfor').innerHTML = icon('plus', 'var(--yes)'); $('#i-dagainst').innerHTML = icon('minus', 'var(--hi)');
+      $('#dc-pros').innerHTML = (DC.pros || []).map(x => li('', x.point, '', x.evidence)).join('');
+      $('#dc-cons').innerHTML = (DC.cons || []).map(x => li('', x.point, '', x.evidence)).join('');
+    } else $('#dcase').hidden = true;
+    const slug = s => String(s).toLowerCase().replace(/[^a-z]+/g, '-');
+    const CALLC = { 'do-now': 'var(--yes)', next: 'var(--yes)', later: 'var(--part)', fallback: 'var(--part)', no: 'var(--hi)' };
+    $('#dec-options').innerHTML = (DEC.options || []).map(o => `<div class="callcard" style="--cc:${CALLC[slug(o.verdict)] || 'var(--line)'}"><span class="call call-${slug(o.verdict)}">${esc(o.verdict)}</span><b>${esc(o.option)}</b><p>${esc(o.why)}</p></div>`).join('');
+    $('#dec-go').innerHTML = ((DEC.signals || {}).go || []).map(s => `<li>${esc(s)}</li>`).join('');
+    $('#dec-stop').innerHTML = ((DEC.signals || {}).stop || []).map(s => `<li>${esc(s)}</li>`).join('');
+    $('#dec-bets').innerHTML = (DEC.bets || []).map(b => li(b.effort ? `<span class="tag">${esc(b.effort)}</span>` : '', b.bet, '', b.why)).join('');
+  } else $('#decision').hidden = true;
+
+  // ---------- 9. questions ----------
+  const OQ = S.open_questions || [];
+  say('#b-questions', `${OQ.length} things we still don't know, and should find out before betting big.`);
+  $('#openq').innerHTML = OQ.map(b => `<li>${bulletInner(b)}</li>`).join('');
+
+  // ---------- toolbox ----------
+  say('#b-toolbox', `Everything behind the story: the full feature matrix, all ${fmt(CATL.length)} products, and how we checked. Click any product for its sources.`);
+  function openTool(id) { const t = document.getElementById(id); if (!t) return; t.open = true; t.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); }
+  document.addEventListener('click', e => { const a = e.target.closest('a[data-open]'); if (!a) return; e.preventDefault(); openTool(a.dataset.open); });
+
+  document.querySelectorAll('.why-all').forEach(btn => btn.addEventListener('click', () => {
+    const all = [...document.querySelectorAll(`#${btn.dataset.scope} .ev details`)];
+    const open = !all.every(d => d.open);
+    all.forEach(d => { d.open = open; });
+    btn.textContent = open ? 'Hide all evidence' : 'Show all evidence';
+  }));
+
+  // matrix
+  const state = { q: '', tier: 'all', cat: '', form: '', stage: '', os: '', sort: 'features', req: new Set() };
+  const opts = (sel, label, values, nm) => {
+    const counts = {};
+    values.forEach(v => counts[v] = (counts[v] || 0) + 1);
+    const keys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+    $(sel).innerHTML = `<option value="">${label}</option>` + keys.map(k => `<option value="${esc(k)}">${esc(nm[k] || k)} (${counts[k]})</option>`).join('');
+  };
+  opts('#f-cat', 'All categories', products.map(p => p.category), CAT);
+  opts('#f-form', 'All forms', products.flatMap(p => p.form_factors || []), FORM);
+  opts('#f-stage', 'All stages', products.map(p => p.stage || 'unknown'), STAGE);
+  opts('#f-os', 'All platforms', products.flatMap(p => p.os || []), {});
+  $('#mx thead').innerHTML = `<tr><th class="name t">Product</th>` + FEATS.map(([k, s, l]) =>
+    `<th class="f" data-k="${k}" title="${esc(l)}"><button type="button" aria-pressed="false" aria-label="Only products with: ${esc(l)}"><span>${esc(s)}</span></button></th>`).join('') +
+    `<th class="t">Form</th><th class="t">Platforms</th><th class="t">Agents</th><th class="t">Price</th><th class="t">Stage</th></tr>`;
+  function filtered() {
+    const q = state.q.trim().toLowerCase();
+    const rows = products.filter(p => {
+      if (state.tier !== 'all' && p.tier !== state.tier && !p.is_reference) return false;
+      if (state.cat && p.category !== state.cat && !p.is_reference) return false;
+      if (state.form && !(p.form_factors || []).includes(state.form) && !p.is_reference) return false;
+      if (state.stage && (p.stage || 'unknown') !== state.stage && !p.is_reference) return false;
+      if (state.os && !(p.os || []).includes(state.os) && !p.is_reference) return false;
+      for (const k of state.req) if (!['yes', 'partial'].includes(fv(p, k)) && !p.is_reference) return false;
+      if (q && !p.is_reference) {
+        const hay = [p.name, p.maker, p.one_liner, p.distinctive, (p.agents_supported || []).join(' ')].join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    const cmp = {
+      features: (a, b) => score(b) - score(a),
+      name: (a, b) => a.name.localeCompare(b.name),
+      price: (a, b) => ((a.price_usd < 0 ? 1e9 : a.price_usd) - (b.price_usd < 0 ? 1e9 : b.price_usd)),
+      traction: (a, b) => traction(b) - traction(a),
+      overlap: (a, b) => overlap(b) - overlap(a),
+    }[state.sort];
+    rows.sort((a, b) => (b.is_reference ? 1 : 0) - (a.is_reference ? 1 : 0) || cmp(a, b) || a.name.localeCompare(b.name));
+    return rows;
+  }
+  const short = (arr, n) => { arr = arr || []; return arr.length > n ? arr.slice(0, n).join(', ') + ` +${arr.length - n}` : arr.join(', '); };
+  function priceText(p) {
+    if (p.price_usd === 0) return 'Free';
+    if (p.price_usd > 0) return `$${Math.round(p.price_usd)}`;
+    return (p.price_text || '').replace(/^unverified:\s*/i, '').slice(0, 40) || '?';
+  }
+  function renderMatrix() {
+    const rows = filtered();
+    $('#count').textContent = `${rows.length - 1} of ${products.length - 1} products, plus Burnbot`;
+    $('#mx tbody').innerHTML = rows.map(p => `<tr class="${p.is_reference ? 'us' : ''}">
+      <td class="name"><button type="button" data-id="${esc(p.id)}"><b>${esc(p.name)}</b><small>${esc(p.tier)} · ${esc(CAT[p.category] || p.category || '')}</small></button></td>` +
+      FEATS.map(([k, s]) => { const v = fv(p, k); return `<td class="c" title="${esc(s)}: ${esc(v)}${p.features && p.features[k] && p.features[k].note ? ' · ' + esc(p.features[k].note) : ''}"><i class="cell v-${v}"></i></td>`; }).join('') +
+      `<td class="t">${esc(short((p.form_factors || []).map(f => FORM[f] || f), 2))}</td>
+       <td class="t">${esc(short(p.os, 3))}</td>
+       <td class="t">${esc(short(p.agents_supported, 2))}</td>
+       <td class="t num">${esc(priceText(p))}</td>
+       <td class="t">${esc(STAGE[p.stage] || p.stage || '')}</td></tr>`).join('');
+    document.querySelectorAll('#mx th.f').forEach(th => { const on = state.req.has(th.dataset.k); th.classList.toggle('on', on); th.querySelector('button').setAttribute('aria-pressed', on); });
+    $('#req').innerHTML = [...state.req].map(k => `<button type="button" data-k="${k}">Has: ${esc(FEATS.find(f => f[0] === k)[1])} ×</button>`).join('');
+  }
+  $('#q').addEventListener('input', e => { state.q = e.target.value; renderMatrix(); });
+  document.querySelectorAll('#tier-seg button').forEach(b => b.addEventListener('click', () => {
+    state.tier = b.dataset.tier;
+    document.querySelectorAll('#tier-seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    renderMatrix();
+  }));
+  [['#f-cat', 'cat'], ['#f-form', 'form'], ['#f-stage', 'stage'], ['#f-os', 'os'], ['#f-sort', 'sort']].forEach(([sel, key]) =>
+    $(sel).addEventListener('change', e => { state[key] = e.target.value; renderMatrix(); }));
+  $('#mx thead').addEventListener('click', e => { const th = e.target.closest('th.f'); if (!th) return; const k = th.dataset.k; state.req.has(k) ? state.req.delete(k) : state.req.add(k); renderMatrix(); });
+  $('#req').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.req.delete(b.dataset.k); renderMatrix(); });
+  $('#reset').addEventListener('click', () => {
+    Object.assign(state, { q: '', tier: 'all', cat: '', form: '', stage: '', os: '', sort: 'features' }); state.req.clear();
+    $('#q').value = ''; ['#f-cat', '#f-form', '#f-stage', '#f-os'].forEach(s => $(s).value = ''); $('#f-sort').value = 'features';
+    document.querySelectorAll('#tier-seg button').forEach(x => x.setAttribute('aria-pressed', x.dataset.tier === 'all'));
+    renderMatrix();
+  });
+  renderMatrix();
+
+  // catalogue
+  const catState = { q: '', cat: '', tier: '', shown: 60 };
+  opts('#c-cat', 'All categories', CATL.map(p => p.category || 'other'), CAT);
+  $('#cat-sub').textContent = `All ${fmt(CATL.length)} products after merging duplicates, with the one-line description the search found. Only the ones marked "profiled" were checked in depth; the rest are as described where they were found.`;
+  function renderCat() {
+    const q = catState.q.trim().toLowerCase();
+    const rows = CATL.filter(p => (!catState.cat || (p.category || 'other') === catState.cat) && (!catState.tier || p.tier === catState.tier) &&
+      (!q || [p.name, p.one_liner, (p.aliases || []).join(' ')].join(' ').toLowerCase().includes(q)));
+    $('#c-count').textContent = `${fmt(rows.length)} match`;
+    $('#cat-tbl tbody').innerHTML = rows.slice(0, catState.shown).map(p => `<tr><td>${link(p.primary_url, p.name)}${p.profiled && byId[p.pid || p.id] ? `<button type="button" class="pill" data-id="${esc(p.pid || p.id)}">profiled</button>` : ''}${(p.aliases || []).length ? `<small>also: ${esc(p.aliases.slice(0, 3).join(', '))}</small>` : ''}</td>
+      <td>${esc(p.one_liner)}</td><td>${esc(CAT[p.category] || p.category || '')}</td><td>${esc(p.tier || '')}</td></tr>`).join('');
+    $('#c-more').hidden = rows.length <= catState.shown;
+    $('#c-more').textContent = `Show ${fmt(Math.min(200, rows.length - catState.shown))} more`;
+  }
+  $('#cq').addEventListener('input', e => { catState.q = e.target.value; catState.shown = 60; renderCat(); });
+  $('#c-cat').addEventListener('change', e => { catState.cat = e.target.value; catState.shown = 60; renderCat(); });
+  $('#c-tier').addEventListener('change', e => { catState.tier = e.target.value; catState.shown = 60; renderCat(); });
+  $('#c-more').addEventListener('click', () => { catState.shown += 200; renderCat(); });
+  renderCat();
+
+  // adjacent and method
+  $('#adj-tbl tbody').innerHTML = (D.adjacent || []).filter(a => a.in_scope !== false).map(a => `<tr><td>${link(a.primary_url, a.name)}</td><td>${esc(a.one_liner)}</td><td class="num">${esc(a.price_text)}</td><td>${esc(a.ai_agent_integration)}</td><td>${esc(a.relevance)}</td></tr>`).join('');
+  $('#method-text').textContent = A.method || '';
+  const VERD = { confirmed: 'Confirmed', partly: 'Mostly', refuted: 'Wrong', unverifiable: 'Unclear' };
+  $('#spot-tbl').innerHTML = (P.spot || []).map(s => `<tr><td><span class="tag ${s.verdict === 'confirmed' ? 'ok' : ''}">${esc(VERD[s.verdict] || s.verdict)}</span></td><td>${esc(s.claim)}${s.verdict === 'confirmed' ? '' : `<small>${esc(s.note)}</small>`}</td></tr>`).join('');
+  $('#gaps').innerHTML = ((A.critic || {}).gaps || []).filter(g => g.kind !== 'weak-claim').map(g => `<li>${esc(g.description)}</li>`).join('');
+  $('#gaps-wrap').hidden = !$('#gaps').children.length;
+
+  // ---------- drawer (any button with data-id opens a product) ----------
+  let lastFocus = null;
+  function openDrawer(id, from) {
+    const p = byId[id]; if (!p) return;
+    lastFocus = from || null;
+    const t = p.traction || {};
+    const tr = [t.backers > 0 ? `${fmt(t.backers)} backers` : '', t.raised_usd > 0 ? `$${fmt(Math.round(t.raised_usd))} raised` : '', t.github_stars > 0 ? `${fmt(t.github_stars)} GitHub stars` : '', t.other || ''].filter(Boolean).join(' · ') + (t.as_of ? ` (as of ${t.as_of})` : '');
+    const kv = [
+      ['Maker', [p.maker, p.maker_location].filter(Boolean).join(', ')], ['What', p.one_liner], ['Tier', p.tier ? `${p.tier} · ${CAT[p.category] || p.category || ''}` : ''],
+      ['Form', (p.form_factors || []).map(f => FORM[f] || f).join(', ')], ['Platforms', (p.os || []).join(', ')], ['Agents', (p.agents_supported || []).join(', ')],
+      ['Hardware', p.hardware && p.hardware !== 'none' ? p.hardware : ''], ['Price', p.price_text], ['Stage', [STAGE[p.stage] || p.stage, p.launch_date && `launched ${p.launch_date}`, p.ship_date && `ships ${p.ship_date}`].filter(Boolean).join(' · ')],
+      ['Traction', tr], ['Last seen', p.last_activity], ['Open source', [p.open_source, p.license].filter(Boolean).join(' · ')], ['Privacy', [p.privacy, p.privacy_note].filter(Boolean).join(' · ')],
+      ['Integration', p.ai_agent_integration], ['Why it matters', p.relevance],
+    ].filter(([, v]) => v);
+    const v = p.verification || {};
+    const passes = (v.stages || []).filter(s => s !== 'profile').length;
+    const vtext = p.is_reference ? 'Our own product, from the README.' : v.verified
+      ? `Checked by ${passes} refute-first pass${passes === 1 ? '' : 'es'}; ${v.changes || 0} correction${v.changes === 1 ? '' : 's'} made.${(v.unverified_fields || []).length ? ` Could not confirm: ${v.unverified_fields.join(', ')}.` : ''}`
+      : p.tier === 'T3' ? 'Light profile, not separately checked.' : 'Not separately checked.';
+    const sc = p.spot_check;
+    const stext = sc ? ` Final spot check: ${{ confirmed: 'confirmed', partly: 'mostly confirmed', refuted: 'refuted', unverifiable: 'could not be checked' }[sc.verdict] || sc.verdict}. ${sc.verdict === 'confirmed' ? '' : sc.note}` : '';
+    $('#drawer').innerHTML = `<header><div style="display:grid;gap:4px"><div class="eyebrow">${esc(p.tier || '')}</div><h2 id="d-title">${esc(p.name)}</h2>${safeUrl(p.primary_url) ? `<div>${link(p.primary_url)}</div>` : ''}</div><button type="button" class="close" id="d-close">Close</button></header>
+      ${p.distinctive ? `<p>${esc(p.distinctive)}</p>` : ''}
+      ${p.overlap_with_reference && !p.is_reference ? `<div class="verif overlap"><b>Next to Burnbot</b>${overlapHtml(p.overlap_with_reference)}</div>` : ''}
+      <dl class="kv">${kv.map(([k, val]) => `<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join('')}</dl>
+      ${p.features ? `<div style="display:grid;gap:8px"><h3>Checklist</h3><ul class="flist">${FEATS.map(([k, s]) => { const f = p.features[k] || {}; return `<li><i class="cell v-${f.v || 'unknown'}"></i><span class="fn">${esc(s)}</span><span class="note">${esc(f.note || ({ yes: 'Yes', partial: 'Partly', no: 'No', unknown: 'Not shown' }[f.v || 'unknown']))}</span></li>`; }).join('')}</ul></div>` : ''}
+      <div class="verif">${esc((vtext + stext).trim())}</div>
+      ${(p.sources || []).length ? `<div style="display:grid;gap:8px"><h3>Sources</h3><ol class="srcs">${p.sources.map(s => `<li>${link(s.url)}${s.what ? ` <span class="muted">· ${esc(s.what)}</span>` : ''}</li>`).join('')}</ol></div>` : ''}`;
+    $('#drawer').hidden = false; $('#scrim').hidden = false; document.body.dataset.open = 'true';
+    $('#d-close').focus();
+    $('#d-close').addEventListener('click', closeDrawer);
+  }
+  function closeDrawer() { $('#drawer').hidden = true; $('#scrim').hidden = true; delete document.body.dataset.open; if (lastFocus) lastFocus.focus(); }
+  document.addEventListener('click', e => { const b = e.target.closest('button[data-id]'); if (b && !b.closest('#drawer')) openDrawer(b.dataset.id, b); });
+  $('#scrim').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#drawer').hidden) closeDrawer(); });
+
+  onScroll();
+})();
+</script>
+
+<script type="module">
+// Burnbot's own pixel robot (public/robot.js, inlined at build time) guides the story.
+/*ROBOT_JS*/
+;(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const bots = [...document.querySelectorAll('canvas.bot')].map((c, i) => {
+    c.width = 64; c.height = 64;
+    const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
+    return { c, ctx, state: c.dataset.state || 'idle', expr: c.dataset.expr || '', off: i * 1.37, visible: false };
+  });
+  const drawBot = (b, t) => { b.ctx.clearRect(0, 0, 64, 64); try { drawRobot(b.ctx, 32, 58, b.state, t + b.off, b.expr); } catch (e) { /* decorative */ } };
+  bots.forEach(b => drawBot(b, 0.5));
+
+  const heroCanvas = document.getElementById('hero-scene');
+  let scene = null;
+  try {
+    scene = new Scene(heroCanvas, { centered: true });
+    const size = () => { const r = heroCanvas.getBoundingClientRect(); scene.resize(Math.max(120, r.width), Math.max(90, r.height)); };
+    size();
+    new ResizeObserver(size).observe(heroCanvas);
+    scene.setLive({ state: 'cruising', flame: 0.5, dropRate: 1.5 });
+    scene.setExpr('wave');
+    if (reduce) { let t = 0; for (let i = 0; i < 90; i++) { t += 33; scene.frame(t); } }
+    else scene.frame(performance.now());
+  } catch (e) { scene = null; }
+  if (reduce) return;
+
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    const b = bots.find(x => x.c === e.target); if (b) b.visible = e.isIntersecting;
+    if (e.target === heroCanvas) heroVisible = e.isIntersecting;
+  }));
+  let heroVisible = true;
+  bots.forEach(b => io.observe(b.c));
+  if (scene) io.observe(heroCanvas);
+  let lastBot = 0;
+  const loop = now => {
+    if (scene && heroVisible) { try { scene.frame(now); } catch (e) { scene = null; } }
+    if (now - lastBot > 80) { lastBot = now; bots.forEach(b => { if (b.visible) drawBot(b, now / 1000); }); }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+})();
+</script>

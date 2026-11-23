@@ -2,8 +2,9 @@
 // shows the robot and the level (see desk/). The app sends it one line a
 // second; the board draws and animates by itself.
 //
-// The board appears as a serial port (/dev/cu.usbmodem…). A board that runs
-// another program, or none, is left alone.
+// The board appears as a serial port (/dev/cu.usbmodem… for the XIAO,
+// /dev/cu.usbserial-… for an ESP32). A board that runs another program, or
+// none, is left alone.
 
 import Foundation
 
@@ -39,8 +40,13 @@ final class DeskScreen {
          "outdated": state == "connected" && version < DeskScreen.current, "knocks": knocks, "sensitivity": sensitivity]
     }
 
+    /// The XIAO shows up as cu.usbmodem…; an ESP32 board as its USB chip names it
+    /// (cu.usbserial-… for a CP2102 or CH340, cu.SLAB_USBtoUART or cu.wchusbserial… with their makers' drivers).
+    private static let portNames = ["cu.usbmodem", "cu.usbserial", "cu.SLAB_USBtoUART", "cu.wchusbserial"]
+
     private func ports() -> [String] {
-        ((try? FileManager.default.contentsOfDirectory(atPath: "/dev")) ?? []).filter { $0.hasPrefix("cu.usbmodem") }.sorted().map { "/dev/" + $0 }
+        ((try? FileManager.default.contentsOfDirectory(atPath: "/dev")) ?? [])
+            .filter { name in DeskScreen.portNames.contains { name.hasPrefix($0) } }.sorted().map { "/dev/" + $0 }
     }
 
     /// Opens a port for plain lines at 115200. Never 1200: that speed tells these boards to wait for a new program.
@@ -86,7 +92,8 @@ final class DeskScreen {
         for _ in 0..<15 {
             usleep(100_000)
             heard += drain(descriptor)
-            for line in heard.split(whereSeparator: { $0 == "\n" || $0 == "\r" }) {
+            // isNewline, not == "\n": in Swift "\r\n" is one Character, and println ends lines with it.
+            for line in heard.split(whereSeparator: { $0.isNewline }) {
                 let answer = line.trimmingCharacters(in: .whitespaces)
                 if answer.range(of: "^[A-Z]+ [0-9]+$", options: .regularExpression) != nil { return answer }
             }

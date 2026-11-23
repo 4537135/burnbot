@@ -272,14 +272,33 @@ Three limits come from what Claude Code writes to its logs, not from Burnbot:
 
 ## The desk screen (optional hardware)
 
-A small screen of its own for the robot: a Seeed XIAO nRF52840 (Sense or
-Sense Plus) with a 2.4" 240 × 320 SPI display (ILI9341), plugged in by USB.
+A small screen of its own for the robot: a 2.4" 240 × 320 SPI display
+(ILI9341) on a Seeed XIAO nRF52840 (Sense or Sense Plus), or a 2.4" / 2.8"
+"TFT LCD Shield" made for the Arduino UNO on a classic ESP32 dev board,
+plugged in by USB.
 
 ![The desk screen, from the simulator](preview/desk-screen.png)
+
+The XIAO takes an SPI display:
 
 | Display | VCC | GND | DIN | CLK | CS | DC | RST | BL |
 |---|---|---|---|---|---|---|---|---|
 | XIAO | 3V3 | GND | D10 | D8 | D0 | D1 | D2 | D6 |
+
+The ESP32 takes the UNO shield, which gets its picture on eight data wires
+(LCD_D0 to LCD_D7) at once. LCD_D0 and LCD_D1 sit on the other header from
+D2 to D7, next to the SD pins; the SD pins stay unwired. The shield's 5V pin
+goes to the ESP32's 5V (or VIN): on 3V3 the screen stays white.
+
+| Shield | 5V | GND | D0 | D1 | D2 | D3 | D4 | D5 | D6 | D7 | WR | RS | CS | RST | RD |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| ESP32 GPIO | 5V | GND | 12 | 13 | 26 | 25 | 17 | 16 | 27 | 14 | 4 | 15 | 33 | 32 | 2 |
+
+Wired another way, change the `SHIELD` table at the top of
+`desk/burnbot_screen/burnbot_screen.ino` to match. After a restart
+(`desk/board.sh listen --reset`) the board says whether the display started.
+The ESP32 has no motion sensor, so no knocks. Its blue LED blinks with each
+update unless LCD_RD is on GPIO 2, as here.
 
 It shows the level and its number, tokens per hour, an intensity bar with a
 notch where each level begins, and the robot in its fire with the level
@@ -326,8 +345,8 @@ desk/board.sh setup                   # arduino-cli and both boards' tools
 ```
 
 With both boards plugged in, add `--esp32` or `--xiao`. Add `--build-only`
-to only check that a sketch builds (no board needed). Burnbot's screen
-program runs on the XIAO only for now; on an ESP32, `screen` says so.
+to only check that a sketch builds (no board needed). `screen` builds the
+same program for whichever board it finds.
 
 To see a screen without the board:
 

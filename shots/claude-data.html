@@ -1,0 +1,462 @@
+<title>What Burnbot Reads</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Burnbot Pixel: the project's own pixel letters as a font. Made by tools/make-font.py; edit the letters there. */
+@font-face { font-family: "Burnbot Pixel"; font-display: block; src: url(data:font/ttf;base64,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) format("truetype"); }
+
+/* Layout: one 1040px column, Burnbot's own dark pixel look; each source of data has its own colour, read/skipped uses the level greens and greys. */
+:root {
+  color-scheme: dark;
+  --page: #0b0d12;
+  --surface: #12161d;
+  --surface-2: #1b212c;
+  --ink: #eef1f6;
+  --ink-2: #aab3c1;
+  --muted: #7c8799;
+  --line: #2a3140;
+  --logs: #f4c542;     /* session logs */
+  --hooks: #62a8f5;    /* hook events */
+  --cli: #a78bfa;      /* the claude command, for summaries */
+  --read: #4fc9a4;
+  --skip: #3a4352;
+  --px: 2px;
+  --pixel: "Burnbot Pixel", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; border-radius: 0; }
+body {
+  background: var(--page); color: var(--ink);
+  font: 15px/1.6 var(--pixel);
+  -webkit-font-smoothing: none; text-rendering: optimizeSpeed;
+}
+.wrap {
+  max-width: 1040px; margin: 0 auto;
+  padding-block: 32px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 56px;
+}
+h1, h2, h3, p, ul, dl, dd { margin: 0; font-weight: 400; }
+h1 { font-size: 30px; line-height: 1.2; text-transform: uppercase; letter-spacing: .06em; text-wrap: balance; }
+h2 { font-size: 20px; line-height: 1.2; text-transform: uppercase; letter-spacing: .06em; text-wrap: balance; }
+h3 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); }
+p { max-width: 68ch; color: var(--ink-2); }
+code { font: inherit; color: var(--ink); }
+a { color: var(--ink); }
+a:focus-visible { outline: var(--px) solid var(--hooks); outline-offset: var(--px); }
+.muted { color: var(--muted); }
+.eyebrow { color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+section { display: grid; gap: 18px; min-width: 0; }
+.head { display: grid; gap: 8px; }
+.head h2 { display: flex; align-items: center; gap: 12px; }
+.sw { width: 12px; height: 12px; flex: none; background: var(--c, var(--muted)); }
+
+/* pixel-corner box, as in the app */
+.box {
+  background: var(--surface);
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--edge, var(--line)), 0 var(--px) 0 0 var(--edge, var(--line)),
+    calc(-1 * var(--px)) 0 0 0 var(--edge, var(--line)), var(--px) 0 0 0 var(--edge, var(--line));
+}
+
+/* intro */
+header.top { display: grid; gap: 16px; }
+header.top p { color: var(--ink-2); }
+
+/* the three sources */
+.sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.src { padding: 18px 18px 20px; display: grid; gap: 10px; align-content: start; --edge: var(--c); min-width: 0; }
+.src .name { display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.src .path { color: var(--c); overflow-wrap: anywhere; }
+.src p { color: var(--ink-2); }
+.src a { color: var(--muted); }
+.aside { padding: 14px 18px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; color: var(--ink-2); }
+.aside b { font-weight: 400; color: var(--ink); text-transform: uppercase; letter-spacing: .06em; }
+
+/* line types chart */
+.types { display: grid; gap: 4px; padding: 16px 18px; }
+.trow { display: grid; grid-template-columns: minmax(150px, 210px) 1fr 64px; gap: 14px; align-items: center; }
+.trow .t { overflow-wrap: anywhere; }
+.trow.read .t { color: var(--ink); }
+.trow.skip .t { color: var(--muted); }
+.bar { height: 10px; background: var(--surface-2); }
+.bar i { display: block; height: 100%; width: var(--w); background: var(--skip); }
+.trow.read .bar i { background: var(--read); }
+.trow .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.legend { display: flex; gap: 20px; flex-wrap: wrap; color: var(--ink-2); padding: 0 18px 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { width: 10px; height: 10px; display: inline-block; }
+
+/* field tables */
+.scroll { overflow-x: auto; min-width: 0; }
+table { width: 100%; border-collapse: collapse; min-width: 640px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 14px; }
+thead th { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; border-bottom: var(--px) solid var(--line); }
+tbody tr + tr td { border-top: var(--px) solid var(--surface-2); }
+td:first-child { color: var(--ink); width: 34%; overflow-wrap: anywhere; }
+td { color: var(--ink-2); }
+td .k { color: var(--ink); }
+tr.group td { background: var(--surface-2); color: var(--ink); text-transform: uppercase; letter-spacing: .08em; padding-block: 6px; }
+tr.group td small { font-size: inherit; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.chip { display: inline-block; padding: 0 6px; color: var(--page); background: var(--c, var(--muted)); margin-right: 4px; white-space: nowrap; }
+
+/* minute bucket */
+.bucket { display: grid; gap: 22px; }
+.band { display: grid; gap: 10px; }
+.band h3 { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.band h3 span { text-transform: none; letter-spacing: 0; color: var(--muted); }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.slot { padding: 12px 14px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.slot .idx { color: var(--muted); font-variant-numeric: tabular-nums; }
+.slot .nm { color: var(--ink); }
+.slot p { color: var(--ink-2); }
+
+/* two-column lists */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.list { padding: 16px 18px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.list ul { list-style: none; padding: 0; display: grid; gap: 8px; }
+.list li { color: var(--ink-2); padding-left: 18px; position: relative; overflow-wrap: anywhere; }
+.list li::before { content: ""; position: absolute; left: 0; top: .6em; width: 8px; height: 8px; background: var(--c, var(--muted)); }
+.list li .k { color: var(--ink); }
+
+/* not read yet */
+.unread { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.unread .list { --c: var(--skip); }
+
+footer { color: var(--muted); border-top: var(--px) solid var(--line); padding-top: 16px; display: grid; gap: 6px; }
+
+@media (max-width: 520px) {
+  h1 { font-size: 25px; }
+  .trow { grid-template-columns: 1fr 56px; }
+  .trow .bar { grid-column: 1 / -1; grid-row: 2; }
+}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Burnbot 1.2 · source walkthrough</div>
+  <h1>What Burnbot reads from Claude</h1>
+  <p>Every piece of information Burnbot takes from Claude Code, where it comes from, and what it turns into. It has three sources. Almost everything comes from the session logs; the hooks add a few things the logs can't tell you in time; the <code>claude</code> command is only used for AI summaries, and only if you turn them on.</p>
+</header>
+
+<section aria-labelledby="s-sources">
+  <h2 id="s-sources">Three sources</h2>
+  <div class="sources">
+    <div class="src box" style="--c: var(--logs)">
+      <div class="name"><span class="sw"></span>Session logs</div>
+      <code class="path">~/.claude/projects/**/*.jsonl</code>
+      <p>One JSON object per line, appended as you work. Burnbot reads each file from where it last stopped, so a live session shows up within a couple of seconds. Subagent logs (<code>&lt;session&gt;/subagents/agent-&lt;id&gt;.jsonl</code>) are read too.</p>
+      <a href="#s-logs">Fields read →</a>
+    </div>
+    <div class="src box" style="--c: var(--hooks)">
+      <div class="name"><span class="sw"></span>Hook events</div>
+      <code class="path">~/.claude/settings.json → hook.sh → inbox/</code>
+      <p>Three hooks: <code>PermissionRequest</code>, <code>Stop</code>, <code>SessionEnd</code>. The script copies what Claude Code sends into a folder and prints nothing. The app reads each file once, then deletes it.</p>
+      <a href="#s-hooks">Fields read →</a>
+    </div>
+    <div class="src box" style="--c: var(--cli)">
+      <div class="name"><span class="sw"></span>The claude command</div>
+      <code class="path">claude -p --no-session-persistence</code>
+      <p>Off by default. When on, Burnbot runs your own <code>claude</code> once per finished session to write a two-line summary. Burnbot reads only the answer, and it must match a JSON schema.</p>
+      <a href="#s-cli">What's sent →</a>
+    </div>
+  </div>
+  <div class="aside box"><b>Not from Claude</b> Which app is in front (its bundle id) and how many seconds since you last touched the keyboard or mouse. Both come from macOS without a permission prompt and decide whether you're "away".</div>
+</section>
+
+<section id="s-logs" aria-labelledby="h-lines">
+  <div class="head">
+    <h2 id="h-lines"><span class="sw" style="--c: var(--logs)"></span>Which log lines get opened</h2>
+    <p>Most lines are skipped with a cheap byte search before any JSON is parsed. Counts below are from your 35 most recently changed logs (30 sessions, 5 subagents).</p>
+  </div>
+  <div class="box">
+    <div class="types">
+      <div class="trow read"><span class="t">assistant</span><span class="bar"><i style="--w: 100%"></i></span><span class="n">7,981</span></div>
+      <div class="trow read"><span class="t">user</span><span class="bar"><i style="--w: 61.1%"></i></span><span class="n">4,877</span></div>
+      <div class="trow skip"><span class="t">api-request</span><span class="bar"><i style="--w: 38.1%"></i></span><span class="n">3,041</span></div>
+      <div class="trow skip"><span class="t">attachment</span><span class="bar"><i style="--w: 34.6%"></i></span><span class="n">2,761</span></div>
+      <div class="trow skip"><span class="t">api-request-blob</span><span class="bar"><i style="--w: 30.4%"></i></span><span class="n">2,426</span></div>
+      <div class="trow skip"><span class="t">last-prompt</span><span class="bar"><i style="--w: 24.6%"></i></span><span class="n">1,962</span></div>
+      <div class="trow skip"><span class="t">atis-latch</span><span class="bar"><i style="--w: 24.5%"></i></span><span class="n">1,959</span></div>
+      <div class="trow skip"><span class="t">session-owner</span><span class="bar"><i style="--w: 21.9%"></i></span><span class="n">1,750</span></div>
+      <div class="trow read"><span class="t">ai-title</span><span class="bar"><i style="--w: 21.5%"></i></span><span class="n">1,716</span></div>
+      <div class="trow skip"><span class="t">mode</span><span class="bar"><i style="--w: 11.1%"></i></span><span class="n">882</span></div>
+      <div class="trow skip"><span class="t">queue-operation</span><span class="bar"><i style="--w: 5.4%"></i></span><span class="n">433</span></div>
+      <div class="trow skip"><span class="t">frame-link</span><span class="bar"><i style="--w: 4%"></i></span><span class="n">316</span></div>
+      <div class="trow read"><span class="t">custom-title</span><span class="bar"><i style="--w: 2.7%"></i></span><span class="n">213</span></div>
+      <div class="trow skip"><span class="t">bridge-session</span><span class="bar"><i style="--w: 2.7%"></i></span><span class="n">212</span></div>
+      <div class="trow skip"><span class="t">agent-name</span><span class="bar"><i style="--w: 2.6%"></i></span><span class="n">209</span></div>
+      <div class="trow skip"><span class="t">relocated</span><span class="bar"><i style="--w: 2.5%"></i></span><span class="n">199</span></div>
+      <div class="trow skip"><span class="t">system</span><span class="bar"><i style="--w: 2.2%"></i></span><span class="n">172</span></div>
+      <div class="trow skip"><span class="t">tools-used</span><span class="bar"><i style="--w: 2%"></i></span><span class="n">158</span></div>
+      <div class="trow skip"><span class="t">file-history-delta</span><span class="bar"><i style="--w: 1.9%"></i></span><span class="n">149</span></div>
+      <div class="trow skip"><span class="t">file-history-snapshot</span><span class="bar"><i style="--w: 1.8%"></i></span><span class="n">145</span></div>
+      <div class="trow skip"><span class="t">api-request-shape</span><span class="bar"><i style="--w: .6%"></i></span><span class="n">50</span></div>
+      <div class="trow skip"><span class="t">cost-state</span><span class="bar"><i style="--w: .3%"></i></span><span class="n">22</span></div>
+    </div>
+    <div class="legend">
+      <span><i style="background: var(--read)"></i>Opened and read</span>
+      <span><i style="background: var(--skip)"></i>Skipped</span>
+      <span class="muted">A user line holding a tool result is opened only when Burnbot is waiting on it (see below).</span>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-fields">
+  <div class="head">
+    <h2 id="h-fields"><span class="sw" style="--c: var(--logs)"></span>Fields read from the logs</h2>
+    <p>Grouped by line. "Becomes" is what Burnbot keeps; the raw value is dropped after that.</p>
+  </div>
+  <div class="scroll box">
+    <table>
+      <thead><tr><th>Field</th><th>Becomes</th></tr></thead>
+      <tbody>
+        <tr class="group"><td colspan="2">The file itself</td></tr>
+        <tr><td>file name</td><td>The session id. For a subagent log, the parent folder is the session and <code>agent-&lt;id&gt;</code> is the agent id.</td></tr>
+        <tr><td>size, modified time</td><td>Whether there's anything new to read. A file that shrank is read again from the start. A deleted log keeps its history.</td></tr>
+
+        <tr class="group"><td colspan="2">Every line read <small>assistant, user</small></td></tr>
+        <tr><td>type</td><td>Which handler runs: response, prompt, or tool result.</td></tr>
+        <tr><td>timestamp</td><td>The minute everything on the line is counted in.</td></tr>
+        <tr><td>sessionId</td><td>Which session the line belongs to. Overrides the file name.</td></tr>
+        <tr><td>cwd</td><td>Project name: the last folder of the path. A worktree under <code>.claude/worktrees/</code> reports its repo. First value wins.</td></tr>
+        <tr><td>gitBranch</td><td>Session branch, latest value wins.</td></tr>
+
+        <tr class="group"><td colspan="2">Title lines <small>ai-title, custom-title</small></td></tr>
+        <tr><td>customTitle</td><td>Session title. Once you've named a session, Claude Code's name never replaces yours.</td></tr>
+        <tr><td>aiTitle</td><td>Session title, if you haven't named it.</td></tr>
+
+        <tr class="group"><td colspan="2">Claude's responses <small>type: assistant</small></td></tr>
+        <tr><td>message.model</td><td>Model family: fable (and mythos), opus, sonnet, haiku, other. <code>&lt;synthetic&gt;</code> lines are ignored.</td></tr>
+        <tr><td>message.usage.input_tokens</td><td>Uncached input tokens.</td></tr>
+        <tr><td>message.usage.output_tokens</td><td>Output tokens, thinking included.</td></tr>
+        <tr><td>message.usage.cache_creation_input_tokens</td><td>Cache writes.</td></tr>
+        <tr><td>message.usage.cache_read_input_tokens</td><td>Cache reads.</td></tr>
+        <tr><td>message.usage.output_tokens_details.thinking_tokens</td><td>Thinking tokens, kept apart from output.</td></tr>
+        <tr><td>message.id → requestId → uuid</td><td>De-duplication. Claude Code writes one line per content block and repeats the response's usage on each, so each response is counted once and topped up if a later line reports more.</td></tr>
+        <tr><td>message.content[].type = tool_use</td><td>Tool call count.</td></tr>
+        <tr><td>tool_use.name</td><td>What kind of call: Bash, a write tool (Edit, Write, MultiEdit, NotebookEdit), or a question (AskUserQuestion, ExitPlanMode).</td></tr>
+        <tr><td>tool_use.id</td><td>Matched later against the tool result, for Bash runs and questions.</td></tr>
+        <tr><td>Bash input.command</td><td>Classified as test, build, typecheck, <code>git commit</code> or <code>gh pr create</code>. Live runs are kept until their result comes in; from history, only runs that can be wins.</td></tr>
+        <tr><td>Bash input.run_in_background</td><td>Background runs are not tracked.</td></tr>
+        <tr><td>input.file_path, input.notebook_path</td><td>Files edited in the session, up to 500.</td></tr>
+        <tr><td>input.new_string, content, new_source, edits[].new_string</td><td>Line count only: lines Claude wrote. The text itself isn't kept.</td></tr>
+
+        <tr class="group"><td colspan="2">Your prompts <small>type: user, not a tool result</small></td></tr>
+        <tr><td>isSidechain, isMeta, isCompactSummary, isVisibleInTranscriptOnly</td><td>Any of these set: not a prompt you typed, skipped.</td></tr>
+        <tr><td>origin.kind, turnOrigin</td><td>Anything other than <code>human</code> is skipped.</td></tr>
+        <tr><td>toolUseResult (present)</td><td>Not a prompt, skipped.</td></tr>
+        <tr><td>message.content</td><td>Measured, then dropped: characters you typed and characters inside <code>&lt;pasted_content&gt;</code>. Injected wrappers (system reminders, command output, hook text, task notifications) are removed first. A live prompt's typed text (up to 500 characters) is passed to the robot and not saved.</td></tr>
+        <tr><td>"[Request interrupted by user"</td><td>You stopped Claude. Counted as hands-on, not as a prompt.</td></tr>
+
+        <tr class="group"><td colspan="2">Tool results <small>type: user with tool_use_id, opened only when waited on</small></td></tr>
+        <tr><td>content[].tool_use_id</td><td>Closes the Bash run or question that was waiting.</td></tr>
+        <tr><td>content[].content</td><td>Bash: reads <code>Exit code N</code> from the first 40 characters. Questions: tells reject ("The user doesn't want to proceed", "User rejected tool use", with the note you typed after "the user said:") from approve ("User has approved your plan").</td></tr>
+        <tr><td>content[].is_error</td><td>The run failed.</td></tr>
+        <tr><td>toolUseResult.stdout, stderr</td><td>Last 2 KB, searched for pass and fail markers ("3 passed", "FAILED", "error TS…", "BUILD SUCCEEDED"…). Not saved.</td></tr>
+        <tr><td>toolUseResult.interrupted</td><td>A cut-off run never counts as a pass or fail.</td></tr>
+        <tr><td>toolDenialKind</td><td>The run never happened: permission refused.</td></tr>
+        <tr><td>toolUseResult.plan</td><td>You approved a plan.</td></tr>
+        <tr><td>toolUseResult.answers, questions[].options[].label</td><td>You answered a question. An answer that isn't one of the offered options counts as typed characters.</td></tr>
+        <tr><td>permissionDecision.source</td><td>Starts with <code>user</code>: you clicked a permission prompt yourself (not a rule, not the classifier). Counts as hands-on.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="h-bucket">
+  <div class="head">
+    <h2 id="h-bucket"><span class="sw" style="--c: var(--read)"></span>What it keeps: one row per minute</h2>
+    <p>Everything above folds into a row of 21 numbers for each minute of each log. These rows are the whole history: the levels, the dashboard and the daily goal are all worked out from them. They live in <code>Application Support/Burnbot/store.json</code>.</p>
+  </div>
+  <div class="bucket">
+    <div class="band">
+      <h3>Tokens <span>slots 0–4</span></h3>
+      <div class="slots">
+        <div class="slot box"><span class="idx">0</span><span class="nm">input</span><p>Uncached input tokens</p></div>
+        <div class="slot box"><span class="idx">1</span><span class="nm">output</span><p>Output tokens, thinking included</p></div>
+        <div class="slot box"><span class="idx">2</span><span class="nm">cacheWrite</span><p>Tokens written to the cache</p></div>
+        <div class="slot box"><span class="idx">3</span><span class="nm">cacheRead</span><p>Tokens read from the cache</p></div>
+        <div class="slot box"><span class="idx">4</span><span class="nm">thinking</span><p>Thinking tokens (also inside output)</p></div>
+      </div>
+    </div>
+    <div class="band">
+      <h3>Activity <span>slots 5–10</span></h3>
+      <div class="slots">
+        <div class="slot box"><span class="idx">5</span><span class="nm">calls</span><p>API responses</p></div>
+        <div class="slot box"><span class="idx">6</span><span class="nm">tools</span><p>Tool calls Claude made</p></div>
+        <div class="slot box"><span class="idx">7</span><span class="nm">prompts</span><p>Prompts you sent</p></div>
+        <div class="slot box"><span class="idx">8</span><span class="nm">chars</span><p>Characters you typed, including "Other" answers and notes on a rejected plan</p></div>
+        <div class="slot box"><span class="idx">9</span><span class="nm">pasted</span><p>Characters you pasted</p></div>
+        <div class="slot box"><span class="idx">10</span><span class="nm">lines</span><p>Lines Claude wrote through Edit, Write, MultiEdit, NotebookEdit</p></div>
+      </div>
+    </div>
+    <div class="band">
+      <h3>Tokens by model <span>slots 11–15 · all four token kinds added up</span></h3>
+      <div class="slots">
+        <div class="slot box"><span class="idx">11</span><span class="nm">fable</span><p>Fable and Mythos models</p></div>
+        <div class="slot box"><span class="idx">12</span><span class="nm">opus</span><p>Opus models</p></div>
+        <div class="slot box"><span class="idx">13</span><span class="nm">sonnet</span><p>Sonnet models</p></div>
+        <div class="slot box"><span class="idx">14</span><span class="nm">haiku</span><p>Haiku models</p></div>
+        <div class="slot box"><span class="idx">15</span><span class="nm">other</span><p>Anything else</p></div>
+      </div>
+    </div>
+    <div class="band">
+      <h3>You, without a prompt <span>slot 16</span></h3>
+      <div class="slots">
+        <div class="slot box"><span class="idx">16</span><span class="nm">hands</span><p>Answering a question, approving or turning down a plan, a permission click, stopping Claude. Up to 20 minutes of reading before an answer counts too.</p></div>
+      </div>
+    </div>
+    <div class="band">
+      <h3>Wins, for the daily goal <span>slots 17–20</span></h3>
+      <div class="slots">
+        <div class="slot box"><span class="idx">17</span><span class="nm">greens</span><p>A passing test, build or typecheck after a fight with red runs</p></div>
+        <div class="slot box"><span class="idx">18</span><span class="nm">commits</span><p>A log that made a successful commit: once a day, however many it made</p></div>
+        <div class="slot box"><span class="idx">19</span><span class="nm">prs</span><p>A pull request opened with <code>gh pr create</code></p></div>
+        <div class="slot box"><span class="idx">20</span><span class="nm">plans</span><p>A plan you approved</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-session">
+  <div class="head">
+    <h2 id="h-session"><span class="sw" style="--c: var(--read)"></span>What it keeps about each session</h2>
+    <p>Alongside the minute rows, each log carries a little about the session it belongs to. Some is saved; some lives only while the app runs.</p>
+  </div>
+  <div class="cols">
+    <div class="list box" style="--c: var(--read)">
+      <h3>Saved in store.json</h3>
+      <ul>
+        <li><span class="k">Log path</span>, how far it's been read, when it last changed</li>
+        <li><span class="k">Session id</span>, project, branch</li>
+        <li><span class="k">Title</span>, and whether you named it yourself</li>
+        <li><span class="k">Files edited</span>: paths only, up to 500</li>
+        <li><span class="k">Time of your last prompt</span></li>
+        <li><span class="k">Response ids</span> already counted, so nothing is counted twice (forgotten after two quiet weeks)</li>
+        <li><span class="k">Open questions</span> still waiting for your answer</li>
+        <li><span class="k">The day</span> this log last counted a commit</li>
+      </ul>
+    </div>
+    <div class="list box" style="--c: var(--hooks)">
+      <h3>Only in memory, live</h3>
+      <ul>
+        <li><span class="k">Bash runs</span> waiting for their result: the command and its kind</li>
+        <li><span class="k">Red-run ledger</span>: failures on the way to a green</li>
+        <li><span class="k">Live signals</span> for the robot: a line, a prompt (up to 500 typed characters), a question, an answer, an edit, a run starting, a run's result with its last 2 KB of output</li>
+      </ul>
+    </div>
+    <div class="list box" style="--c: var(--cli)">
+      <h3>Saved in sessions.json</h3>
+      <ul>
+        <li><span class="k">The last 50 session recaps</span>: title, project, branch, start and end, minutes, files edited, wins, commits, pull request, runs still red</li>
+        <li><span class="k">The AI summary</span> if one was made: what got done, what's next</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="s-hooks" aria-labelledby="h-hooks">
+  <div class="head">
+    <h2 id="h-hooks"><span class="sw" style="--c: var(--hooks)"></span>Fields read from hook events</h2>
+    <p>The hooks tell Burnbot right away when Claude is blocked on you or has stopped. The script runs in the background and prints nothing, so Claude Code behaves as before. While the app is closed the inbox folder doesn't exist, so nothing is written.</p>
+  </div>
+  <div class="scroll box">
+    <table>
+      <thead><tr><th>Field</th><th>Becomes</th></tr></thead>
+      <tbody>
+        <tr><td>hook_event_name</td><td><span class="chip" style="--c: var(--hooks)">PermissionRequest</span> Claude needs a yes. <span class="chip" style="--c: var(--hooks)">Stop</span> Claude finished its turn. <span class="chip" style="--c: var(--hooks)">SessionEnd</span> the session closed, so the recap is written.</td></tr>
+        <tr><td>session_id</td><td>Which session. Events without one are dropped.</td></tr>
+        <tr><td>agent_id</td><td>Set when a subagent is the one asking.</td></tr>
+        <tr><td>cwd</td><td>Project name, the same way as the logs.</td></tr>
+        <tr><td>tool_name</td><td>PermissionRequest: which tool wants permission.</td></tr>
+        <tr><td>tool_input.command</td><td>The command, cut to 48 characters, for the robot's speech bubble.</td></tr>
+        <tr><td>tool_input.file_path, notebook_path, path</td><td>Just the file name, for the bubble.</td></tr>
+        <tr><td>tool_input.url</td><td>Just the host, for the bubble.</td></tr>
+        <tr><td>reason</td><td>SessionEnd: why it ended.</td></tr>
+        <tr><td>file modified time</td><td>When the event came in.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s-cli" aria-labelledby="h-cli">
+  <div class="head">
+    <h2 id="h-cli"><span class="sw" style="--c: var(--cli)"></span>What leaves your Mac, and only if you ask</h2>
+    <p>AI summaries are the only time anything Burnbot read goes anywhere. They use your own <code>claude</code> with no tools, no settings, no saved session, a small model, a spending cap, 60 seconds at most, and 20 a day at most.</p>
+  </div>
+  <div class="cols">
+    <div class="list box" style="--c: var(--cli)">
+      <h3>Sent</h3>
+      <ul>
+        <li><span class="k">Title</span>, project, branch and minutes hands-on</li>
+        <li><span class="k">Your prompts</span> from that stretch: the last 12, typed text only, 200 characters each, read fresh from the log</li>
+        <li><span class="k">Paths of edited files</span>, up to 15</li>
+        <li><span class="k">Results</span>: the wins, how many commits, whether a pull request was opened</li>
+      </ul>
+    </div>
+    <div class="list box" style="--c: var(--skip)">
+      <h3>Never sent</h3>
+      <ul>
+        <li><span class="k">File contents</span></li>
+        <li><span class="k">Claude's replies</span> or thinking</li>
+        <li><span class="k">Command output</span></li>
+        <li><span class="k">Anything pasted</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-unread">
+  <div class="head">
+    <h2 id="h-unread"><span class="sw" style="--c: var(--skip)"></span>In the logs, not read yet</h2>
+    <p>Fields Claude Code writes that Burnbot currently ignores, from the same 35 logs. Some could be useful later; a few are skipped on purpose. Claude's own text and thinking are never read.</p>
+  </div>
+  <div class="unread">
+    <div class="list box">
+      <h3>Inside message.usage</h3>
+      <ul>
+        <li><span class="k">cache_creation.ephemeral_5m_input_tokens / ephemeral_1h_input_tokens</span>: cache writes split by how long they live</li>
+        <li><span class="k">server_tool_use.web_search_requests / web_fetch_requests</span></li>
+        <li><span class="k">service_tier, speed, inference_geo, iterations</span></li>
+      </ul>
+    </div>
+    <div class="list box">
+      <h3>On assistant lines</h3>
+      <ul>
+        <li><span class="k">stop_reason</span>: why the response ended</li>
+        <li><span class="k">effort, thinkingDurationMs, toolInputStreamMs</span></li>
+        <li><span class="k">apiError, isApiErrorMessage</span>: failed calls</li>
+        <li><span class="k">requestedModel</span>, next to the model actually used</li>
+        <li><span class="k">attributionSkill, attributionPlugin, attributionMcpServer, attributionMcpTool</span>: what a call came from</li>
+        <li><span class="k">entrypoint, version</span>: CLI, IDE or desktop, and Claude Code's version</li>
+      </ul>
+    </div>
+    <div class="list box">
+      <h3>On user lines</h3>
+      <ul>
+        <li><span class="k">permissionMode</span>: default, plan, auto…</li>
+        <li><span class="k">promptSource, imagePasteIds</span>: where a prompt came from, pasted images</li>
+        <li><span class="k">toolUseResult.structuredPatch</span>: the exact lines added and removed by each edit</li>
+        <li><span class="k">toolUseResult.durationMs</span> on some tools</li>
+      </ul>
+    </div>
+    <div class="list box">
+      <h3>Whole line types</h3>
+      <ul>
+        <li><span class="k">cost-state</span>: Claude Code's own session totals (lines added and removed, API and tool time, usage by model)</li>
+        <li><span class="k">mode</span>: switches into plan or auto mode</li>
+        <li><span class="k">agent-name, tools-used</span></li>
+        <li><span class="k">system</span>: compaction, retries, hook errors</li>
+        <li><span class="k">queue-operation</span>: messages you queued while Claude was busy</li>
+        <li><span class="k">session-owner</span>: account and organisation ids, skipped on purpose</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>From app/Tracker.swift, app/Signals.swift, app/Runs.swift and app/Summaries.swift, as of 17 November 2026.</span>
+  <span>Line counts and unread fields come from the 35 most recently changed logs in ~/.claude/projects. Only key names and line types were looked at.</span>
+</footer>
+
+</div>

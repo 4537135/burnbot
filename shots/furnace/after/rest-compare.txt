@@ -1,0 +1,17 @@
+At-rest comparison: HEAD's public/ (served from a copy) against the working tree, in headless
+Chromium. The clock is fake and paused, Math.random is seeded, and a warm-up page loads first.
+Hashes are of the robot canvas.
+
+68 jobs, 218 frames:
+- 7 states at scales 2, 3 and 4
+- right=0 (robot on the other side)
+- Reduce Motion
+- &progress=0.6 at rest, which must not show the bar
+- ?demo=moments n=0..11, which covers the expressions, bubbles and the panel
+
+Result: every frame is identical, except for the five `asleep` jobs. Their hash varies from run to run
+even on HEAD alone: the calm 80 ms frame timer lands in a different phase, which moves the zzz. Each
+tree was run 4 times on those jobs. Every hash the working tree produced also occurs in HEAD's own set,
+so asleep is identical too.
+
+rest-before-vs-after.png: the 7 states at rest, before vs after, all pixel-identical (no diff bbox).

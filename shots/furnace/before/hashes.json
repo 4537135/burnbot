@@ -1,0 +1,367 @@
+[
+ {
+  "url": "companion.html?demo=asleep&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/rest-asleep.png",
+   null,
+   null,
+   null
+  ],
+  "hashes": [
+   -221075321,
+   -1612286201,
+   1130447561,
+   -852614391
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=idle&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/rest-idle.png",
+   null,
+   null,
+   null
+  ],
+  "hashes": [
+   -986559468,
+   2020358232,
+   -986559468,
+   -986559468
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=warming&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/rest-warming.png",
+   null,
+   null,
+   null
+  ],
+  "hashes": [
+   1438813147,
+   1267754748,
+   -1342147212,
+   -778191185
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=cruising&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/rest-cruising.png",
+   null,
+   null,
+   null
+  ],
+  "hashes": [
+   1308846280,
+   -1042575466,
+   1783399443,
+   427896141
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=locked&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/rest-locked.png",
+   null,
+   null,
+   null
+  ],
+  "hashes": [
+   1053888857,
+   -359443110,
+   -779551099,
+   -1013037400
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=overdrive&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/rest-overdrive.png",
+   null,
+   null,
+   null
+  ],
+  "hashes": [
+   -2115914706,
+   -1556415073,
+   696093619,
+   -1598382086
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=autopilot&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/rest-autopilot.png",
+   null,
+   null,
+   null
+  ],
+  "hashes": [
+   -1055270150,
+   -625732082,
+   1149353654,
+   253048758
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=cruising&scale=2",
+  "out": null,
+  "hashes": [
+   1607004316,
+   1786358278
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=overdrive&scale=4",
+  "out": null,
+  "hashes": [
+   -2115914706,
+   696093619
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=autopilot&scale=3&right=0",
+  "out": null,
+  "hashes": [
+   510569210,
+   1221750454
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=0&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/moment-0.png",
+   null
+  ],
+  "hashes": [
+   -630879104,
+   -2006553534
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=1&scale=3",
+  "out": [
+   null,
+   null
+  ],
+  "hashes": [
+   -612537863,
+   -1513108721
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=2&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/moment-2.png",
+   null
+  ],
+  "hashes": [
+   549340290,
+   -1535984400
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=3&scale=3",
+  "out": [
+   null,
+   null
+  ],
+  "hashes": [
+   -1494228068,
+   1315722590
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=4&scale=3",
+  "out": [
+   null,
+   null
+  ],
+  "hashes": [
+   -1494228068,
+   1315722590
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=5&scale=3",
+  "out": [
+   null,
+   null
+  ],
+  "hashes": [
+   662524077,
+   864289647
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=6&scale=3",
+  "out": [
+   null,
+   null
+  ],
+  "hashes": [
+   -124295452,
+   1811407282
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=7&scale=3",
+  "out": [
+   null,
+   null
+  ],
+  "hashes": [
+   -612537863,
+   -1513108721
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=8&scale=3",
+  "out": [
+   null,
+   null
+  ],
+  "hashes": [
+   89902124,
+   -1395114514
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=9&scale=3",
+  "out": [
+   "/Users/splynt/Work/burnbot/shots/furnace/before/moment-9.png",
+   null
+  ],
+  "hashes": [
+   1801289583,
+   -151654759
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=10&scale=3",
+  "out": [
+   null,
+   null
+  ],
+  "hashes": [
+   -1929451225,
+   467076790
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=11&scale=3",
+  "out": [
+   null,
+   null
+  ],
+  "hashes": [
+   -1290791712,
+   -1528381610
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=cruising&hover=1&style=1&scale=3",
+  "out": "/Users/splynt/Work/burnbot/shots/furnace/before/hover-style1-cruising.png",
+  "hashes": [
+   -190181197
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=autopilot&hover=1&style=1&scale=3",
+  "out": "/Users/splynt/Work/burnbot/shots/furnace/before/hover-style1-autopilot.png",
+  "hashes": [
+   -13481711
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=cruising&hover=1&style=2&scale=3",
+  "out": "/Users/splynt/Work/burnbot/shots/furnace/before/hover-style2-cruising.png",
+  "hashes": [
+   -1060772301
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=autopilot&hover=1&style=2&scale=3",
+  "out": "/Users/splynt/Work/burnbot/shots/furnace/before/hover-style2-autopilot.png",
+  "hashes": [
+   -2007920935
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=cruising&hover=1&style=3&scale=3",
+  "out": "/Users/splynt/Work/burnbot/shots/furnace/before/hover-style3-cruising.png",
+  "hashes": [
+   -1959855495
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=autopilot&hover=1&style=3&scale=3",
+  "out": "/Users/splynt/Work/burnbot/shots/furnace/before/hover-style3-autopilot.png",
+  "hashes": [
+   -431543589
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=overdrive&hover=1&style=1&scale=2",
+  "out": "/Users/splynt/Work/burnbot/shots/furnace/before/hover-style1-overdrive-small.png",
+  "hashes": [
+   -2031421468
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=moments&n=2&panel=1&scale=3",
+  "out": "/Users/splynt/Work/burnbot/shots/furnace/before/panel-waiting.png",
+  "hashes": [
+   -1434894206
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=cruising&scale=3",
+  "out": null,
+  "hashes": [
+   -1184586630,
+   -9243829
+  ],
+  "errors": []
+ },
+ {
+  "url": "companion.html?demo=overdrive&scale=3",
+  "out": null,
+  "hashes": [
+   1749455875,
+   -1110115770
+  ],
+  "errors": []
+ }
+]

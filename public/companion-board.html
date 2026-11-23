@@ -141,6 +141,26 @@
     <div id="hoverRows"></div>
   </section>
 
+  <section aria-labelledby="furnace">
+    <h2 id="furnace">The furnace and the chest bar</h2>
+    <p>Point at the robot and a small furnace stands in the screen's right edge: how hard you are going, as a fire, from cold ash to a white-hot core. Autopilot burns purple, a fire of its own rather than a seventh rung. When there is an estimate of how far the session's objective has got, the chest's three lights turn into one bar while the head is open: lavender on a dark track, ten pixels across, no number. The fire is intensity; the bar is progress.</p>
+    <div class="row-title">Opening, step by step</div>
+    <div class="grid" id="openGrid"></div>
+    <div class="row-title">Every level, every hover screen</div>
+    <div class="bar" role="group" aria-label="Size">
+      <span class="note">Size</span>
+      <button data-fsize="2" aria-pressed="false">Small</button>
+      <button data-fsize="3" aria-pressed="true">Medium</button>
+      <button data-fsize="4" aria-pressed="false">Large</button>
+    </div>
+    <div id="furnaceRows"></div>
+    <div class="row-title">How far along</div>
+    <div class="grid" id="progressGrid"></div>
+    <div class="row-title">Not while it has something to say</div>
+    <div class="grid" id="quietGrid"></div>
+    <p class="note">With Reduce Motion on, each level holds one still frame of its fire, and the bar takes its length at once instead of walking there.</p>
+  </section>
+
   <section aria-labelledby="moments">
     <h2 id="moments">Moments</h2>
     <p>What it says, and how it looks while it says it. Yellow asks for you, green celebrates, the level's colour is everything else.</p>
@@ -181,6 +201,7 @@ function build(spec) {
     moment: spec.moment || null,
     glance: spec.glance || g('Claude is working', 'working'),
     ...(spec.goal ? { goal: spec.goal } : {}),
+    ...(spec.objective ? { objective: spec.objective } : {}),
   };
 }
 
@@ -198,6 +219,7 @@ setInterval(() => fed.forEach((spec, frame) => feed(frame, spec)), 2000);
 
 const frames = new Set();
 let botBox = null; // the story robot, head to feet, in its frame's pixels
+const boxes = new Map(); // every robot's, the same way
 addEventListener('message', (e) => {
   const m = e.data;
   if (!m || typeof m !== 'object') return;
@@ -207,7 +229,10 @@ addEventListener('message', (e) => {
     if (frame.dataset.style) say(frame, { type: 'style', n: Number(frame.dataset.style) });
     if (fed.has(frame)) feed(frame, fed.get(frame));
     else if (frame === bot) beat = -1; // the story feeds it on its next frame
-  } else if (m.burnbot === 'robot' && frame === bot) botBox = m.box;
+  } else if (m.burnbot === 'robot') {
+    boxes.set(frame, m.box);
+    if (frame === bot) botBox = m.box;
+  }
 });
 
 function framed(src, w, h, spec) {
@@ -329,6 +354,97 @@ figure($('panelGrid'), framed('companion.html?demo=none&right=1&panel=1', 630, 4
 for (const [right, down, where] of [[0, 0, 'Bottom right'], [1, 0, 'Bottom left'], [0, 1, 'Top right'], [1, 1, 'Top left']]) {
   figure($('edgeGrid'), framed(`companion.html?demo=none&right=${right}&down=${down}`, 630, 450,
     { state: 'cruising', expr: 'waiting', now: m2.nowLine, moment: m2.moment, glance: m2.glance }), 630, 450, `<b>${where}</b> of the screen`);
+}
+
+// ------------------------------------------------------------------ the furnace and the chest bar
+
+{
+  const est = (progress, more = {}) => ({ progress, basis: 'plan', verified: false, label: '', ...more });
+  const SAY = {
+    asleep: ['Last time: Fix checkout tax tests', 'Claude is idle', 'idle'],
+    idle: ['Last time: Fix checkout tax tests', 'Claude is idle', 'idle'],
+    autopilot: ['On: Fix checkout tax tests', 'Claude is working', 'working'],
+  };
+  const says = (state) => {
+    const [now, text, kind] = SAY[state] || ['Claude running tests · 1m 40s', 'Claude is running tests', 'running'];
+    return { state, now, glance: g(text, kind) };
+  };
+  const hoverTile = (grid, style, scale, spec, caption, extra = '') => {
+    const w = 120 * scale;
+    const h = 100 * scale;
+    const frame = framed(`companion.html?demo=none&right=1&hover=1&style=${style}&scale=${scale}${extra}`, w, h, spec);
+    figure(grid, frame, w, h, caption);
+    return frame;
+  };
+
+  // Opening, a step at a time (held there with &hold=), then one that comes and goes on its own.
+  const open = { ...says('cruising'), objective: est(0.6) };
+  figure($('openGrid'), framed('companion.html?demo=none&right=1&scale=3', 360, 300, open), 360, 300, '<b>At rest</b> · the three lights, as ever');
+  for (const [n, what] of [
+    [3, 'The head grows; the lights level off'],
+    [4, 'Full size: the furnace stands cold; the lights lie flat'],
+    [5, 'The title; the coals catch; the track draws in'],
+    [6, 'What Claude is doing; it burns; the track is whole'],
+    [7, 'The rate; the bar fills to the estimate'],
+  ]) hoverTile($('openGrid'), 1, 3, open, `<b>Step ${n} of 7</b> · ${what}`, `&hold=${n}`);
+  const loop = framed('companion.html?demo=none&right=1&scale=3', 360, 300, open);
+  figure($('openGrid'), loop, 360, 300, '<b>Live</b> · the pointer comes and goes: in step by step, back out the same way');
+  let on = false;
+  setInterval(() => {
+    const b = boxes.get(loop);
+    on = !on && Boolean(b);
+    say(loop, { type: 'pointer', x: on ? b.x + b.w / 2 : null, y: on ? b.y + b.h / 2 : null });
+  }, 2600);
+
+  // Every level, on every hover screen, at the size picked.
+  const showAt = (scale) => {
+    for (const old of $('furnaceRows').querySelectorAll('iframe')) {
+      frames.delete(old);
+      fed.delete(old);
+    }
+    $('furnaceRows').replaceChildren();
+    for (const style of [1, 2, 3]) {
+      const title = document.createElement('div');
+      title.className = 'row-title';
+      title.textContent = `${STYLE_NAMES[style]} · ${SIZES[scale - 2][1]}`;
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      $('furnaceRows').append(title, grid);
+      for (const [state, name] of LEVELS) hoverTile(grid, style, scale, { ...says(state), objective: est(0.6) }, `<b>${name}</b> · 60% along`);
+    }
+  };
+  document.querySelectorAll('[data-fsize]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-fsize]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    showAt(Number(b.dataset.fsize));
+  }));
+  (document.querySelector(`[data-fsize="${q.get('fsize')}"]`) || document.querySelector('[data-fsize="3"]')).click();
+
+  // How far along, against levels that say something else.
+  const P = $('progressGrid');
+  hoverTile(P, 1, 4, { ...says('overdrive'), objective: est(0.1) }, '<b>On fire, 10% along</b> · flat out, only just started');
+  hoverTile(P, 1, 4, { ...says('idle'), objective: est(0.9) }, '<b>Chilling, 90% along</b> · quiet, nearly there');
+  hoverTile(P, 1, 4, { ...says('autopilot'), objective: est(0.5) }, '<b>Autopilot, 50% along</b> · the purple fire and the paler bar, side by side');
+  hoverTile(P, 1, 4, says('cruising'), '<b>Cooking, no estimate</b> · the chest keeps its lights, even with the head open');
+  const back = { ...says('warming'), objective: est(0.8) };
+  const backFrame = hoverTile(P, 1, 4, back, '<b>Warming up, going back</b> · the estimate drops from 80% to 30% and back every 4 s; the bar walks there a pixel at a time');
+  setInterval(() => {
+    back.objective = est(back.objective.progress > 0.5 ? 0.3 : 0.8);
+    feed(backFrame, back);
+  }, 4000);
+  hoverTile(P, 1, 4, { ...says('locked'), objective: est(1, { verified: true }) }, '<b>Locked in, done and checked</b> · only a verified finish fills the last pixel');
+  hoverTile(P, 1, 4, { ...says('cruising'), glance: { ...g('Claude is running tests', 'running'), session: 'this' }, objective: est(0.6, { session: 'another' }) },
+    '<b>An estimate for another session</b> · not shown: the lights, as ever');
+
+  // Never while the bubble or the panel is up.
+  const quiet = framed('companion.html?demo=none&right=1', 630, 360,
+    { state: 'cruising', expr: 'waiting', now: m2.nowLine, moment: m2.moment, glance: m2.glance, objective: est(0.6) });
+  figure($('quietGrid'), quiet, 630, 360, '<b>Claude needs a yes, pointer on the robot</b> · the bubble speaks, so the head stays shut and the chest keeps its lights');
+  setInterval(() => {
+    const b = boxes.get(quiet);
+    if (b) say(quiet, { type: 'pointer', x: b.x + b.w / 2, y: b.y + b.h / 2 });
+  }, 1000);
+  figure($('quietGrid'), framed('companion.html?demo=none&right=1&panel=1', 630, 450, { ...says('cruising'), objective: est(0.6) }), 630, 450,
+    '<b>The panel open</b> · it says more than the bar could; the chest keeps its lights');
 }
 
 // ------------------------------------------------------------------ the busy desktop

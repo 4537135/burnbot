@@ -1,0 +1,479 @@
+{
+ "written": "2026-11-20",
+ "note": "These are our reflections on the research, not findings. The numbers come from the checked data in this report; the judgments, the four-week outline and the thresholds are suggestions for the team to argue with.",
+ "lede": "Burnbot is a robot for Claude Code that lives on your Mac and on a small screen on your desk. We mapped 1,752 products around it. Desk hardware draws the biggest crowds, and none of the 16 desk devices we profiled notices progress the way Burnbot does. But buyers expect DIY prices, and the one breakout campaign won with multi-agent support, voice and approvals.",
+ "framing": "The desk device is the heart of Burnbot; the Mac app is its brain. The app is out (free, version 1.3) and the desk screen already runs on two DIY boards. So the real question is how far to take the device: firmware for boards people already own, a kit, or a device we make and sell. The research says desk hardware gets the most attention, but people expect to build it for $10 to $40, and small hardware campaigns mostly raised little. One spot is empty on every desk device we found: none of them notices progress.",
+ "pros": [
+  {
+   "point": "We hold the one empty spot",
+   "evidence": "None of the 37 profiled products has personal-baseline levels, red-to-green or drift detection at yes. Burnbot has all three."
+  },
+  {
+   "point": "People want companions like this and upvote them",
+   "evidence": "The 25 show-and-tell posts we found have a median score of 99. The top ones are companions: Clawdmeter scored 1,674 and a desk lamp status light 1,637. Clauddy, a free pixel pet much like Burnbot, got 179 points and has 125 GitHub stars."
+  },
+  {
+   "point": "People want a character, not just a meter",
+   "evidence": "'Bring Back Buddy', the GitHub issue asking Anthropic to restore Claude Code's removed pet, has 1,197 thumbs-up. Burnbot's robot already reacts to real moments."
+  },
+  {
+   "point": "Waiting and wellbeing is an open lane",
+   "evidence": "A thread on staying in flow while Claude works got 307 points and 248 comments, and '10x more productive, but mentally exhausted' got 306. No profiled product does pacing. Burnbot already measures drift and the user's usual break."
+  },
+  {
+   "point": "It is cheap to keep going",
+   "evidence": "The app exists, runs locally with no servers, and the desk screen uses boards of about $30. The main cost is our time."
+  }
+ ],
+ "cons": [
+  {
+   "point": "The platform can flatten us",
+   "evidence": "Claude Code already has a usage streak, a heatmap, /insights, /recap, Remote Control alerts and status-line limits, at no extra charge on a paid plan. If Anthropic adds progress moments, our edge shrinks overnight."
+  },
+  {
+   "point": "Crowded, free and fast-moving",
+   "evidence": "1,752 products after merging. Clawd on Desk is free, AGPL, covers nearly 30 agents, has 6,777 stars and ships every 8 to 12 days. Pixel Agents has 98,492 VS Code installs, and its roadmap mentions scores and game elements."
+  },
+  {
+   "point": "Hard to charge for",
+   "evidence": "Software companions cost $0 to $19.99 one-time (Vibe Island, Fetch). Limit meters cost $0 to $9 (Usagebar). Notch app launches on Hacker News got 1 to 9 points each."
+  },
+  {
+   "point": "Our edge is copyable",
+   "evidence": "Any single moment, such as red to green or going round, is a weekend's work for a rival. The defence is calibration quality and restraint, which we have not yet proven with users."
+  },
+  {
+   "point": "Our name and fire point the wrong way",
+   "evidence": "Burn is 40% of each level and the top level is fire. A post mocking $50,000 burned in 30 days got 317 points and 182 comments; a friends' burn leaderboard got 20."
+  },
+  {
+   "point": "Narrow reach",
+   "evidence": "Claude Code only, macOS only. Being tied to one agent was the top objection to agent hardware."
+  },
+  {
+   "point": "We have no traction data of our own",
+   "evidence": "The research has no download, star or retention figures for Burnbot, so we can't yet tell whether anyone keeps it running."
+  }
+ ],
+ "device_case": {
+  "title": "The device, weighed on its own",
+  "intro": "The points above weigh Burnbot as a whole. These weigh the desk device by itself, using the 16 desk devices we profiled.",
+  "pros": [
+   {
+    "point": "Desk hardware gets the most attention",
+    "evidence": "The 11 desk-hardware show-and-tell posts we found have a median score of 306, against 86 for the 14 software ones. The top two posts are both hardware: Clawdmeter, an ESP32 limit meter (1,674), and a desk lamp status light (1,637)."
+   },
+   {
+    "point": "The empty spot is even emptier on the desk",
+    "evidence": "None of the 16 desk devices has levels against your own history, red-to-green, drift, loop detection or a history view at yes. The only progress on any of them is Hardware Buddy's level-up every 50K tokens, which counts volume, not outcomes."
+   },
+   {
+    "point": "People want a character on the desk",
+    "evidence": "Anthropic's Hardware Buddy, a desk pet with 18 species, has 2,721 stars and 474 forks. Lump, a desk creature that shows what Claude is doing, got 244 points. 6 of the 16 desk devices have a character."
+   },
+   {
+    "point": "The boards are cheap and already on desks",
+    "evidence": "Hardware Buddy runs on an M5StickC Plus of about $30; Clawdmeter's board costs $29.99 to $31.99, and its tray app flashes 28 boards. Writing firmware for these reaches people without making anything."
+   },
+   {
+    "point": "We already have it working",
+    "evidence": "Burnbot's desk screen runs today over USB on two DIY setups (a Seeed XIAO nRF52840 with a 2.4 inch screen, where a double knock dismisses a bubble, and an ESP32 with an UNO TFT shield)."
+   }
+  ],
+  "cons": [
+   {
+    "point": "Buyers expect DIY prices",
+    "evidence": "On the top hardware posts, commenters assume they can build one for $10 to $40, and mock sold units as 'a flashed M5Stack for 10x the price'."
+   },
+   {
+    "point": "Small hardware campaigns mostly flop",
+    "evidence": "Token Monitor raised EUR 1,153 of EUR 28,000 and failed. AgentDeck had CA$597 from 3 backers. V14 scraped $2,018 of $2,000 from 13. FreakStudio's Tindie page shows no units sold."
+   },
+   {
+    "point": "The winners have what we lack",
+    "evidence": "SlashVibe ($143,175 from 639 backers) sells multi-agent support, voice and approvals. Codex Micro sold out in about 12 hours on OpenAI's name. Among the 16 desk devices, 8 take voice and 7 approve from the device; Burnbot's screen does neither."
+   },
+   {
+    "point": "Anthropic sets a free standard",
+    "evidence": "Hardware Buddy is Anthropic's own open protocol and reference pet for a $30 board, and many DIY devices already build on it. A device that ignores it competes with the platform's default."
+   },
+   {
+    "point": "Ours is narrow today",
+    "evidence": "Two board setups, USB only, not sold, and not compatible with Hardware Buddy. Being tied to one agent was also the top objection in crowdfunding comments."
+   }
+  ]
+ },
+ "options": [
+  {
+   "option": "Firmware for boards people already own",
+   "verdict": "do now",
+   "why": "Meets the $10 to $40 DIY expectation, carries the moments no desk device has, and makes no hardware. Hardware Buddy (2,721 stars) and Clawdmeter (2,349 stars) show how far free firmware travels."
+  },
+  {
+   "option": "Free, open app as the brain",
+   "verdict": "do now",
+   "why": "The device needs the app, which is where the moments are worked out. Free is the norm, and a licence and Homebrew build trust."
+  },
+  {
+   "option": "Speak the Hardware Buddy protocol",
+   "verdict": "next",
+   "why": "Lets our moments run on the boards Anthropic's protocol already reaches, over Bluetooth, instead of our two USB setups."
+  },
+  {
+   "option": "A refundable-deposit list for a ready-made unit",
+   "verdict": "next",
+   "why": "Tests whether anyone will pay before we make anything. Vibe Buddy takes a $5 refundable deposit toward a $49 unit."
+  },
+  {
+   "option": "A kit: board, printed case, one-click flashing",
+   "verdict": "later",
+   "why": "Only if builds take off. DIY boards cost about $21 to $70, and a kit sits closest to what commenters expect to pay."
+  },
+  {
+   "option": "A finished device in a small batch",
+   "verdict": "later",
+   "why": "Only after the deposit list fills. Finished small displays sell for $49 to $115, but FreakStudio shows no sales and Token Monitor's campaign failed."
+  },
+  {
+   "option": "A crowdfunding campaign",
+   "verdict": "later",
+   "why": "Only with numbers behind it. SlashVibe raised $143,175, but on multi-agent support, voice and approvals; AgentDeck had 3 backers and Token Monitor 10."
+  },
+  {
+   "option": "Codex as a second agent",
+   "verdict": "later",
+   "why": "Matters more for hardware, since lock-in was the top objection to agent devices, but it puts us head-on with Clawd on Desk and OpenAI's own pets. Only once the Claude core is sharp."
+  },
+  {
+   "option": "Paid Mac app, $9 to $20 one-time",
+   "verdict": "later",
+   "why": "Only after users show they value the moments. Vibe Island and Fetch show $19.99 one-time can work for a Mac companion."
+  },
+  {
+   "option": "Keep it a side project",
+   "verdict": "fallback",
+   "why": "Costs nothing, but the empty spot won't stay empty for long."
+  }
+ ],
+ "forward": {
+  "title": "What the next four weeks could look like",
+  "intro": "If we go ahead, this is roughly what the first four weeks could hold. It isn't a fixed plan: four tracks that can all start on day one and run side by side, with the desk device at the centre. The case for and against, and every option we weighed, are in chapter 8.",
+  "not_now": "Not in these four weeks: making hardware, a crowdfunding campaign, a paid app, or a second agent such as Codex. Those wait for the numbers.",
+  "gauges": [
+   {
+    "label": "Points on the launch post",
+    "max": 2000,
+    "scale": "log",
+    "zones": [
+     {
+      "to": 86,
+      "kind": "stop"
+     },
+     {
+      "to": 306,
+      "kind": "mid"
+     },
+     {
+      "to": 2000,
+      "kind": "go"
+     }
+    ],
+    "marks": [
+     {
+      "at": 86,
+      "label": "86"
+     },
+     {
+      "at": 306,
+      "label": "306"
+     },
+     {
+      "at": 244,
+      "label": "Lump 244",
+      "ref": true
+     },
+     {
+      "at": 1674,
+      "label": "Clawdmeter 1,674",
+      "ref": true
+     }
+    ],
+    "note": "306 is the median of the 11 desk-hardware show-and-tell posts we found; 86 is the median of the software ones. Below 86 is a warning sign."
+   },
+   {
+    "label": "GitHub stars",
+    "max": 3000,
+    "scale": "log",
+    "zones": [
+     {
+      "to": 100,
+      "kind": "stop"
+     },
+     {
+      "to": 3000,
+      "kind": "go"
+     }
+    ],
+    "marks": [
+     {
+      "at": 100,
+      "label": "100"
+     },
+     {
+      "at": 125,
+      "label": "Clauddy 125",
+      "ref": true
+     },
+     {
+      "at": 2349,
+      "label": "Clawdmeter 2,349",
+      "ref": true
+     }
+    ],
+    "note": "Reaching the low hundreds puts us in Clauddy's range. Desk firmware can go much further: Clawdmeter has 2,349. Staying in the tens is a warning sign."
+   },
+   {
+    "label": "Deposits for a ready-made unit",
+    "max": 700,
+    "scale": "log",
+    "zones": [
+     {
+      "to": 15,
+      "kind": "stop"
+     },
+     {
+      "to": 59,
+      "kind": "mid"
+     },
+     {
+      "to": 700,
+      "kind": "go"
+     }
+    ],
+    "marks": [
+     {
+      "at": 3,
+      "label": "AgentDeck 3",
+      "ref": true,
+      "below": true
+     },
+     {
+      "at": 13,
+      "label": "V14 13",
+      "ref": true
+     },
+     {
+      "at": 59,
+      "label": "CtrlVibe 59",
+      "ref": true,
+      "below": true
+     },
+     {
+      "at": 639,
+      "label": "SlashVibe 639",
+      "ref": true
+     }
+    ],
+    "note": "Compared with backer counts of agent-hardware campaigns: under about 15 they failed or barely funded; CtrlVibe's 59 raised about $10,261; SlashVibe's 639 raised $143,175."
+   }
+  ],
+  "also_watch": [
+   "Do people get the firmware running from the guide, and which boards do they ask for?",
+   "On the desk, do the moments feel right, and do the levels feel like encouragement rather than pressure?",
+   "Do people ask where to buy one ready-made, and at what price?",
+   "Does Anthropic add progress moments to Claude Code or Hardware Buddy, or sell a device of its own?"
+  ],
+  "tracks": [
+   {
+    "name": "The desk device",
+    "color": "#62a8f5",
+    "items": [
+     {
+      "weeks": [
+       1,
+       2
+      ],
+      "text": "Port the desk screen to two boards people already own: Hardware Buddy's M5StickC Plus (about $30) and Clawdmeter's Waveshare AMOLED ($29.99)."
+     },
+     {
+      "weeks": [
+       2,
+       3
+      ],
+      "text": "Its button does what 'Go to it' does today: bring the waiting session forward."
+     },
+     {
+      "weeks": [
+       2,
+       4
+      ],
+      "text": "Flash it from the Mac app in one click, the way Clawdmeter's tray app does for 28 boards."
+     },
+     {
+      "weeks": [
+       3,
+       4
+      ],
+      "text": "Try speaking Hardware Buddy's Bluetooth protocol, to see how far our moments travel on boards that already run it."
+     }
+    ]
+   },
+   {
+    "name": "What the robot notices",
+    "color": "#ff8030",
+    "items": [
+     {
+      "weeks": [
+       1,
+       1
+      ],
+      "text": "A licence and a Homebrew cask, so people can trust the app and install it in one line."
+     },
+     {
+      "weeks": [
+       1,
+       2
+      ],
+      "text": "Lead with progress: a cheer when a test goes red to green, a '!' when Claude needs you, a look when you drift. Re-weight the levels so token burn isn't 40% of them."
+     },
+     {
+      "weeks": [
+       2,
+       3
+      ],
+      "text": "Plan limits shown in the robot's mood, and quiet sounds that are off by default."
+     },
+     {
+      "weeks": [
+       3,
+       4
+      ],
+      "text": "Fix moments that fire at the wrong time, from what the first builders say."
+     }
+    ]
+   },
+   {
+    "name": "Showing it",
+    "color": "#4fc9a4",
+    "items": [
+     {
+      "weeks": [
+       1,
+       2
+      ],
+      "text": "A build guide with a parts list under $40, and a short clip of the desk robot cheering when a test goes green."
+     },
+     {
+      "weeks": [
+       2,
+       4
+      ],
+      "text": "Reach the people who miss /buddy: the Bring Back Buddy issue has 1,197 thumbs-up."
+     },
+     {
+      "weeks": [
+       3,
+       3
+      ],
+      "text": "Posts on r/ClaudeCode, r/ClaudeAI and r/esp32, and a Show HN."
+     },
+     {
+      "weeks": [
+       3,
+       4
+      ],
+      "text": "Answer the comments, and note which boards people ask for."
+     }
+    ]
+   },
+   {
+    "name": "Would anyone pay?",
+    "color": "#a78bfa",
+    "items": [
+     {
+      "weeks": [
+       1,
+       1
+      ],
+      "text": "Open a refundable-deposit list for a ready-made unit. Vibe Buddy takes $5 toward a $49 unit."
+     },
+     {
+      "weeks": [
+       1,
+       4
+      ],
+      "text": "Talk to a handful of people who built a Clawdmeter or a Hardware Buddy: what they'd pay, and what's missing."
+     },
+     {
+      "weeks": [
+       2,
+       4
+      ],
+      "text": "Cost out a kit (board plus printed case) and a small batch, against what sells today: finished small displays go for $49 to $115."
+     }
+    ]
+   }
+  ],
+  "after": {
+   "title": "Where we'd be after four weeks",
+   "points": [
+    "The desk robot running on two boards people already own, flashed from the app.",
+    "A launch post with its score, and a first read on stars and builds.",
+    "A deposit list with its first numbers, and a rough cost for a kit and a small batch.",
+    "Enough to choose what comes next: stay DIY, a kit, a small batch, or a campaign."
+   ]
+  },
+  "gauges_title": "How we'd know it's working"
+ },
+ "signals": {
+  "go": [
+   "The launch post beats 306 points, the median of the desk-hardware show-and-tell posts we found (Lump got 244, Clawdmeter 1,674).",
+   "Stars reach the low hundreds, in Clauddy's range (125).",
+   "People build it from the guide and ask for more boards, or ask where to buy one.",
+   "The deposit list passes about 59, CtrlVibe's backer count."
+  ],
+  "stop": [
+   "The post scores under 86, the median of the software show-and-tell posts, and stars stay in the tens.",
+   "Fewer than about 15 deposits, where small agent-hardware campaigns failed.",
+   "Feedback says the moments misfire on the desk or the levels feel like pressure.",
+   "Anthropic ships progress moments in Claude Code or Hardware Buddy itself."
+  ]
+ },
+ "bets": [
+  {
+   "bet": "Progress, not burn",
+   "effort": "small",
+   "why": "It is the positioning and the unique feature at once, and it turns the tokenmaxxing backlash from a risk into a reason to choose us."
+  },
+  {
+   "bet": "Plan limits through the robot's mood",
+   "effort": "small",
+   "why": "Usage is the loudest topic: Clawdmeter scored 1,674 and 'I said H and it used 26%' 1,160. The status line already gives us the numbers; the robot makes them feel less like a meter."
+  },
+  {
+   "bet": "Win over the people who miss /buddy",
+   "effort": "small",
+   "why": "1,197 thumbs-up asked Anthropic to bring the pet back. Aiming the launch at them costs nothing."
+  },
+  {
+   "bet": "A deposit list before any hardware",
+   "effort": "small",
+   "why": "It tells us whether people will pay for a ready-made unit before we spend on one. Vibe Buddy takes a $5 refundable deposit toward $49."
+  },
+  {
+   "bet": "Firmware for boards people already own",
+   "effort": "medium",
+   "why": "It rides the biggest posts (desk hardware, median 306) with no hardware risk, and our moments are what those boards lack: Hardware Buddy's own pet only levels up every 50K tokens."
+  },
+  {
+   "bet": "A pacing and wellbeing mode built on drift",
+   "effort": "medium",
+   "why": "Nobody owns it, the threads about it are busy, and it uses what only Burnbot measures."
+  },
+  {
+   "bet": "Explain usage drain turn by turn",
+   "effort": "medium",
+   "why": "Limit-drain posts draw long threads: '73% of my weekly limit gone in 2 days' got 151 comments. People want to know why, not just how much."
+  }
+ ]
+}

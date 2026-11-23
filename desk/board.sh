@@ -398,15 +398,17 @@ cmd_upload() {
 cmd_screen() {
   local now
   if [ "$BUILD_ONLY" = 1 ]; then pick 0 xiao; else pick 1 xiao; fi
-  if [ "$KIND" = esp32 ]; then
-    die "Burnbot's screen program does not run on the ESP32 yet: it is written for the XIAO (its pins, its storage). Plug in the XIAO, or use --xiao --build-only to only build it."
-  fi
-  ensure_core xiao
+  ensure_core "$KIND"
   ensure_screen_library
   prepare_sketch "$DESK/burnbot_screen"
   build
   if [ "$BUILD_ONLY" = 1 ]; then say "Built. Not uploaded."; return 0; fi
-  upload_xiao
+  if [ "$KIND" = esp32 ]; then
+    upload_esp32
+    sleep 2   # it restarts after the upload
+  else
+    upload_xiao
+  fi
   now=""
   [ -z "$PORT" ] || now=$(serial ask "$PORT" | cut -f1)
   case "$now" in

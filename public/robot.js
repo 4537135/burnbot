@@ -19,6 +19,8 @@ export const STATE_META = {
 export const STATE_ORDER = ['asleep', 'idle', 'warming', 'cruising', 'locked', 'overdrive', 'autopilot'];
 /** The ladder, bottom to top. Autopilot is off it: the AI works while you are away. */
 export const LADDER = ['asleep', 'idle', 'warming', 'cruising', 'locked', 'overdrive'];
+/** How lively each level is: how fast the robot bobs, and how fast its furnace flickers. */
+export const PACE = { asleep: 1.1, idle: 1.7, autopilot: 2, warming: 3, cruising: 4.2, locked: 6, overdrive: 9 };
 
 /** Mixes a hex colour toward white (amount 0..1). */
 function lighten(hex, amount) {
@@ -50,6 +52,27 @@ export function drawSmoke(ctx, ears, t) {
   }
 }
 
+// The chest's progress bar: a dark track, a lavender fill with a lighter top row. Paler than
+// Autopilot's own purple (and its furnace), so on Autopilot it still reads as the bar, not the level.
+const BAR = { track: '#2a3240', fill: '#cfc4ff', top: '#ebe6ff' };
+
+/** The chest's lights as one bar (see opt.chest in drawRobot). The track spans the 10 columns the
+ *  three lights stand in, three rows high in the middle of the chest screen. */
+function chestBar(R, x0, gy, { fill, step }, light) {
+  if (step <= 2) {
+    // the lights stop bouncing: level at three high, then flat across the middle
+    for (let k = 0; k < 3; k++) R(x0 - 5 + k * 4, step === 1 ? gy - 14 : gy - 13, 2, step === 1 ? 3 : 1, light);
+    return;
+  }
+  const half = step === 3 ? 3 : 5;
+  R(x0 - half, gy - 14, 2 * half, 3, BAR.track);
+  if (step >= 5 && fill > 0) {
+    const n = Math.min(10, Math.round(fill));
+    R(x0 - 5, gy - 14, n, 1, BAR.top);
+    R(x0 - 5, gy - 13, n, 2, BAR.fill);
+  }
+}
+
 /**
  * Draws the robot standing with its feet at (cx, gy). `t` is seconds; the
  * state picks the face, the posture and how fast it moves.
@@ -72,6 +95,9 @@ export function drawSmoke(ctx, ears, t) {
  *   face   where the face is: 'face' (as always), 'edge' (full-size eyes riding the screen's left
  *          edge, no mouth) or 'corner' (a small pair of eyes in the screen's top-left corner).
  *          glance: pixels the eyes look aside first.
+ *   chest  {fill, step}: the chest's lights turn into one progress bar, while the head is a screen
+ *          and there is an estimate. step 1-2 the lights level off and flatten, 3-4 the track draws
+ *          in from the middle, 5 the fill shows: `fill` of its 10 pixels. Absent, the lights as ever.
  * Returns the screen and the whole head (antenna included), in canvas pixels.
  */
 export function drawRobot(ctx, cx, gy, state, t, expr = '', opt = {}) {
@@ -114,7 +140,7 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '', opt = {}) {
   const mode = opt.face?.mode ?? 'face';
 
   if (cheer && Math.floor(t * 4) % 2) gy -= 2; // hopping
-  const pace = asleep ? 1.1 : idle ? 1.7 : auto ? 2 : state === 'warming' ? 3 : state === 'cruising' ? 4.2 : locked ? 6 : 9;
+  const pace = asleep || state !== 'asleep' ? PACE[state] : PACE.overdrive; // asleep but pulling a face: full speed
   const bob = Math.sin(t * pace) > 0.35 ? 1 : 0;
   const x0 = cx + (over ? Math.round(Math.sin(t * 41)) : 0) + (auto || bored ? Math.round(Math.sin(t * (bored ? 0.8 : 1.3))) : 0);
   const hy = gy - 21 - hh + bob + (asleep ? 2 : 0) + (tired ? 1 : 0); // top of the head
@@ -176,10 +202,12 @@ export function drawRobot(ctx, cx, gy, state, t, expr = '', opt = {}) {
   R(x0 - 11, gy - 6, 22, 1, sh);
   R(x0 + 10, gy - 18, 1, 12, sh);
   R(x0 - 6, gy - 16, 12, 7, screen);
-  for (let k = 0; k < 3; k++) {
-    const h = working ? 1 + Math.floor((Math.sin(t * (5 + k * 2.3) + k * 1.7) + 1) * 2.4) : asleep ? 1 : auto ? 3 : 2;
-    R(x0 - 5 + k * 4, gy - 10 - h, 2, h, asleep ? '#4f5868' : accent);
-  }
+  if (opt.chest) chestBar(R, x0, gy, opt.chest, asleep ? '#4f5868' : accent);
+  else
+    for (let k = 0; k < 3; k++) {
+      const h = working ? 1 + Math.floor((Math.sin(t * (5 + k * 2.3) + k * 1.7) + 1) * 2.4) : asleep ? 1 : auto ? 3 : 2;
+      R(x0 - 5 + k * 4, gy - 10 - h, 2, h, asleep ? '#4f5868' : accent);
+    }
 
   // neck and head
   R(x0 - 3, gy - 21 + bob, 6, 2, sh);
@@ -564,6 +592,138 @@ export class Fire {
     }
     this.ctx.putImageData(this.img, 0, 0);
     ctx.drawImage(this.canvas, x, y);
+  }
+}
+
+// ---------------------------------------------------------------------- furnace
+
+// The furnace in the head-as-a-screen: how hard you are going, as a fire. Dark stone, an arched
+// opening, a grate, and a flame drawn a pixel at a time: at 6 to 8 pixels across, the Fire above
+// is only noise. Autopilot burns purple: not a seventh rung, a fire of its own.
+const STONE = {
+  left: ['#565b6d', '#474b5b'], // the two tones of brick, on the side the light is
+  right: ['#454959', '#383c49'], // and the side away from it
+  arch: ['#5e6375', '#4b5062'],
+  base: '#3c404e',
+  foot: '#2a2d37',
+  grate: '#666c7c',
+  slot: '#101217',
+  ash: ['#3c414d', '#4d525f'],
+};
+// Edge to core. Autopilot's tops out at its own colour, short of the chest bar's paler lavender.
+const FLAMES = {
+  warm: ['#8f2a17', '#d9502a', '#ff9a3d', '#ffd25e', '#fff3c4'],
+  auto: ['#33236e', '#5233b8', '#7a58ea', '#a78bfa', '#a78bfa'],
+};
+const COALS = { warm: ['#6e2414', '#c24e1f', '#f08a30'], auto: ['#2e2163', '#5233b8', '#7a58ea'] };
+// Each level: how high the flame stands in the chamber, how many coals glow, the air in there, and
+// the extras: Chilling's one ember, embers rising, a white-hot core, the stone hot inside.
+const HEAT = {
+  asleep: { flame: 0, coals: 0 },
+  idle: { flame: 0, coals: 0, ember: true },
+  warming: { flame: 0.2, coals: 4, room: '#140c0b' },
+  cruising: { flame: 0.55, coals: 4, room: '#1b0e0b' },
+  locked: { flame: 0.78, coals: 8, room: '#23100b', embers: 1, wall: '#6b3a2a' },
+  overdrive: { flame: 0.9, coals: 8, room: '#2c120b', embers: 2, core: true, wall: '#8a4630' },
+  autopilot: { flame: 0.66, coals: 4, room: '#130e26', auto: true, wall: '#463a74' },
+};
+
+/** The same number for the same (a, b), 0..1: a flicker that is the same at the same moment. */
+function noise(a, b) {
+  let h = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x632be5ab, 0xc2b2ae35);
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h ^= h >>> 12;
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * Draws the furnace in (x, y, w, h), robot pixels: 10 or 12 wide, 17 or more high. `t` is seconds.
+ * lit: 0 cold (the head still opening), 1 the bed glows, 2 alight. still: Reduce Motion, one frame a level.
+ */
+export function drawFurnace(ctx, x, y, w, h, state, t, { lit = 2, still = false } = {}) {
+  const R = (px, py, pw, ph, c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(px, py, pw, ph);
+  };
+  const heat = HEAT[state] || HEAT.asleep;
+  const arch = w >= 12 ? [2, 4, 5] : [2, 4]; // half the width of each row, over the top
+  const half = (r) => (r < arch.length ? arch[r] : w / 2);
+  const open = (r) => (r >= 2 && r <= h - 4 ? Math.max(0, half(r - 2) - 2) : 0); // two in from the stone
+  const top = 3; // the opening's first row
+  const bed = h - 4; // the row the coals lie on
+  const ox = x + 2;
+  const ow = w - 4;
+  const mid = w / 2;
+
+  // the chamber
+  const room = lit ? heat.room || '#08090c' : '#08090c';
+  for (let r = top; r <= bed; r++) R(x + mid - open(r), y + r, 2 * open(r), 1, room);
+
+  // the fire: four frames, flickering as fast as the robot bobs
+  const f = still ? 2 : Math.floor(t * PACE[state] * 1.5) % 4;
+  if (lit >= 2 && heat.flame > 0) flame(R, ox, y + top, ow, bed - top, heat, f);
+
+  // the bed: ash, or coals
+  const coals = heat.auto ? COALS.auto : COALS.warm;
+  const n = lit ? heat.coals : 0;
+  for (let c = 0; c < ow; c++) {
+    const on = Math.abs(c - (ow - 1) / 2) < n / 2;
+    R(ox + c, y + bed, 1, 1, on ? coals[c % 2 ? 1 : noise(f, c + 40) > 0.55 ? 2 : 0] : STONE.ash[(c + 1) % 2]);
+  }
+  if (!n) R(ox + ow / 2 - 1, y + bed - 1, 2, 1, STONE.ash[0]); // a little heap
+  if (lit && heat.ember) R(ox + ow / 2 - 1, y + bed, 1, 1, still || Math.sin(t * PACE.idle) < 0.4 ? '#6a2715' : '#9a3a18');
+
+  // embers rising off the flame, one or two at a time
+  if (lit >= 2 && !still)
+    for (let k = 0; k < (heat.embers || 0); k++) {
+      const s = (t + k * 0.8) / (1.5 + k * 0.7);
+      const p = s % 1;
+      if (p > 0.45) continue;
+      const ex = ox + 1 + Math.floor(noise(Math.floor(s), 7 + k) * (ow - 2));
+      const from = bed - 1 - Math.round(heat.flame * (bed - top) * 0.7);
+      R(ex, y + Math.round(from - (from - top - 1) * (p / 0.45)), 1, 1, p < 0.2 ? '#ffe7a3' : '#ff9a3d');
+    }
+
+  // the stone, last, so it trims the fire: an arch of two-tone bricks lit from the left, a grate
+  // under the bed, a footing
+  for (let r = 0; r < h; r++) {
+    const hw = half(r);
+    const o = open(r);
+    for (let c = mid - hw; c < mid + hw; c++) {
+      if (o && c >= mid - o && c < mid + o) continue; // the opening
+      let colour;
+      if (r >= h - 2) colour = r === h - 1 ? STONE.foot : STONE.base;
+      else if (r === h - 3 && c >= 2 && c < w - 2) colour = c % 2 ? STONE.grate : lit && n ? coals[0] : STONE.slot;
+      else if (r < arch.length) colour = STONE.arch[Math.floor(c / 2 + r) % 2];
+      else {
+        const course = Math.floor((r - arch.length) / 2) % 2;
+        colour = (c < mid ? STONE.left : STONE.right)[course];
+        // hot stone: the inside of the arch glows with the fire, every other course
+        if (lit >= 2 && heat.wall && (c === 1 || c === w - 2) && r <= bed && course === 0) colour = heat.wall;
+      }
+      R(x + c, y + r, 1, 1, colour);
+    }
+  }
+}
+
+/** One frame of flame: a peak in the middle, edge to core in five colours, each column's height
+ *  flickering frame to frame, and now and then a lick come loose over the top. */
+function flame(R, ox, oy, ow, oh, heat, f) {
+  const pal = heat.auto ? FLAMES.auto : FLAMES.warm;
+  const tall = heat.flame * oh;
+  const mid = (ow - 1) / 2 + (noise(f, 99) < 0.25 ? -0.5 : noise(f, 98) < 0.25 ? 0.5 : 0);
+  for (let c = 0; c < ow; c++) {
+    const shape = 1 - Math.min(1, Math.abs(c - mid) / (ow / 2)) * 0.85;
+    const hc = Math.max(0, Math.min(oh, Math.round(tall * shape + (noise(f, c) - 0.5) * 2.4)));
+    for (let r = 0; r < hc; r++) {
+      const v = shape * (1 - r / (hc + 0.5));
+      const i = v > 0.78 ? (heat.core ? 4 : 3) : v > 0.58 ? 3 : v > 0.38 ? 2 : v > 0.17 ? 1 : 0;
+      R(ox + c, oy + oh - 1 - r, 1, 1, pal[i]);
+    }
+  }
+  if (noise(f, 77) < 0.35) {
+    const r = Math.round(tall) + 1;
+    if (r < oh) R(ox + Math.round(mid + (noise(f, 78) - 0.5) * 2), oy + oh - 1 - r, 1, 1, pal[1]);
   }
 }
 

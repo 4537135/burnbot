@@ -1,0 +1,30 @@
+Listening to /dev/cu.usbserial-0001 for 24 seconds…
+�
+SCREEN TEST
+Wires (a hint only):
+  CS  -> GPIO 5   held HIGH (on 3V3, or pulled up on the display)
+  DC  -> GPIO 27  held LOW (on GND, or a backlight transistor)
+  RST -> GPIO 33  held LOW (on GND, or a backlight transistor)
+  BL  -> GPIO 32  free (unwired, or a plain input)
+  DIN -> GPIO 23  free (unwired, or a plain input)
+  CLK -> GPIO 18  free (unwired, or a plain input)
+  SDO -> GPIO 19  free (unwired, or a plain input)
+  chip reads, just after reset
+    ID     (04): 00 00 00 00
+    power  (0A): 00 00
+    ILI ID (D3): 00 00 00 00
+[0s] dark for 2 s (backlight off)
+[2s] 1 bar: Burnbot's driver (ILI9341), 2 MHz, red
+  chip reads, after Burnbot's driver set it up
+    ID     (04): 00 00 00 00
+    power  (0A): 00 00
+    ILI ID (D3): 00 00 00 00
+[7s] 2 bars: Burnbot's driver, 16 MHz, blue
+[10s] 3 bars: any 16-bit chip (ST7789, ST7796...), 2 MHz, yellow
+  chip reads, after the plain 16-bit setup
+    ID     (04): 00 00 00 00
+    power  (0A): 00 00
+    ILI ID (D3): 00 00 00 00
+[15s] 4 bars: 18-bit chip (ILI9488), 2 MHz, green
+[21s] dark for 2 s (backlight off)
+[23s] 1 bar: Burnbot's driver (ILI9341), 2 MHz, red

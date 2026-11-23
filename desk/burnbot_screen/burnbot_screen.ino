@@ -1,7 +1,16 @@
-// Burnbot desk screen: Seeed XIAO nRF52840 (Sense / Sense Plus) + 2.4" 240x320 ILI9341 on SPI.
+// Burnbot desk screen: a 240x320 ILI9341 display, driven by either board:
 //
-// Wires:  VCC->3V3  GND->GND  DIN->D10  CLK->D8  CS->D0  DC->D1  RST->D2  BL->D6
-// (the same wiring as the FOOOCUS desk screen, so nothing needs moving)
+// Seeed XIAO nRF52840 (Sense / Sense Plus), with a 2.4" SPI display
+//   Wires:  VCC->3V3  GND->GND  DIN->D10  CLK->D8  CS->D0  DC->D1  RST->D2  BL->D6
+//   (the same wiring as the FOOOCUS desk screen, so nothing needs moving)
+//
+// ESP32 dev board (ESP32-WROOM / DevKit, the classic ESP32), with a 2.4" or 2.8"
+// "TFT LCD Shield" made for the Arduino UNO (eight data wires, see parallel8.h)
+//   Wires:  the SHIELD table below. 5V->5V (or VIN)  GND->GND
+//   Its blue LED (GPIO2) is on while the Mac is talking to it and blinks with every
+//   line, unless LCD_RD is wired to GPIO2. No knocks: it has no motion sensor.
+//   After a restart it says on its serial line whether the pins are usable and,
+//   when LCD_RD is wired, which chip the display has.
 //
 // The Mac sends one line a second saying which level you are on, and this
 // draws it: the level and the token burn in words at the top, and below them
@@ -28,22 +37,40 @@
 // With nothing from the Mac for 15 seconds the robot goes to sleep and the
 // screen says it is waiting (anything the robot was saying goes); after ten minutes of that the light goes out
 // until the Mac is back.
+#include <Wire.h>
+
+#include "render.h"
+
+#if defined(ARDUINO_ARCH_ESP32)
+#include <Preferences.h>
+#include "parallel8.h"
+// Which ESP32 pin each of the shield's pins is wired to. The usual way round for
+// an ESP32 and an UNO shield (the one TFT_eSPI and MCUFRIEND_kbv use).
+// Use -1 for LCD_CS on GND, or LCD_RST or LCD_RD on 3V3.
+const ShieldPins SHIELD = {
+  // LCD_D0 D1  D2  D3  D4  D5  D6  D7
+  {12, 13, 26, 25, 17, 16, 27, 14},
+  4,                                       // LCD_WR
+  15,                                      // LCD_RS
+  33,                                      // LCD_CS
+  32,                                      // LCD_RST
+  2,                                       // LCD_RD
+};
+#define LED 2                              // the blue LED on most ESP32 dev boards
+#define SPI_HZ 0                           // (not SPI: begin ignores it)
+#else
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <Adafruit_LittleFS.h>
 #include <InternalFileSystem.h>
-#include <Wire.h>
-
-#include "render.h"
-
 using namespace Adafruit_LittleFS_Namespace;
-
 #define TFT_CS D0
 #define TFT_DC D1
 #define TFT_RST D2
 #define TFT_BL D6
 #define SPI_HZ 16000000                    // what this display and these wires take
+#endif
 
 const int HUD_BAND = 36;                   // rows of words drawn and sent at a time
 const int ART_BAND = 8;                    // rows of the scene sent at a time (24 on the display)
@@ -53,7 +80,11 @@ const uint32_t DARK_MS = 600000;           // and this long: the light goes out
 const char *KEPT = "/burnbot";             // remembered: which way up ('0' or '2'), then the knock setting
 const char *KEPT_BEFORE = "/fooocus";      // where the FOOOCUS program kept the same thing
 
+#if defined(ARDUINO_ARCH_ESP32)
+Parallel8 tft(SHIELD);
+#else
 Adafruit_ILI9341 tft(TFT_CS, TFT_DC, TFT_RST);
+#endif
 static uint16_t band[bb::W * HUD_BAND];    // 17 KB, shared by the words and the scene
 static uint16_t art[bb::AW * bb::AH];      // this picture of the scene
 static uint16_t shown[bb::AW * bb::AH];    // what the display has now
@@ -73,7 +104,13 @@ size_t lineLength = 0;
 
 void light(bool on) {
   lit = on;
+#if defined(ARDUINO_ARCH_ESP32)
+  // The shield's light is wired on, so the screen goes black instead.
+  if (on) wordsStale = sceneStale = true;
+  else tft.fill(0x0000, bb::W, bb::H);
+#else
   digitalWrite(TFT_BL, on ? HIGH : LOW);
+#endif
 }
 
 void startDisplay() {
@@ -82,6 +119,33 @@ void startDisplay() {
   wordsStale = sceneStale = true;
 }
 
+#if defined(ARDUINO_ARCH_ESP32)
+// The ESP32 keeps the same two things in its settings storage (NVS), under "burnbot".
+Preferences kept;
+
+void remember() {
+  if (!kept.begin("burnbot", false)) return;
+  kept.putUChar("rotation", rotation);
+  kept.putUChar("knock", sensitivity);
+  kept.end();
+}
+
+void recall() {
+  if (!kept.begin("burnbot", false)) return;   // read-write: read-only fails until the first write
+  rotation = kept.getUChar("rotation", 0) == 2 ? 2 : 0;
+  uint8_t knock = kept.getUChar("knock", 1);
+  if (knock <= 2) sensitivity = knock;
+  kept.end();
+}
+
+// On while the Mac is talking to it; off for a moment with each line, so it blinks.
+// Left alone when LCD_RD is on the LED's pin: that wire has to stay high.
+uint32_t blinkAt = 0;
+void showLife(uint32_t now) {
+  if (!tft.uses(LED)) digitalWrite(LED, !waiting && now - blinkAt > 60 ? HIGH : LOW);
+}
+void blink() { blinkAt = millis(); }
+#else
 // Written only when it changes (storage wears with every write).
 void remember() {
   InternalFS.remove(KEPT);
@@ -111,6 +175,10 @@ void recall() {
     }
   }
 }
+
+void showLife(uint32_t) {}
+void blink() {}
+#endif
 
 // ---------- the knock: two taps on the case ----------
 // The XIAO nRF52840 Sense has an LSM6DS3TR-C on its second I2C bus, powered from a pin of
@@ -271,16 +339,31 @@ void handle(char *text) {
   heardAt = millis();
   waiting = false;
   if (!lit) light(true);
+  blink();
   Serial.println("OK");
 }
 
 void setup() {
+#if defined(ARDUINO_ARCH_ESP32)
+  // The Mac's lines arrive while a picture is being sent to the display; the
+  // ESP32's usual 256 bytes would overflow, the XIAO's USB holds them back instead.
+  Serial.setRxBufferSize(1024);
+  Serial.begin(115200);
+  if (!tft.uses(LED)) pinMode(LED, OUTPUT);
+#else
   Serial.begin(115200);
   pinMode(TFT_BL, OUTPUT);
+#endif
   recall();
   light(true);
   startDisplay();
   startKnock();
+#if defined(ARDUINO_ARCH_ESP32)
+  // Only seen with board.sh listen --reset; nothing here looks like an answer to the Mac.
+  if (*tft.problem()) Serial.printf("display: not started. %s\n", tft.problem());
+  else if (uint16_t id = tft.chip()) Serial.printf("display: started, its chip says %04x (9341 is right)\n", id);
+  else Serial.println("display: started (its chip cannot say which it is)");
+#endif
 }
 
 void loop() {
@@ -297,6 +380,7 @@ void loop() {
 
   uint32_t now = millis();
   checkKnock(now);
+  showLife(now);
   if (!waiting && now - heardAt > QUIET_MS) {   // the Mac went quiet (asleep, or Burnbot quit)
     waiting = true;
     wordsStale = true;

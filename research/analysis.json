@@ -1,0 +1,3423 @@
+{
+ "as_of": "2026-11-18",
+ "synthesis": {
+  "headline": "Burnbot judges a Claude Code session against the user's own history and spots moments like tests going red to green, which none of the 37 profiled products does. It lags on features many rivals have: more agents, plan limits, sound and approving from the device. Lead with progress, close the cheap gaps, and plug into Anthropic's hardware protocol rather than fight funded hardware.",
+  "summary_bullets": [
+   "The market is crowded and mostly free. The catalogue holds 1,752 names after merging, including 377 more T1 hardware displays, 261 more T1 desktop companions and 371 more usage monitors.",
+   "Burnbot's edge is judging the session, not just showing it. None of the 37 profiled products has personal-baseline levels, red-to-green detection or drift detection at yes.",
+   "Burnbot is behind on common features. It supports one agent on one OS, shows no plan limits, plays no sound, cannot approve from the robot, and its multi-session view is only partial.",
+   "The closest free rival is Clawd on Desk. It is AGPL, has 6,777 stars, covers nearly 30 agents on three OSes, and already does approvals, plan limits, sound and history.",
+   "SlashVibe is the one funded breakout: $143,175 from 639 backers on a $10,000 goal. It is a $169 to $249 multi-agent console due to start shipping in March 2027. Other coding-agent hardware campaigns mostly raised little.",
+   "The biggest threat is the platform. Claude Code already has a usage streak, a heatmap, recaps, Remote Control alerts and status-line limits. Anthropic also publishes a BLE protocol for desk hardware.",
+   "Suggested direction: stay free and local-first, lead with progress instead of burn, add plan limits and quiet sounds, and make the desk screen speak the Hardware Buddy protocol."
+  ],
+  "categories": [
+   {
+    "name": "Desktop pets and overlays",
+    "description": "Free software characters that sit on the desktop and react to agent hooks. Burnbot sits here. The catalogue lists 261 more T1 desktop companions, notch apps included.",
+    "leaders": [
+     "pixel-agents",
+     "clawd-on-desk",
+     "peon-ping",
+     "petdex"
+    ],
+    "product_ids": [
+     "clawd-on-desk",
+     "pixel-agents",
+     "petdex",
+     "clauddy",
+     "peon-ping",
+     "agent-paperclip",
+     "lockpaw"
+    ],
+    "observations": [
+     "Clawd on Desk is the closest match to Burnbot. It covers nearly 30 agents and does approvals (not for every agent), one-click jump, plan limits, sound and history.",
+     "Pixel Agents gives each Claude Code session its own character in a pixel office. It has 10,286 stars and 98,492 VS Code installs, and also runs in a browser through its CLI.",
+     "Most pair a character with live status and a permission alert. All of them are free and open source."
+    ]
+   },
+   {
+    "name": "Notch and menu-bar companions",
+    "description": "Small always-visible apps in the Mac notch or menu bar. Both paid companion apps in the profiled set sit here: Vibe Island and Fetch, each $19.99 one-time.",
+    "leaders": [
+     "vibe-island",
+     "vibe-notch",
+     "notchi"
+    ],
+    "product_ids": [
+     "vibe-island",
+     "vibe-notch",
+     "notchi",
+     "fetch-tryfetch",
+     "agent-cat"
+    ],
+    "observations": [
+     "Vibe Island covers 30 agents for $19.99 one-time. It can approve from the notch, but only for Claude Code, OpenCode and MiMoCode.",
+     "Agent Cat comes closest to Burnbot's motivation layer. It has streak pins, an AI recap called Reflect, history, personal-best alerts, and phone and watch apps.",
+     "Interest is thin. Notch launches on Hacker News got 1 to 9 points each."
+    ]
+   },
+   {
+    "name": "Agent hardware displays",
+    "description": "Desk screens that show agent state. This is the most crowded category, with 377 more T1 names in the catalogue.",
+    "leaders": [
+     "slashvibe",
+     "anthropic-desktop-buddy",
+     "clawdmeter"
+    ],
+    "product_ids": [
+     "slashvibe",
+     "anthropic-desktop-buddy",
+     "clawdmeter",
+     "vibe-buddy",
+     "claudeassistant-freakstudio",
+     "agentdeck-ulanzi",
+     "claude-code-buddy-taoxie",
+     "token-monitor-fractal",
+     "divoom-clauddy"
+    ],
+    "observations": [
+     "SlashVibe raised $143,175 from 639 backers for a 3.96-inch display with a wireless controller. It lists 20+ agents and promises AGPL code and an SDK.",
+     "Anthropic's Hardware Buddy is an official BLE reference for a board of about $30. It has 2,721 stars and 474 forks, and can answer permission prompts.",
+     "Two finished displays show little pull. Token Monitor's Kickstarter failed at EUR 1,153 of EUR 28,000. FreakStudio's Tindie page shows no units sold."
+    ]
+   },
+   {
+    "name": "Agent hardware controllers",
+    "description": "Keypads, knobs and voice remotes for approving and steering agents. The catalogue lists 167 more T1 names.",
+    "leaders": [
+     "codex-micro",
+     "ulanzi-au05-vibe-key",
+     "vibekeys"
+    ],
+    "product_ids": [
+     "codex-micro",
+     "vibekeys",
+     "ulanzi-au05-vibe-key",
+     "ctrlvibe",
+     "agentdeck-hardware",
+     "v14-remote",
+     "keychron-ai-mic-keyboard"
+    ],
+    "observations": [
+     "Codex Micro cost $230, sold out in about 12 hours and has no restock. It works with Codex only.",
+     "Approve keys and push-to-talk are the core. None of these is known to have a character or a motivation layer.",
+     "Most crowdfunding here is small: CtrlVibe had 59 backers, V14 had 13 and AgentDeck had 3. Ulanzi's AU05 did better, with 288 backers in Japan."
+    ]
+   },
+   {
+    "name": "Usage and cost monitors",
+    "description": "Meters for tokens, cost and plan limits, mostly in the menu bar or CLI. The catalogue lists 317 more T2 and 54 more T1 names.",
+    "leaders": [
+     "codexbar",
+     "ccusage",
+     "codeburn"
+    ],
+    "product_ids": [
+     "codexbar",
+     "ccusage",
+     "codeburn",
+     "usagebar"
+    ],
+    "observations": [
+     "CodexBar covers 114 providers and runs on macOS and Linux. It has 23,213 stars.",
+     "CodeBurn is the only profiled product with loop detection at yes. Its opt-in Guard stops a tool call repeated 8 times.",
+     "The basic meter is a commodity. More than 10 near-identical Show HN meters got 1 to 9 points each."
+    ]
+   },
+   {
+    "name": "Gamification and leaderboards",
+    "description": "Spend leaderboards, Wrapped-style reports and tamagotchis. The catalogue lists 126 more T2 names.",
+    "leaders": [
+     "tokscale",
+     "viberank"
+    ],
+    "product_ids": [
+     "tokscale",
+     "viberank",
+     "claude-code-tamagotchi"
+    ],
+    "observations": [
+     "Viberank and Tokscale rank people by spend or tokens. This is the tokenmaxxing style that skeptics mock.",
+     "Tokscale also writes AI session reports that group sessions into 3 to 8 task clusters."
+    ]
+   },
+   {
+    "name": "Orchestration and remote approval",
+    "description": "Dashboards and remote apps for running and approving many sessions. The catalogue lists 120 more T2 names in each group.",
+    "leaders": [
+     "cloudcli"
+    ],
+    "product_ids": [
+     "cloudcli",
+     "c9watch"
+    ],
+    "observations": [
+     "CloudCLI has 14,700 stars. It is free to self-host, with hosted plans from EUR 7 a month.",
+     "Remote approval is now first-party for both Claude Code and Codex, so this group is under pressure."
+    ]
+   },
+   {
+    "name": "Platform owners' own features",
+    "description": "18 first-party features from Anthropic, OpenAI, Google, GitHub, Cursor, JetBrains and Apple. They set the baseline users get at no extra charge.",
+    "leaders": [
+     "cc-usage-insights",
+     "claude-desktop-code-tab",
+     "codex-pets"
+    ],
+    "product_ids": [
+     "cc-usage-insights",
+     "cc-remote-control",
+     "cc-statusline",
+     "claude-desktop-code-tab",
+     "cc-channels",
+     "cc-team-analytics",
+     "codex-pets",
+     "codex-app-openai",
+     "codex-mobile",
+     "codex-cli-statusline",
+     "cursor-agents-window",
+     "cursor-team-analytics",
+     "github-agent-hq",
+     "google-antigravity"
+    ],
+    "observations": [
+     "Claude Code's /usage Stats tab, also opened by /stats, shows a usage streak, a heatmap and active days. It also has /insights and /recap.",
+     "OpenAI's Codex pets track needs you, done and failed across sessions at no extra charge.",
+     "Agents are moving into hubs such as GitHub Agent HQ, Cursor's agents window and Antigravity."
+    ]
+   }
+  ],
+  "feature_landscape": [
+   "These shares come from the 27 profiled T1 products. These are the most notable products, not a random sample. Table stakes: live agent status (22 of 27, 81%), a permission alert (21 of 27, 78%) and a multi-session view (16 yes, 9 partial).",
+   "About half have sound (15 of 27), physical controls (14), a character (13) or a second screen (13). Burnbot has no sound and only partial multi-session.",
+   "Common but not universal: plan limits (12 of 27 T1, 5 of 10 T2), approving from the device (11 of 27), voice input (9 of 27) and jump to the session (8 yes, 6 partial). Cost is a T2 staple at 8 of 10.",
+   "Rare: history dashboards (4 of 27 T1, 5 of 10 T2), streaks or goals (3 of 37 at yes), AI session recaps (Agent Cat and Tokscale), leaderboards (Viberank and Tokscale) and loop detection (CodeBurn only).",
+   "Nobody has these at yes across all 37: levels ranked against your own history (4 partial), a failing test or build turning green (6 partial), and drifting away while the agent waits (9 partial). Burnbot has all three.",
+   "Many cells are unknown, mostly for hardware. SlashVibe is unknown on 9 of 20 features, including plan limits and every motivation feature. Unknown is not the same as absent."
+  ],
+  "reference_unique": [
+   {
+    "point": "Levels ranked against the user's own last 30 days",
+    "evidence": "0 of 37 at yes. Clauddy shades its heat map against your busiest day. CodeBurn shows cost as a multiple of your median session. Agent Cat alerts on personal bests. None sets live levels from your own history."
+   },
+   {
+    "point": "Noticing a failing test or build turning green",
+    "evidence": "0 of 37 at yes. Clawd on Desk, Peon-ping and CodeBurn react when a command fails. None of them notices a failure followed by a pass."
+   },
+   {
+    "point": "\"Drifted\" when you wander off after Claude hands you the turn",
+    "evidence": "0 of 37 at yes. Clawd on Desk sleeps after 60 seconds of mouse idle. Lockpaw infers presence from the screen lock. Neither compares against your usual break."
+   },
+   {
+    "point": "A daily wins goal built from outcomes, with a streak",
+    "evidence": "Agent Cat, Viberank and Claude Code's Stats tab have streaks, and all count usage or active days. Hardware Buddy levels up every 50K tokens. No profile describes a goal made of red to green, shipped, PR and plan approved."
+   },
+   {
+    "point": "\"Going round\": spotting the user's repeated asks (close, not unique)",
+    "evidence": "CodeBurn's Guard stops the agent repeating the same tool call. Claude Code's /usage lists loops. Notchi reacts when a prompt sounds stuck. Burnbot counts 3 near-repeat asks with no progress."
+   },
+   {
+    "point": "One character on desktop, a second monitor and a DIY desk screen",
+    "evidence": "No software companion has a full second-monitor mode at yes. Clawd on Desk adds a phone page, Pixel Agents a browser page, and Agent Cat phone and watch widgets. Burnbot adds a DIY desk screen as well."
+   }
+  ],
+  "reference_behind": [
+   {
+    "point": "One agent on one OS",
+    "evidence": "Burnbot supports Claude Code on macOS only. Clawd on Desk covers nearly 30 agents on three OSes, Vibe Island 30, and SlashVibe 20+. Lock-in is the top objection to agent hardware.",
+    "who_does_it": [
+     "clawd-on-desk",
+     "vibe-island",
+     "slashvibe",
+     "petdex",
+     "peon-ping",
+     "codexbar"
+    ]
+   },
+   {
+    "point": "No plan limits",
+    "evidence": "12 of 27 T1 and 5 of 10 T2 show plan limits. Burnbot shows none, and its cost view is only partial. Usage is the loudest topic on r/ClaudeCode.",
+    "who_does_it": [
+     "clawd-on-desk",
+     "pixel-agents",
+     "clawdmeter",
+     "clauddy",
+     "vibe-island",
+     "codexbar"
+    ]
+   },
+   {
+    "point": "Cannot approve or deny from the robot or the desk screen",
+    "evidence": "11 of 27 T1 can, including free Clawd on Desk and Vibe Notch, and Anthropic's own Hardware Buddy. Hardware threads call approve and deny the one action that matters.",
+    "who_does_it": [
+     "clawd-on-desk",
+     "vibe-notch",
+     "anthropic-desktop-buddy",
+     "slashvibe",
+     "codex-micro",
+     "vibe-island"
+    ]
+   },
+   {
+    "point": "No sound",
+    "evidence": "15 of 27 T1 play sounds. Peon-ping's voice alerts drew 1,006 Hacker News points and 301 comments. Users ask for a different cue per state and per session.",
+    "who_does_it": [
+     "peon-ping",
+     "clawd-on-desk",
+     "notchi",
+     "pixel-agents",
+     "vibe-notch",
+     "clauddy"
+    ]
+   },
+   {
+    "point": "Only a partial view of several sessions",
+    "evidence": "16 of 27 T1 show each session. Pixel Agents gives every session its own character. A top request is one light per session that focuses that window when pressed.",
+    "who_does_it": [
+     "pixel-agents",
+     "clawd-on-desk",
+     "vibe-island",
+     "agentdeck-ulanzi",
+     "notchi",
+     "slashvibe"
+    ]
+   },
+   {
+    "point": "A narrow, DIY-only desk screen",
+    "evidence": "Two board setups over USB, not sold, and not Hardware Buddy compatible. Clawdmeter flashes 28 boards from a tray app. Hardware Buddy runs on a board of about $30. Vibe Buddy takes $49 pre-orders for a finished unit.",
+    "who_does_it": [
+     "clawdmeter",
+     "anthropic-desktop-buddy",
+     "vibe-buddy",
+     "claudeassistant-freakstudio"
+    ]
+   },
+   {
+    "point": "One fixed character, no skins or packs",
+    "evidence": "Petdex is built around shareable pets. Peon-ping has 165 voice packs. Pixel Agents has a character designer. Codex pets have a format other tools reuse.",
+    "who_does_it": [
+     "petdex",
+     "peon-ping",
+     "pixel-agents",
+     "agent-paperclip",
+     "codex-pets"
+    ]
+   },
+   {
+    "point": "No licence file and GitHub releases only",
+    "evidence": "The repo is public but has no licence. Clawd on Desk ships AGPL-3.0 through a Homebrew cask, winget and APT. Skeptics warn against running unvetted tools.",
+    "who_does_it": [
+     "clawd-on-desk",
+     "ccusage",
+     "codexbar",
+     "pixel-agents"
+    ]
+   }
+  ],
+  "threats": [
+   {
+    "threat": "Anthropic ships the motivation layer itself",
+    "severity": "high",
+    "why": "Claude Code already has a usage streak, a heatmap, /insights, /recap, Remote Control alerts and status-line limits. They cost nothing extra on a paid plan, though status-line limits reach only Pro, Max and Ultra. A pet that only shows burn or streaks adds little.",
+    "who": [
+     "cc-usage-insights",
+     "cc-remote-control",
+     "cc-statusline"
+    ]
+   },
+   {
+    "threat": "Hardware Buddy becomes the default way to build desk hardware",
+    "severity": "high",
+    "why": "Anthropic's BLE API in the Claude desktop app lets any cheap board show sessions and answer prompts. The reference repo has 2,721 stars and 474 forks, and Espressif has a library for it. It needs developer mode and is labelled not officially supported. Burnbot's USB screen does not speak it.",
+    "who": [
+     "anthropic-desktop-buddy",
+     "claude-desktop-code-tab"
+    ]
+   },
+   {
+    "threat": "Free open-source pets already own the waiting and done job",
+    "severity": "high",
+    "why": "Clawd on Desk is free, AGPL, multi-agent and ships every 8 to 12 days, though it avoids scoring by design. Pixel Agents has 98,492 VS Code installs, and its roadmap mentions scores and game elements.",
+    "who": [
+     "clawd-on-desk",
+     "pixel-agents",
+     "petdex",
+     "peon-ping"
+    ]
+   },
+   {
+    "threat": "Funded multi-agent hardware sets what buyers expect",
+    "severity": "medium",
+    "why": "SlashVibe ($143,175) and Codex Micro (sold out in about 12 hours) make status, approve keys and voice the standard. SlashVibe's campaign lists a pixel pet as an SDK example. Its first batch is due to ship in March 2027.",
+    "who": [
+     "slashvibe",
+     "codex-micro",
+     "ulanzi-au05-vibe-key",
+     "vibekeys"
+    ]
+   },
+   {
+    "threat": "OpenAI makes desktop pets a free commodity",
+    "severity": "medium",
+    "why": "Codex pets track needs you, done and failed across sessions at no extra charge. Their pet format is being reused by other tools. They are Codex only for now.",
+    "who": [
+     "codex-pets",
+     "codex-app-openai"
+    ]
+   },
+   {
+    "threat": "Burnbot's own burn framing rides the tokenmaxxing backlash",
+    "severity": "medium",
+    "why": "The name and the top-level fire put token burn first, and burn is 40% of each level. Tokenmaxxing threads about Uber and Amazon drew 293 and 251 HN points. Meta's Claudeonomics leaderboard went down within days.",
+    "who": [
+     "viberank",
+     "tokscale"
+    ]
+   },
+   {
+    "threat": "A flood of clones and fatigue with the whole category",
+    "severity": "medium",
+    "why": "The catalogue lists 261 more desktop companions and 377 more hardware displays. Skeptics call these the vibe-coding hello world. Hobby launches on HN mostly got 1 to 6 points.",
+    "who": [
+     "petdex",
+     "clauddy",
+     "agent-paperclip"
+    ]
+   },
+   {
+    "threat": "Sessions move into hubs that Burnbot may not see",
+    "severity": "low",
+    "why": "GitHub Agent HQ, Cursor's agents window, Antigravity and the Claude desktop Code tab run agents outside the terminal. It is unclear whether Burnbot's hooks and logs reach them.",
+    "who": [
+     "github-agent-hq",
+     "cursor-agents-window",
+     "google-antigravity",
+     "claude-desktop-code-tab"
+    ]
+   }
+  ],
+  "opportunities": [
+   {
+    "opportunity": "Lead with progress: the wins goal and red-to-green, not burn",
+    "evidence": "0 of 37 products have personal-baseline levels or red-to-green at yes. Skeptics ask to measure outcomes, not consumption. Burnbot already weights typing 35% and actions 25%.",
+    "effort": "small"
+   },
+   {
+    "opportunity": "Show plan limits through the robot, not as another meter",
+    "evidence": "12 of 27 T1 and 5 of 10 T2 show limits. Pets that sweat near the limit and throw confetti on reset get warm reactions. The status line gives 5-hour and weekly limits at no extra charge, but only to Pro, Max and Ultra subscribers.",
+    "effort": "small"
+   },
+   {
+    "opportunity": "Explain usage drain with a per-turn history",
+    "evidence": "A Clawdmeter commenter asked to see how each command affected usage because they could not prove the drain. A post about losing 73% of a weekly limit in 2 days on the $100 plan got 151 comments.",
+    "effort": "medium"
+   },
+   {
+    "opportunity": "A per-session strip that clears when the user answers",
+    "evidence": "16 of 27 T1 show each session. Threads on parallel sessions drew 100 and 50 comments. Users note no event fires when they answer, so displays get stuck on the old state.",
+    "effort": "medium"
+   },
+   {
+    "opportunity": "Quiet, distinct sounds per state, off by default",
+    "evidence": "15 of 27 T1 play sounds. Peon-ping hit 1,006 HN points. Users ask for separate cues for done and needs-input. They also fear being pinged too often, which fits Burnbot's restraint.",
+    "effort": "small"
+   },
+   {
+    "opportunity": "Make the desk screen speak Hardware Buddy and flash from the app",
+    "evidence": "Hardware Buddy has 2,721 stars and runs on a board of about $30. Clawdmeter, which flashes 28 boards from its tray app, has 2,349 stars. Hardware Buddy's own pet levels up only every 50K tokens, so Burnbot's moments add something.",
+    "effort": "medium"
+   },
+   {
+    "opportunity": "A wellbeing and pacing mode built on drift",
+    "evidence": "The closest today are Peon-ping's exercise reminders and Clauddy's stretch remark after 90 minutes. A thread on staying in flow while waiting got 307 points and 248 comments. Burnbot already knows the user's usual break.",
+    "effort": "medium"
+   },
+   {
+    "opportunity": "Be the brain for hardware others sell",
+    "evidence": "SlashVibe promises an AGPL SDK with a pixel pet as an example. The open-source agentdeck app turns an off-the-shelf Ulanzi D200 pad into an agent console. This reaches hardware buyers without making hardware.",
+    "effort": "large"
+   },
+   {
+    "opportunity": "Work with Remote Control by writing its presence file",
+    "evidence": "Claude Code skips phone pushes while CLAUDE_CLIENT_PRESENCE_FILE exists. Burnbot already tracks typing and which app is in front. Lockpaw added the same idea on 7 Nov 2026.",
+    "effort": "small"
+   }
+  ],
+  "pricing_benchmarks": [
+   {
+    "segment": "Software pets and companions",
+    "range": "$0 (most) to $19.99 one-time",
+    "examples": [
+     "Clawd on Desk: free, AGPL-3.0",
+     "Pixel Agents: free, MIT",
+     "Vibe Island: $19.99 one-time, $10 per extra Mac",
+     "Fetch: $19.99 one-time"
+    ]
+   },
+   {
+    "segment": "Usage and cost monitors",
+    "range": "$0 to $9 one-time",
+    "examples": [
+     "ccusage: free, MIT",
+     "CodexBar: free, MIT",
+     "Usagebar: $9 one-time, with a free tier"
+    ]
+   },
+   {
+    "segment": "Remote control and hosted agent apps",
+    "range": "Free self-hosted, hosted from EUR 7 a month",
+    "examples": [
+     "CloudCLI: free self-hosted",
+     "CloudCLI Cloud: EUR 7 a month (Hobby), EUR 20 (Growth)"
+    ]
+   },
+   {
+    "segment": "DIY boards (software free)",
+    "range": "About $21 to $70 for the hardware",
+    "examples": [
+     "Hardware Buddy: M5StickC Plus, about $30",
+     "Clawdmeter: Waveshare board, $29.99 to $31.99",
+     "Divoom hack: needs a $69.99 MiniToo"
+    ]
+   },
+   {
+    "segment": "Finished small status displays",
+    "range": "$49 to $115",
+    "examples": [
+     "Vibe Buddy: $49 preorder",
+     "FreakStudio ClaudeAssistant: $70",
+     "Token Monitor: EUR 99, about $115 (campaign failed)"
+    ]
+   },
+   {
+    "segment": "Agent keypads and controllers",
+    "range": "$39 to $230",
+    "examples": [
+     "VibeKeys: $39, $49 or $99",
+     "Ulanzi AU05: $59.99",
+     "CtrlVibe: from $109 super early bird",
+     "Codex Micro: $230, sold out"
+    ]
+   },
+   {
+    "segment": "Premium display plus controller",
+    "range": "$169 to $249, plus optional paid plans",
+    "examples": [
+     "SlashVibe: $169 Day 1 (sold out), $189 early bird, $249 retail",
+     "SlashVibe software: free plan, paid plans raise voice limits"
+    ]
+   },
+   {
+    "segment": "Platform built-ins",
+    "range": "No extra charge on top of the plan",
+    "examples": [
+     "Claude Code: needs a paid plan or API billing",
+     "Remote Control: Pro, Max, Ultra, Team, Enterprise",
+     "Codex pets: no extra charge on ChatGPT plans"
+    ]
+   }
+  ],
+  "demand_takeaways": [
+   "The sharpest pain is missing the moment the agent waits or finishes. \"My Claude Code now calls my phone when it needs me\" scored 466 with 77 comments.",
+   "Usage is the loudest topic on r/ClaudeCode. Clawdmeter scored 1,674 and \"I said H and it used 26%\" scored 1,160 with 245 comments. A plain meter is seen as solved. People want to know why usage drains.",
+   "Desk hardware gets the biggest upvotes: Clawdmeter 1,674, a desk lamp 1,637, VibeKeys 1,010. But commenters assume they can build one for $10 to $40, and mock sold units as a flashed M5Stack for 10x the price.",
+   "Waiting and wellbeing is an open lane. A flow-state thread got 307 points and 248 comments. \"10x more productive, but mentally exhausted\" got 306. The Waiting Room plugin got 983.",
+   "Gamifying token volume backfires. A post mocking $50,000 burned in 30 days got 317 points and 182 comments. A friends' burn leaderboard got only 20.",
+   "Personality is loved, but it has to feel fair. The Bring Back Buddy issue has 1,197 thumbs-up. \"They removed the buddy\" got 79 comments. Random bad rolls draw complaints.",
+   "Parallel sessions hurt, and comments beat scores. A thread on managing parallel sessions got 34 points but 100 comments. People want one light per session that jumps to it."
+  ],
+  "open_questions": [
+   "Who uses Burnbot today, and do they come back? The data has no traction figures for it.",
+   "How often are the moments right? Measure false alarms for red to green, going round and drifted.",
+   "Do the burn levels and the fire feel like encouragement or pressure? Test a progress framing with real users.",
+   "Should Burnbot keep refusing to approve from the device? 11 of 27 T1 products do it, including Anthropic's own Hardware Buddy.",
+   "Which hardware path: stay DIY over USB, speak Hardware Buddy's BLE protocol, run on SlashVibe or Stream Deck, or sell a kit?",
+   "Is Codex the right second agent, and when? Lock-in is the top objection, but Codex puts Burnbot up against Clawd on Desk and OpenAI's own pets.",
+   "Would the missing products change the picture? The data lacks first-party features from Windows 11, Zed, Windsurf, Devin, Amp and Factory, plus paid notch apps, most dictation apps and agent-deck."
+  ]
+ },
+ "critic": {
+  "complete": false,
+  "gaps": [
+   {
+    "kind": "missing-products",
+    "description": "Platform features from several major vendors are missing, and the platform round 2 was skipped. No first-party features appear from Microsoft beyond the Copilot key: Windows 11 announced agents on the taskbar, with status badges and hover cards for running agents, which is OS-level agent state that is always on screen. Nothing appears from Cognition (Windsurf Cascade completion notifications, Devin's desktop, mobile and Slack status), Zed (agent panel notifications and sound when a thread finishes or needs approval), Amp (thread sharing and any social or leaderboard features), or Factory (Droid desktop and mobile apps). macOS Tahoe Live Activities is listed, so leaving out the Windows equivalent unbalances the 'first-party will Sherlock this' analysis.",
+    "search_lane": "Platform round 2, first-party only. For each vendor, find official docs, changelogs or blog posts from 2025-11 to 2026-11 on features that show coding-agent state outside the editor, notify when an agent is done or waiting, allow approval or remote control, or report usage. (1) Microsoft Windows 11: 'agents on the taskbar', 'Ask Copilot' taskbar agent status and badges, Agent Workspace, and any GitHub Copilot or VS Code agent that shows up there. (2) Cognition: Windsurf Cascade notifications, usage and credits UI; Devin app, mobile and Slack status. (3) Zed: agent panel notify_when_agent_waiting setting and sounds. (4) Amp: notifications, thread sharing, leaderboards and usage display. (5) Factory: Droid desktop and mobile apps and notifications. (6) Also check Warp, Raycast AI and Sourcegraph for anything not yet listed. Tier T3, category platform-feature. Record the ship date and whether each feature is GA or preview."
+   },
+   {
+    "kind": "missing-products",
+    "description": "The adjacent round 2 was skipped, and the commercial general-purpose shells that people repurpose for agent status are missing. That includes paid notch apps (NotchNook, Alcove, DynamicLake), the Corsair Xeneon Edge widget touchscreen, RunCat, mute and busy buttons (MuteMe, Embrava Blynclight, Nanoleaf), and the dictation apps people use as 'voice remotes' for agents (Superwhisper, VoiceInk, Aqua Voice, Willow, MacWhisper). Wispr Flow is the only one of these listed. These are the price anchors behind the 'just use X' objections in the demand data. One T2 orchestrator is also confirmed missing: asheshgoplani/agent-deck, checked on GitHub today. It is a Go and tmux TUI session manager showing working, waiting and done states for Claude Code, Codex, Gemini CLI and OpenCode, with an 'agent-deck web' UI, about 1.3k stars, MIT licence, and more than 4,600 commits.",
+    "search_lane": "Adjacent round 2. Find commercial and general products, not built for AI agents, that developers use or could use to show coding-agent state or to talk to agents, and record price, platform and any Claude Code or Codex integration. (a) macOS notch shells: NotchNook, Alcove, DynamicLake, MediaMate, plus their plugin or extension APIs. (b) Desk widget screens: Corsair Xeneon Edge (iCUE widgets), Anker and other docks with displays, the commercial Turing Smart Screen line. (c) Status and mute hardware: MuteMe, Embrava Blynclight, Nanoleaf and Elgato Key Light integrations. (d) Menu-bar ambient apps: RunCat, Übersicht. (e) Dictation apps marketed for vibe coding: Superwhisper, VoiceInk, Aqua Voice, Willow Voice, MacWhisper. Search each name with 'Claude Code' or 'Codex' to catch community integrations, which would move them to T1 or T2. Also add asheshgoplani/agent-deck (T2, orchestration)."
+   },
+   {
+    "kind": "weak-claim",
+    "product_id": "agentdeck-hardware",
+    "description": "This is crowdfunded hardware at medium confidence. Price, reward-tier prices, ship date, hardware spec and amount raised are all unverified. So are the features that overlap most with a progress or motivation companion: personal_baseline_levels, test_build_red_green, loop_stuck_detection, drift_away_detection, ai_session_recap, streaks_goals_achievements and leaderboard. If these are wrong, the competitive comparison is wrong. Check the Kickstarter or BackerKit page, Kicktraq, and campaign updates for final raised amount and backers, tier prices, estimated delivery and shipping status. Check whether each gamification or detection feature appears in campaign copy, a demo video or firmware/app docs, or whether it was inferred."
+   },
+   {
+    "kind": "weak-claim",
+    "product_id": "vibe-buddy",
+    "description": "Medium confidence. The planned November 2026 ship start falls this month and has not been checked, and 15 feature fields are unverified, including approve_from_device, jump_to_session, loop/drift detection, streaks, voice in and out, and physical controls. Display type and size and the maker's full name are also unknown. Check the maker's site, Product Hunt page, launch Reddit thread and any pre-order or store page for current ship status (shipping, delayed or pre-order), price, display spec and a documented feature list. Set each feature to yes or no from that list, and stop leaving them unknown."
+   },
+   {
+    "kind": "weak-claim",
+    "product_id": "v14-remote",
+    "description": "Medium confidence, and almost every commercial field is unverified: price_text, price_usd, ship_date, license, hardware (battery, chip, display) and most features. The only traction recorded is mid-campaign snapshots of about $1.9k–2k from 12–13 backers. Find out how the Kickstarter campaign ended, through Kicktraq, a BackerKit late-pledge page, the creator's profile or an archive capture: funded or failed, final amount and backers, tier prices, and estimated delivery. If it failed or was cancelled, mark it so the 'one breakout' funding analysis stays accurate."
+   },
+   {
+    "kind": "weak-claim",
+    "product_id": "keychron-ai-mic-keyboard",
+    "description": "This is a commercial product from a major brand, yet price_usd, launch_date (single secondary source), OS support and maker location are unverified, and the PC Gamer article body did not load. The T1 tier also needs checking: it may be a general AI dictation keyboard, which would make it T3. Check the Keychron product page (it returned 429, so retry or use a regional Keychron store or Amazon listing) for price, availability date, OS, and whether marketing or software names Claude Code, Codex or Cursor actions (approve, interrupt, agent keys). Do the same for the F4 HE 8K Vibe Coding Keypad's price and specs."
+   },
+   {
+    "kind": "weak-claim",
+    "product_id": "ctrlvibe",
+    "description": "Medium confidence. The amount raised is a rough HKD-to-USD conversion, the price is an early-bird figure with no retail price, last activity comes only from the Hackster publication date, and post-campaign status has not been checked because Kickstarter returned 403. The token_usage_cost and agent_status claims were made before shipping and name no data source. Check Kickstarter campaign updates, Kicktraq or the BackerKit pledge manager, and the maker's site for the final HKD total and backer count (convert at a stated rate and date), the shipping or delay status as of November 2026, any retail or late-pledge price, and how the device gets token and status data (hooks, OTEL, the BLE buddy protocol)."
+   }
+  ]
+ },
+ "demand": [
+  {
+   "themes": [
+    {
+     "theme": "Lock-in to a single agent or vendor is the main objection, and buyers want hardware that works with whatever agent they use (especially Claude Code)",
+     "summary": "The biggest complaint about OpenAI's $230 Codex Micro was that it only works with Codex. Claude Code users reverse-engineered it, wrote bridges for it, and filed a 'we need a Claude Code keyboard' request. The campaigns that raised the most money (SlashVibe, Harness) lead with '20+ agents'. Desktop-companion repos get a steady flow of 'please support agent X' issues. Support for many agents is now expected, not a selling point.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "$230 for essentially a fancy numpad that's only useful for one tool?",
+       "url": "https://news.ycombinator.com/item?id=48923724",
+       "where": "Hacker News, Codex Micro thread (LetsGetTechnicl)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "only talks to OpenAI's ChatGPT desktop app, I only use Claude Code",
+       "url": "https://www.ventechdigital.com/blog/reverse-engineering-the-codex-micro-for-claude-code",
+       "where": "VenTech Digital blog (owner who reverse-engineered the pad)",
+       "date": "2026-07-24"
+      },
+      {
+       "text": "without OpenAI's app it does nothing",
+       "url": "https://www.ventechdigital.com/blog/reverse-engineering-the-codex-micro-for-claude-code",
+       "where": "VenTech Digital blog",
+       "date": "2026-07-24"
+      },
+      {
+       "text": "What is Claude doing? We need a claude code keyboard. ASAP.",
+       "url": "https://github.com/anthropics/claude-code/issues/73822",
+       "where": "GitHub issue on anthropics/claude-code (closed by bot as off-topic)",
+       "date": "2026-07-03"
+      },
+      {
+       "text": "FreeMicro: drives the Codex Micro from Claude Code with the protocol documented (34 stars as of 2026-11-18)",
+       "url": "https://github.com/eliBenven/freemicro",
+       "where": "GitHub repo description (paraphrase)",
+       "date": "2026-07-23"
+      },
+      {
+       "text": "author notes the bridge 'could be adapted to other agents' (post is about a 400 RMB Waveshare MK10 used as a Codex pad)",
+       "url": "https://www.v2ex.com/t/1238244",
+       "where": "V2EX (paraphrase of the Chinese post)",
+       "date": "2026-08-31"
+      },
+      {
+       "text": "connected to 14 agents across multiple computers, harnesses, models etc.",
+       "url": "https://www.autonomous.ai/harness-device",
+       "where": "Customer quote on the Autonomous Harness product page (Sam W), seen 2026-11-18",
+       "date": "2026-11-18"
+      },
+      {
+       "text": "Issue titles asking the companion to support opencode, kimi code, qoder cli, reasonix cli, oh-my-pi, opencode-v2",
+       "url": "https://github.com/rullerzhou-afk/clawd-on-desk/issues/1039",
+       "where": "GitHub issues on clawd-on-desk (#17, #154, #473, #478, #597, #1039)"
+      }
+     ]
+    },
+    {
+     "theme": "Price skepticism and 'I can build this with a Stream Deck or a cheap macropad'",
+     "summary": "Many people think a dedicated agent keypad is overpriced for what it does, since all the logic runs on the PC. They point to Stream Deck or generic macropads, or to cheaper unbranded hardware. Dozens of free Stream Deck plugins for Claude Code approvals and status exist, which caps what people will pay for single-purpose hardware. The press echoes this.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "This is just a Macropad, right? All of the smarts are on the PC side. So why is it so expensive?",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "Hacker News, Codex Micro thread (joshmarinacci)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "Pretty sure I could just vibe code this with my old Elgato Stream Deck.",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "Hacker News, Codex Micro thread (kylemaxwell)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "I'd probably take the Stream Deck over this though, its a good bit cheaper.",
+       "url": "https://news.ycombinator.com/item?id=48923688",
+       "where": "Hacker News (vel0city)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "The non-branded version from Work Louder seems to cost $174",
+       "url": "https://news.ycombinator.com/item?id=48933741",
+       "where": "Hacker News (elicash)",
+       "date": "2026-07-16"
+      },
+      {
+       "text": "因为前一段时间 codex 出了个键盘，溢价很严重 (Codex put out a keyboard and the markup is severe)",
+       "url": "https://www.v2ex.com/t/1238244",
+       "where": "V2EX (rladmsrl)",
+       "date": "2026-08-31"
+      },
+      {
+       "text": "tacky, annoying, overpriced and frankly laughable",
+       "url": "https://aftermath.site/openai-codex-micro-macropad/",
+       "where": "Aftermath review (Chris Person)",
+       "date": "2026-07-22"
+      },
+      {
+       "text": "I'm going to wait for the temu version with the usual hidden mic and phone-home feature",
+       "url": "https://news.ycombinator.com/item?id=48925245",
+       "where": "Hacker News (zuzululu)",
+       "date": "2026-07-15"
+      }
+     ]
+    },
+    {
+     "theme": "The job people actually want done: 'tell me which agent needs a decision' at a glance",
+     "summary": "The feature that gets the most praise is not typing input. It is ambient status: a light or key per session that shows which agent is waiting, finished or stuck. People running several agents say the pain is not knowing when they are needed. This is also the main reason vendors give (ClawMetry, Harness), and it is what owners like most about the Codex Micro.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "I actually have this as a problem with Codex / Claude where I don't know if I have to make a decision.",
+       "url": "https://news.ycombinator.com/item?id=48924099",
+       "where": "Hacker News (zitterbewegung)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "This design looks great though, status lights are a nice touch.",
+       "url": "https://news.ycombinator.com/item?id=48923662",
+       "where": "Hacker News (pwython)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "CMUX with folders per project + Stream Deck that shows me which agent has finished :)",
+       "url": "https://hn.algolia.com/api/v1/search?query=%22claude%20code%22%20stream%20deck&tags=comment",
+       "where": "Hacker News Ask HN reply (virpo)",
+       "date": "2026-11-05"
+      },
+      {
+       "text": "(paraphrase) Reviewer's standout was the six Agent Keys showing each Codex thread's status at a glance",
+       "url": "https://kingy.ai/blog/codex-micro-review/",
+       "where": "Kingy AI hands-on review",
+       "date": "2026-08-03"
+      },
+      {
+       "text": "It is a small screen that sits on your desk and stays on.",
+       "url": "https://clawmetry.com/blog/ai-agent-desk-display",
+       "where": "ClawMetry vendor blog (rationale for a $49 refundable founders device)",
+       "date": "2026-06-07"
+      }
+     ]
+    },
+    {
+     "theme": "Approve / deny is the one action that matters, and people want it on a physical button",
+     "summary": "Users joke that agent work comes down to 'accept' and 'accept all'. Hobbyist builds and Stream Deck plugins all ship Approve, Always Allow and Deny keys, and the reference firmware for Anthropic's hardware buddy gets PRs for approval countdowns and response-time stats. Demand is real but cheap to meet in software, which makes it hard to charge a hardware premium for.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "Someday my kid is going to ask me why we need 79 keys on a keyboard if we only use 'accept' and 'accept all'.",
+       "url": "https://news.ycombinator.com/item?id=48925155",
+       "where": "Hacker News (plutomeetsyou)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "Approve, Always Allow, Deny keys that mirror the three options Claude Code shows in the terminal",
+       "url": "https://github.com/vladatman/agent-vitals",
+       "where": "GitHub (agent-vitals Stream Deck plugin README, paraphrase)"
+      },
+      {
+       "text": "PR titles: countdown on approval prompt (#32); median approval response time (#35); widen approvals/denials counters to uint32_t (#25)",
+       "url": "https://github.com/anthropics/claude-desktop-buddy/pulls",
+       "where": "GitHub PRs on anthropics/claude-desktop-buddy (2,721 stars / 474 forks as of 2026-11-18)"
+      },
+      {
+       "text": "Approve and deny from the pad, hold-to-dictate, and every control remappable",
+       "url": "https://github.com/thomast8/codex-micro-for-claude-code",
+       "where": "GitHub (codex-micro-for-claude-code description)",
+       "date": "2026-10-28"
+      }
+     ]
+    },
+    {
+     "theme": "Voice: people expect a microphone but split on privacy and always-listening",
+     "summary": "Commenters were surprised that a $230 agent pad had no mic or speaker. Others push back on always-on audio and talking out loud at a desk. Builders add mic jacks to avoid picking up key clicks. SlashVibe, CtrlVibe and V14 all lead with voice, and local speech-to-text is used as a privacy reassurance.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "I'm surprised it doesn't have a microphone... a mic would really, really help with this product.",
+       "url": "https://news.ycombinator.com/item?id=48927014",
+       "where": "Hacker News (maherbeg)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "No microphone input, no speakers, and no included months of Codex membership.",
+       "url": "https://news.ycombinator.com/item?id=48929975",
+       "where": "Hacker News (schneehertz)",
+       "date": "2026-07-16"
+      },
+      {
+       "text": "If we're leaning into audio, why not always-on instead of push-to-talk?",
+       "url": "https://news.ycombinator.com/item?id=48926859",
+       "where": "Hacker News (yayitswei)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "I don't want to hear my voice all day, nor my coworkers.",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "Hacker News (fooker)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "为了避免按键声音导致炸麦，所以加入了一个3.5毫米的麦克风接口 (added a 3.5mm mic jack so key noise doesn't blow out the mic)",
+       "url": "https://x.com/op7418/status/1999041928122495026",
+       "where": "X, maker designing a DIY vibe-coding keypad (seen in search results; date estimated from the post ID)",
+       "date": "2025-12"
+      }
+     ]
+    },
+    {
+     "theme": "Platform reach and openness: Linux, open source and documented protocols",
+     "summary": "Developer audiences quickly turn down closed, Windows/Mac-only devices. Linux comes up repeatedly, and so does open firmware or protocol. SlashVibe promised AGPL-3.0 source before shipping, but the press notes that the repo and license details are not public yet, and its specs still list only macOS and Windows. Hobbyists show the demand by porting the open claude-desktop-buddy reference to many boards.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "Yuk. Windows only and closed source. Pass.",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "Hacker News (deepspace)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "Windows and Mac only (no Linux).",
+       "url": "https://news.ycombinator.com/item?id=48925471",
+       "where": "Hacker News (freedomben)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "I'm looking for a macro pad with a little LCD that's Mac and Linux compatible.",
+       "url": "https://news.ycombinator.com/item?id=48923545",
+       "where": "Hacker News (nzoschke)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "(paraphrase) License and repository are unnamed, the open question for anyone planning to fork",
+       "url": "https://the-gadgeteer.com/2026/11/15/slashvibe-open-source-ai-agent-desk-controller/",
+       "where": "The Gadgeteer on SlashVibe",
+       "date": "2026-11-15"
+      },
+      {
+       "text": "Issue: Linux support",
+       "url": "https://github.com/rullerzhou-afk/clawd-on-desk/issues/441",
+       "where": "GitHub issue #441 on clawd-on-desk"
+      },
+      {
+       "text": "Five-plus separate PRs adding M5StickS3 support, plus CYD (ESP32-2432S028R) and Tidbyt ports",
+       "url": "https://github.com/anthropics/claude-desktop-buddy/pull/50",
+       "where": "GitHub PRs #3, #6, #9, #44, #48, #50, #54 on claude-desktop-buddy",
+       "date": "2026-04-18 to 2026-07-22"
+      }
+     ]
+    },
+    {
+     "theme": "Subscription and 'phone-home' wariness: buyers want hardware that is a one-time cost",
+     "summary": "Wherever recurring costs or cloud processing appear, people react: a joke asking for bundled agent-subscription months, jokes about hidden mics, and privacy worries over screen-watching AI. Vendors respond up front: Violoop says 'No subscription required', Decokee says no cloud subscription, and SlashVibe says sessions stay on the device. But SlashVibe has optional $8 and $14/month plans (backers get 1 free Pro month), and ClawMetry's free tier only covers OpenClaw/NemoClaw. That is the pressure point for agent-hardware makers.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "No microphone input, no speakers, and no included months of Codex membership.",
+       "url": "https://news.ycombinator.com/item?id=48929975",
+       "where": "Hacker News (schneehertz)",
+       "date": "2026-07-16"
+      },
+      {
+       "text": "letting AI watch you work raises concerns about security and privacy",
+       "url": "https://newatlas.com/computers/violoop-plug-in-ai-computer-assistant/",
+       "where": "New Atlas on Violoop (Kickstarter AI box)",
+       "date": "2026-09-24"
+      },
+      {
+       "text": "SlashVibe's own optional paid plans cover features such as higher usage limits for cloud voice input.",
+       "url": "https://slashvibe.ai/",
+       "where": "SlashVibe FAQ, seen 2026-11-18",
+       "date": "2026-11-18"
+      },
+      {
+       "text": "(paraphrase) Free plan covers OpenClaw and NemoClaw; Claude Code, Codex, Cursor etc. need a paid plan",
+       "url": "https://clawmetry.com/blog/ai-agent-desk-display",
+       "where": "ClawMetry device page",
+       "date": "2026-06-07"
+      }
+     ]
+    },
+    {
+     "theme": "Why people back or buy: novelty, looks and 'new modality' curiosity, with pushback against 'AI merch'",
+     "summary": "Stated reasons to buy are mostly emotional or experimental (impulse, looks, fun, trying a new interaction) rather than ROI. Even fans call these devices pricey. There is also a strong opposing camp that sees them as status merch ('physical slop', 'prank'). Makers admit some products started as a meme.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "I ordered one because I lack impulse control.",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "Hacker News (whalesalad)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "Ordered. Not sure will beat my streamdeck modules, but YOLO",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "Hacker News (robotswantdata)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "I love experimenting with new modalities and this is a cool idea pre-packaged.",
+       "url": "https://news.ycombinator.com/item?id=48929256",
+       "where": "Hacker News (jacksonastone)",
+       "date": "2026-07-16"
+      },
+      {
+       "text": "I like it because it looks sleak, and the colors are neat.",
+       "url": "https://news.ycombinator.com/item?id=48923703",
+       "where": "Hacker News (Juvination)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "The project starts from a meme, but i fund it's really useful in the vibe coding workflow.",
+       "url": "https://news.ycombinator.com/item?id=48209853",
+       "where": "Hacker News, Show HN: VibeKeys (maker reply)",
+       "date": "2026-05-20"
+      },
+      {
+       "text": "The Codex Micro Is Physical Slop (3 points, 2 comments)",
+       "url": "https://news.ycombinator.com/item?id=49011656",
+       "where": "Hacker News story title",
+       "date": "2026-07-22"
+      }
+     ]
+    },
+    {
+     "theme": "Crowdfunding risk: long lead times, certification and software that doesn't exist yet",
+     "summary": "There is little public backer chatter on the campaign pages: SlashVibe shows 1 comment and 17 updates, and Kickstarter comment and FAQ pages returned 403 to this research. Risk worries therefore come mostly from the press and from campaigns' own disclosures: pay now for a March 2027 ship date pending FCC, software not public until after the campaign (CtrlVibe's MCU listed as 'TBD'), and earlier AI-desk campaigns slipping (Decokee planned May 2026, then delivered later).",
+     "strength": "weak",
+     "quotes": [
+      {
+       "text": "(paraphrase) Backers pay ~four months before delivery for hardware that still has to clear FCC testing; rewards are still not guaranteed",
+       "url": "https://the-gadgeteer.com/2026/11/15/slashvibe-open-source-ai-agent-desk-controller/",
+       "where": "The Gadgeteer on SlashVibe",
+       "date": "2026-11-15"
+      },
+      {
+       "text": "(paraphrase) CtrlVibe Configurator software not publicly available; will be released when the campaign ends; MCU 'TBD'",
+       "url": "https://cnx-software.com/2026/08/05/ctrlvibe-ai-console-keypad-an-openai-codex-micro-alternative-for-ai-workflows/",
+       "where": "CNX Software on CtrlVibe",
+       "date": "2026-08-05"
+      },
+      {
+       "text": "(paraphrase) Hardware 'Premium, but not unprecedented'; value is in combining parts",
+       "url": "https://www.backingx.com/blog/decokee-quake-review-ai-desktop-revolution",
+       "where": "BackingX on Decokee Quake (Kickstarter AI desk copilot)"
+      }
+     ]
+    },
+    {
+     "theme": "Funding trajectories: agent-control hardware is a small niche, and SlashVibe is the one breakout",
+     "summary": "Dedicated coding-agent controllers mostly raise little: AgentDeck CA$597 from 3 backers, V14 $2,018 from 13, CtrlVibe HK$80,514 (~US$10k) from 59. SlashVibe broke out at $142,271 from 635 backers ($224 average) by 2026-11-18, after a pre-launch X teaser with ~297k views and $1 early-bird reservations. Broader 'AI desk copilot' hardware raises far more (Decokee Quake $297,881 / 883; Violoop HK$26.1M / 5,720), so mass appeal comes from general AI-assistant framing, not coding-agent-only framing.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "Pledged $142,271 of $10,000 goal, 635 backers, avg $224/backer; launched Nov 10, ends Dec 10 (as of 2026-11-18). Earlier: $68k+ (Nov 11), $93,699/417 (Nov 12), $122,881/552 (Nov 15)",
+       "url": "https://kicktraq.com/projects/loda/slashvibe/",
+       "where": "Kicktraq (SlashVibe), cross-checked with The Gadgeteer and Yanko Design",
+       "date": "2026-11-18"
+      },
+      {
+       "text": "Pledged HK$80,514 of HK$10,000, 59 backers, Jul 30 - Sep 13, successful",
+       "url": "https://www.kicktraq.com/projects/663521697/ctrlvibe-ai-keyboard-workflow-control-console-for-the-ai-era/",
+       "where": "Kicktraq (CtrlVibe)",
+       "date": "2026-09-13"
+      },
+      {
+       "text": "Pledged $2,018 of $2,000, 13 backers, Oct 19 - Nov 8, successful",
+       "url": "https://www.pledgebox.com/projects/v14-the-ai-coding-remote-that-keeps-you-in-the-flow",
+       "where": "PledgeBox (V14 AI coding remote)",
+       "date": "2026-11-18"
+      },
+      {
+       "text": "Pledged CA$597 of CA$71,000 (1%), 3 backers, ends Dec 1 (as of 2026-11-18)",
+       "url": "https://www.pledgebox.com/projects/agentdeck-the-physical-control-deck-for-ai-coding-agents",
+       "where": "PledgeBox (AgentDeck)",
+       "date": "2026-11-18"
+      },
+      {
+       "text": "Pledged HK$26,145,302, 5,720 backers, Sep 15 - Oct 30, successful",
+       "url": "https://www.pledgebox.com/projects/violoop-plug-in-ai-for-your-computer",
+       "where": "PledgeBox (Violoop plug-in AI box, adjacent)",
+       "date": "2026-11-18"
+      },
+      {
+       "text": "Pledged $297,881, 883 backers (Jan 27 - Mar 13, 2026)",
+       "url": "http://www.kicktraq.com/projects/decokee/decokee-quake-the-ultimate-desktop-ai-copilot/",
+       "where": "Kicktraq/Kickstarter (Decokee Quake, adjacent)",
+       "date": "2026-03-13"
+      },
+      {
+       "text": "Launch teaser: 355 likes, 137 reposts, 271 replies, ~297k views (as of 2026-11-18)",
+       "url": "https://x.com/slashvibe_ai/status/2110369571441934580",
+       "where": "X (SlashVibe official, posted 2026-10-14)",
+       "date": "2026-10-14"
+      }
+     ]
+    }
+   ],
+   "feature_requests": [
+    {
+     "request": "Work with any agent, Claude Code above all, not just one vendor's app; open bridge/driver so third-party agents can drive the LEDs and keys",
+     "evidence_url": "https://github.com/anthropics/claude-code/issues/73822"
+    },
+    {
+     "request": "Per-session status light or key showing which agent is waiting for a decision, finished or stuck",
+     "evidence_url": "https://news.ycombinator.com/item?id=48924099"
+    },
+    {
+     "request": "Physical Approve / Always Allow / Deny keys that answer the agent's real permission prompt",
+     "evidence_url": "https://news.ycombinator.com/item?id=48925155"
+    },
+    {
+     "request": "Countdown on the approval prompt and stats such as median approval response time and approval/denial counters",
+     "evidence_url": "https://github.com/anthropics/claude-desktop-buddy/pulls"
+    },
+    {
+     "request": "Built-in microphone (and speaker) for voice prompts",
+     "evidence_url": "https://news.ycombinator.com/item?id=48927014"
+    },
+    {
+     "request": "Choice of push-to-talk vs always-on listening, with privacy-respecting defaults (people object to hearing voices all day)",
+     "evidence_url": "https://news.ycombinator.com/item?id=48926859"
+    },
+    {
+     "request": "Separate or external mic input (3.5mm) so mechanical key clicks don't spoil dictation",
+     "evidence_url": "https://x.com/op7418/status/1999041928122495026"
+    },
+    {
+     "request": "Linux support alongside macOS/Windows",
+     "evidence_url": "https://news.ycombinator.com/item?id=48925471"
+    },
+    {
+     "request": "Small LCD on a cross-platform (Mac + Linux) macro pad",
+     "evidence_url": "https://news.ycombinator.com/item?id=48923545"
+    },
+    {
+     "request": "Open-source firmware and published protocol/license before shipping; ability to fork",
+     "evidence_url": "https://the-gadgeteer.com/2026/11/15/slashvibe-open-source-ai-agent-desk-controller/"
+    },
+    {
+     "request": "Lower price or bring-your-own-hardware path (generic macropad, Stream Deck, sub-$60 boards)",
+     "evidence_url": "https://www.v2ex.com/t/1238244"
+    },
+    {
+     "request": "Support for more cheap maker boards (M5StickS3, M5StickC Plus2, CYD ESP32-2432S028R, Tidbyt)",
+     "evidence_url": "https://github.com/anthropics/claude-desktop-buddy/pull/50"
+    },
+    {
+     "request": "Haptic/vibration alerts when an agent needs you",
+     "evidence_url": "https://github.com/anthropics/claude-desktop-buddy/pulls"
+    },
+    {
+     "request": "Show more than six concurrent sessions on the hardware",
+     "evidence_url": "https://kingy.ai/blog/codex-micro-review/"
+    },
+    {
+     "request": "Monitor agents running on remote machines over SSH, not only local sessions",
+     "evidence_url": "https://github.com/rullerzhou-afk/clawd-on-desk/issues/9"
+    },
+    {
+     "request": "Agent session panel listing all sessions",
+     "evidence_url": "https://github.com/rullerzhou-afk/clawd-on-desk/issues/115"
+    },
+    {
+     "request": "Bundle value with the hardware, such as included agent-subscription months, rather than adding a subscription",
+     "evidence_url": "https://news.ycombinator.com/item?id=48929975"
+    },
+    {
+     "request": "Control agents away from the desk (watch / phone / CarPlay)",
+     "evidence_url": "https://news.ycombinator.com/item?id=48356768"
+    }
+   ],
+   "notes": "Coverage limits (2026-11-18):\n1) On-campaign backer comments, FAQs and updates could not be read. kickstarter.com returned HTTP 403 for /comments, /faqs, /posts and /description on SlashVibe, Violoop and others. The SlashVibe page listing showed \"17 Updates, 1 Comments, 24 Community\", so visible backer discussion is close to zero anyway. CtrlVibe (59 backers), V14 (13) and AgentDeck (3) are too small to have meaningful comment threads. Backer worries above therefore come mainly from Hacker News (the 306-point / 253-comment Codex Micro thread, 2026-07-15), GitHub issues/PRs, V2EX, press caveats and the campaigns' own FAQs and risk sections.\n2) Reddit could not be fetched (www.reddit.com and old.reddit.com both refused), and reddit.com is blocked as a search domain, so no verbatim Reddit quotes are included. Secondary coverage reports the Reddit reaction to Codex Micro as largely negative (one user called it a 'prank'), but that is unverified here.\n3) The web-search budget ran out near the end. Hackaday comments, Product Hunt and X replies (the SlashVibe teaser had 271 replies) were not mined, and are the best next sources for more verbatim backer voice.\n4) SlashVibe price points vary by source and date: $149 ($1 reservation, slashvibe.ai/earlybird), $169 (Day 1 special, sold out), $189 early bird, $249 retail. Optional subscription plans are $8 and $14/month, and backers get 1 free Pro month. AGPL-3.0 is promised for the desktop app, firmware, protocol and SDK, but not the hardware design files or backend. Ships March 2027. Specs list macOS and Windows only.\n5) VibeKeys (vibekeys.dev; $39 to $99 keypads, $69 VibeBuddy) is sold direct, not crowdfunded. No backer data exists.\n6) Treat vendor-authored pages (ClawMetry, Harness, Ulanzi, VibeKeys blog) as evidence of positioning, not of user demand.\n7) Codex Micro was sold out with no restock date as of 2026-10-10 (Kingy). That is a scarcity and demand signal despite the backlash.",
+   "lane": "crowdfunding"
+  },
+  {
+   "themes": [
+    {
+     "theme": "Tokens are not productivity: leaderboards and burn-bragging get mocked as a Goodhart's-law trap",
+     "summary": "This is the loudest skeptic signal. Developers compare token counts to lines of code. They say any token leaderboard gets gamed, and they mock public burn-flexing as addiction or wasted money. Big-company leaderboards were shut down or disowned in 2026: Meta's 'Claudeonomics' went down within days, Shopify renamed its board to a usage dashboard, and Microsoft told engineers tokenmaxxing is 'not what we are optimizing for'. Usage data backs the skeptics: TechCrunch cites Jellyfish finding 2x throughput at 10x token cost. Show HN usage leaderboards (Straude, CCLeaderboard) draw replies like 'Claude golf' and 'I hope it's a joke'. Rate-limit cuts in Aug 2025 were partly blamed on leaderboard flexers.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "A leaderboard of who can blow the most tokens/money?",
+       "url": "https://news.ycombinator.com/item?id=47066563",
+       "where": "HN, Show HN: Strava for Claude Code (nusl)",
+       "date": "2026-02-18"
+      },
+      {
+       "text": "AI output in our work should be measured in engineering progress, not in use metrics, right?",
+       "url": "https://news.ycombinator.com/item?id=47066619",
+       "where": "HN, Strava for Claude Code (maxverse)",
+       "date": "2026-02-18"
+      },
+      {
+       "text": "I hope it's a joke, but I'm not as sure as I'd like to be.",
+       "url": "https://news.ycombinator.com/item?id=47066850",
+       "where": "HN, Strava for Claude Code (InsideOutSanta)",
+       "date": "2026-02-18"
+      },
+      {
+       "text": "Claude golf",
+       "url": "https://news.ycombinator.com/item?id=47066886",
+       "where": "HN, Strava for Claude Code (is_true)",
+       "date": "2026-02-18"
+      },
+      {
+       "text": "You can't possibly figure out who's the most effective by looking at token usage only.",
+       "url": "https://news.ycombinator.com/item?id=44499992",
+       "where": "HN, Show HN: CCLeaderboard (marcofiset)",
+       "date": "2025-07-08"
+      },
+      {
+       "text": "using the money spent on tokens per developer as their efficiency metric. Insane.",
+       "url": "https://news.ycombinator.com/item?id=48110529",
+       "where": "HN, Amazon employees are 'tokenmaxxing' thread (bgnn); story 251 pts/253 comments as of 2026-11-18",
+       "date": "2026-05-12"
+      },
+      {
+       "text": "The moment they made it a metric they failed to do anything useful.",
+       "url": "https://news.ycombinator.com/item?id=48110529",
+       "where": "HN, Amazon tokenmaxxing thread (duxup)",
+       "date": "2026-05-12"
+      },
+      {
+       "text": "my coworkers are playing 20 questions every morning to keep their metrics up.",
+       "url": "https://news.ycombinator.com/item?id=48110529",
+       "where": "HN, Amazon tokenmaxxing thread (cactacea)",
+       "date": "2026-05-12"
+      },
+      {
+       "text": "Easy to graph, easy to \"manage\".",
+       "url": "https://news.ycombinator.com/item?id=48268871",
+       "where": "HN, Uber COO tokenmaxxing thread (LaurensBER); story 293 pts/338 comments as of 2026-11-18",
+       "date": "2026-05-25"
+      },
+      {
+       "text": "the number of tokens a dev generates can easily be gamed, and if this metric is measured then devs will indeed game it.",
+       "url": "https://newsletter.pragmaticengineer.com/p/the-pulse-tokenmaxxing-as-a-weird-6b2",
+       "where": "The Pragmatic Engineer, Gergely Orosz",
+       "date": "2026-04-23"
+      },
+      {
+       "text": "Default to always using the agent, even when I know I could do the work by hand much faster.",
+       "url": "https://newsletter.pragmaticengineer.com/p/the-pulse-tokenmaxxing-as-a-weird-6b2",
+       "where": "Pragmatic Engineer, quoting a Microsoft engineer on tokenmaxxing tactics",
+       "date": "2026-04-23"
+      },
+      {
+       "text": "we don't want to encourage 'competing' to make it to the top of this board",
+       "url": "https://newsletter.pragmaticengineer.com/p/the-pulse-tokenmaxxing-as-a-weird-6b2",
+       "where": "Pragmatic Engineer, quoting Shopify's Farhan Thawar on renaming a leaderboard to a usage dashboard",
+       "date": "2026-04-23"
+      },
+      {
+       "text": "due to data from this dashboard being shared externally, we've made the decision to shutter Claudeonomics for now.",
+       "url": "https://fortune.com/2026/04/09/meta-killed-employee-ai-token-dashboard/",
+       "where": "Fortune, Meta's internal token leaderboard ('Token Legend', 'Cache Wizard' titles) shut down",
+       "date": "2026-04-09"
+      },
+      {
+       "text": "Tokenmaxxing Is Not What We Are Optimizing For",
+       "url": "https://www.404media.co/microsoft-tells-engineers-tokenmaxxing-is-not-what-we-are-optimizing-for/",
+       "where": "404 Media headline quoting Microsoft",
+       "date": "2026-08-04"
+      },
+      {
+       "text": "two times the throughput at 10 times the cost of tokens",
+       "url": "https://techcrunch.com/2026/04/17/tokenmaxxing-is-making-developers-less-productive-than-they-think/",
+       "where": "TechCrunch, citing Jellyfish data on 7,548 engineers",
+       "date": "2026-04-17"
+      },
+      {
+       "text": "It is a measure of how hard someone pressed the accelerator.",
+       "url": "https://dev.to/thesythesis/the-leaderboard-4l15",
+       "where": "DEV Community essay 'The Leaderboard'",
+       "date": "2026-04-11"
+      },
+      {
+       "text": "these leaderboard folks to me are just flexing through addiction",
+       "url": "https://blog.kilo.ai/p/rate-limits-hit-again",
+       "where": "Kilo Code blog reader comment (Josh Way), on Viberank leaderboard users and Claude rate limits",
+       "date": "2025-08-25"
+      }
+     ]
+    },
+    {
+     "theme": "\"Just use a notification hook / tmux\": the gadget or app is redundant with free built-ins",
+     "summary": "The most common dismissal of companion apps, remote-control tools and status displays is that Claude Code hooks, the terminal bell, tmux/screen or Tailscale already do the job. Session managers get called 'a tmux wrapper'. Remote control gets called 're-invented GNU screen'. Commenters on music/voice notification plugins point to the built-in Notification hook. Some say Claude has become good enough at notifying that they removed their own hooks. Even the Clawdmeter maker admits the device is 'not replacing anything'.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "you can also just add a Notification Hook (/hooks)",
+       "url": "https://news.ycombinator.com/item?id=46337686",
+       "where": "HN, Show HN: Claude Code plugin to play music when waiting on input (vunderba)",
+       "date": "2025-12-20"
+      },
+      {
+       "text": "Curious why you aren't using Claude Code's stop/notification hook",
+       "url": "https://news.ycombinator.com/item?id=47082036",
+       "where": "HN, cmux Show HN (lawrencechen)",
+       "date": "2026-02-20"
+      },
+      {
+       "text": "I already had built a hook with desktop notification and window highlighting myself",
+       "url": "https://news.ycombinator.com/item?id=46985729",
+       "where": "HN, Warcraft III Peon voice notifications for Claude Code (bothlabs)",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "I used to have some hooks for local notification, but lately I find that claude is pretty good at notifying",
+       "url": "https://news.ycombinator.com/item?id=48962557",
+       "where": "HN, Setting up your spare Mac for Claude Code (vcf)",
+       "date": "2026-07-18"
+      },
+      {
+       "text": "We've re-invented GNU screen in the most inefficient way imaginable",
+       "url": "https://news.ycombinator.com/item?id=47150046",
+       "where": "HN, Claude Code Remote Control (bandrami)",
+       "date": "2026-02-25"
+      },
+      {
+       "text": "how is this different than using tmux? i don't understand what it does",
+       "url": "https://github.com/njbrake/agent-of-empires",
+       "where": "HN Show HN thread for agent-of-empires session manager (heliumtera); 118 pts/44 comments as of 2026-11-18",
+       "date": "2026-01-12"
+      },
+      {
+       "text": "Feels expensive for something that an engineer can hack in a couple of ours with tailscale and Claude Code.",
+       "url": "https://news.ycombinator.com/item?id=46992372",
+       "where": "HN, Launch HN: Omnara (lalo2302)",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "This is too complicated. I just output <usage left expressed in days>/<days left> in some statusbar.",
+       "url": "https://news.ycombinator.com/item?id=50006518",
+       "where": "HN, Show HN: Pacer usage forecaster (lostmsu)",
+       "date": "2026-10-08"
+      },
+      {
+       "text": "Uhm, does this do anything else useful besides shelling out to ccusage?",
+       "url": "https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor",
+       "where": "HN thread for Claude Code Usage Monitor (radicality); 245 pts/135 comments as of 2026-11-18",
+       "date": "2025-06-19"
+      },
+      {
+       "text": "I know it's not replacing anything — like, you could have this on your computer — but it's just fun.",
+       "url": "https://techcrunch.com/2026/05/14/clawdmeter-turns-your-claude-code-usage-stats-into-a-tiny-desktop-dashboard/",
+       "where": "TechCrunch, Clawdmeter creator on his own desk display",
+       "date": "2026-05-14"
+      }
+     ]
+    },
+    {
+     "theme": "Overpriced single-purpose desk hardware: 'a reskinned macropad' and 'a more limited Stream Deck'",
+     "summary": "OpenAI's Codex Micro keypad (Work Louder, about $230) drew the biggest hardware reaction: 306 pts and 253 comments on HN as of 2026-11-18. Roughly two thirds of the first 30 top-level comments were skeptical. Commenters called it a rebadged Work Louder Creator Micro 2 and compared it unfavourably with a $50 Stream Deck that has dynamic LCD keys. Others called it vendor lock-in (Codex-only, no Linux) or a marketing gimmick that people stop caring about after a day. Someone built an open-source clone for $40. Reviewers say the lights show task status, not whether the agent's output is correct.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "This is a rebranded/reskinned WORK LOUDER Creator Micro 2 btw",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "HN, OpenAI Codex Micro launch thread (paxys)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "$230 for essentially a fancy numpad that's only useful for one tool?",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "HN, Codex Micro thread (LetsGetTechnicl)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "what does this do that a $50 Streamdeck cannot?",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "HN, Codex Micro thread (rykuno)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "This is just a Macropad, right? All of the smarts are on the PC side. So why is it so expensive?",
+       "url": "https://news.ycombinator.com/item?id=48925533",
+       "where": "HN, Codex Micro thread (joshmarinacci)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "Seems a bit silly (especially given how easy LLM's make building such an accessory)",
+       "url": "https://news.ycombinator.com/item?id=48923900",
+       "where": "HN, Codex Micro thread (cphoover)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "It's an amusing marketing gimmick, and historical artifact, if nothing else.",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "HN, Codex Micro thread (hadlock)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "its simply a novel, oddly satisfying input mechanism, at least for the first day.",
+       "url": "https://news.ycombinator.com/item?id=48924456",
+       "where": "HN, Codex Micro thread (flyingcircus3)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "OpenAI released an agent controller with no agent.",
+       "url": "https://news.ycombinator.com/item?id=48929331",
+       "where": "HN, Codex Micro thread (orangelimetea)",
+       "date": "2026-07-16"
+      },
+      {
+       "text": "A deeply branded Codex accessory becomes less useful if the user later adopts Claude Code or another agent.",
+       "url": "https://www.remio.ai/post/openais-micro-ai-keypad-is-fun-but-hard-to-justify",
+       "where": "remio review of OpenAI Micro (Martin Chen)",
+       "date": "2026-07-26"
+      },
+      {
+       "text": "The keypad cannot decide whether the agent's output is correct.",
+       "url": "https://www.remio.ai/post/openais-micro-ai-keypad-is-fun-but-hard-to-justify",
+       "where": "remio review of OpenAI Micro",
+       "date": "2026-07-26"
+      },
+      {
+       "text": "AI scientist builds an open-source Codex Micro from scratch for $40",
+       "url": "https://iluvatarlabs.com/blog/2026/08/how-we-cloned-openai-codex-micro/",
+       "where": "Show HN title (HN 49453466, 4 pts as of 2026-11-18)",
+       "date": "2026-08-26"
+      }
+     ]
+    },
+    {
+     "theme": "Commodity and 'Sherlock' risk: every dev vibe-codes one, and first-party platforms will ship it",
+     "summary": "Skeptics say these tools are trivially cloneable ('the vibe coding equivalent of hello world', '50 clones in the comment section'). They expect Anthropic, OpenAI and Google to ship the same features, and that has already happened: Claude Code Remote Control, the Desktop Buddy BLE API, the /usage command, and OpenAI's own Micro keypad. Free open-source trackers undercut paid ones, and YC-funded wrappers get openly mocked.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "this is the vibe coding equivalent of 'hello world' at this stage.",
+       "url": "https://news.ycombinator.com/item?id=47292378",
+       "where": "HN, Show HN: CC Usage Bar menu-bar usage app (bazhand)",
+       "date": "2026-03-07"
+      },
+      {
+       "text": "Its hilarious how there's 50 clones of the same thing in the comment section",
+       "url": "https://news.ycombinator.com/item?id=46993224",
+       "where": "HN, Launch HN: Omnara (dakolli)",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "So you're just a Claude Code wrapper? Question to YC: how did this get funded?",
+       "url": "https://news.ycombinator.com/item?id=46992059",
+       "where": "HN, Launch HN: Omnara (koakuma-chan)",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "I would be blown away if Anthropic, OpenAI, and Google don't all offer this functionality in the near future.",
+       "url": "https://news.ycombinator.com/item?id=46996525",
+       "where": "HN, Launch HN: Omnara (saberience); Anthropic shipped Remote Control about two weeks later",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "I don't quite see the appeal, because Claude Code already supports something similar.",
+       "url": "https://news.ycombinator.com/item?id=46991920",
+       "where": "HN, Launch HN: Omnara (ncphillips)",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "I think Claude does this already",
+       "url": "https://news.ycombinator.com/item?id=50003562",
+       "where": "HN, Show HN: Pacer (spacedcowboy)",
+       "date": "2026-10-08"
+      },
+      {
+       "text": "there are already free/open-source trackers for Cursor or Claude usage",
+       "url": "https://news.ycombinator.com/item?id=48609047",
+       "where": "HN, usage-tracker Show HN (1Kapish)",
+       "date": "2026-06-20"
+      },
+      {
+       "text": "it's a single 400 line python file that just wraps ccusage",
+       "url": "https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor",
+       "where": "HN thread for Claude Code Usage Monitor (youcefb)",
+       "date": "2025-06-19"
+      },
+      {
+       "text": "anyone can build ANYTHING and they chose to make another Claude Code and presents it like its an original invention",
+       "url": "https://news.ycombinator.com/item?id=49376144",
+       "where": "HN, Slack Code thread (altmanaltman)",
+       "date": "2026-08-20"
+      }
+     ]
+    },
+    {
+     "theme": "Gamified AI coding is a slot machine: addiction, anxiety and wasted time",
+     "summary": "A durable framing since mid-2025 is that agentic coding is already a variable-reward slot machine. On this view, pets, streaks, leaderboards and recaps pour fuel on a compulsive loop that feeds 'artificial anxieties'. Tamagotchi-style pets are greeted with 'judging my habits' jokes. Pushback exists: the original author found it joyful, and others say rote work should be automated. On balance the thread is a warning for any product that rewards usage volume.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "There's a reason intermittent rewards are so intoxicating to naturally evolved brains",
+       "url": "https://news.ycombinator.com/item?id=44702623",
+       "where": "HN, 'Claude Code is a slot machine' (christiangenco); story 266 pts/291 comments as of 2026-11-18",
+       "date": "2025-07-27"
+      },
+      {
+       "text": "Sometimes I'll admit that I do treat Claude like a slot machine, just shooting for luck.",
+       "url": "https://news.ycombinator.com/item?id=44702820",
+       "where": "HN, 'Claude Code is a slot machine' (micahscopes)",
+       "date": "2025-07-27"
+      },
+      {
+       "text": "in the sense that is totally unpredictable and suck your time into the void without learning anything?",
+       "url": "https://news.ycombinator.com/item?id=44702793",
+       "where": "HN, 'Claude Code is a slot machine' (quantumHazer)",
+       "date": "2025-07-27"
+      },
+      {
+       "text": "the workflow boils down to waiting and then getting interrupted, and then waiting again.",
+       "url": "https://news.ycombinator.com/item?id=44703355",
+       "where": "HN, 'Claude Code is a slot machine' (fleebee)",
+       "date": "2025-07-27"
+      },
+      {
+       "text": "I do hope that this sort of thing doesn't induce artificial anxieties",
+       "url": "https://news.ycombinator.com/item?id=47071876",
+       "where": "HN, Strava for Claude Code (nusl)",
+       "date": "2026-02-19"
+      },
+      {
+       "text": "people on reddit and discord started actively competing for who had the biggest numbers",
+       "url": "https://news.ycombinator.com/item?id=47066856",
+       "where": "HN, Strava for Claude Code (serf)",
+       "date": "2026-02-18"
+      },
+      {
+       "text": "omg tamagotchi flashbacks, except this time it's judging my Claude Code habits",
+       "url": "https://news.ycombinator.com/item?id=48797472",
+       "where": "HN, Show HN: Nomlings token-eating pet (avihashu)",
+       "date": "2026-07-05"
+      },
+      {
+       "text": "Some people on Reddit called this abuse.",
+       "url": "https://www.reddit.com/r/Anthropic/comments/1mqs5rf/this_guy_consumed_50000_in_30_days_on_a_200/",
+       "where": "r/Anthropic thread on a user who burned $50k of tokens on a $200 plan, as summarised by the user's own dev.to post",
+       "date": "2025-08-17"
+      },
+      {
+       "text": "Nah, it would become actually useful. Companies are not going to keep paying for slot machines.",
+       "url": "https://news.ycombinator.com/item?id=44702643",
+       "where": "HN, 'Claude Code is a slot machine' (esafak, pushback)",
+       "date": "2025-07-27"
+      }
+     ]
+    },
+    {
+     "theme": "Privacy, security and trust: don't route my code, credentials or approvals through your gadget or cloud",
+     "summary": "Developers object to publishing team usage to third-party sites ('all risk and no upside'). They object to relays without end-to-end encryption, to vendor 'remote access doors', and to usage apps that read Keychain OAuth tokens or browser cookies. They also warn that one-tap approval buttons on keypads and phones make it easy to authorise the wrong action and to stop reading the code.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "Why do I want to publish my team's ai usage with this random site? It's all risk and no upside.",
+       "url": "https://news.ycombinator.com/item?id=48153208",
+       "where": "HN, Show HN: Claude Code vs Codex usage leaderboard (bot403)",
+       "date": "2026-05-15"
+      },
+      {
+       "text": "You sign up with them and they track your usage. Why would anyone want to do this?",
+       "url": "https://news.ycombinator.com/item?id=48153152",
+       "where": "HN, Claude Code vs Codex usage leaderboard (bethekidyouwant)",
+       "date": "2026-05-15"
+      },
+      {
+       "text": "That means you don't have E2EE, period.",
+       "url": "https://news.ycombinator.com/item?id=46997846",
+       "where": "HN, Launch HN: Omnara (sneak)",
+       "date": "2026-02-13"
+      },
+      {
+       "text": "I really don't want to trust an AI company with a remote access door on my setup",
+       "url": "https://news.ycombinator.com/item?id=47150348",
+       "where": "HN, Claude Code Remote Control (gregoriol)",
+       "date": "2026-02-25"
+      },
+      {
+       "text": "It reads the OAuth tokens that Claude Code stores in macOS Keychain.",
+       "url": "https://news.ycombinator.com/item?id=47036130",
+       "where": "HN, Show HN: cc-hdrm menu bar usage app (author rajish, describing how it works)",
+       "date": "2026-02-16"
+      },
+      {
+       "text": "This auto-detects cookies from your browser so there's nothing to configure",
+       "url": "https://news.ycombinator.com/item?id=47162935",
+       "where": "HN, AIQuotaBar menu bar app (author toprak123)",
+       "date": "2026-02-26"
+      },
+      {
+       "text": "A convenient approval button can become an easy way to authorize the wrong task.",
+       "url": "https://www.axios.com/2026/07/15/openai-keyboard-codex-agents",
+       "where": "Axios on OpenAI's Codex keypad, as quoted in remio's review",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "More ways to not look at the code written. Where are we trying to go ?",
+       "url": "https://news.ycombinator.com/item?id=48929814",
+       "where": "HN, Codex Micro thread (bicepjai)",
+       "date": "2026-07-16"
+      },
+      {
+       "text": "$250 is insane. I'm going to wait for the temu version with the usual hidden mic and phone-home feature",
+       "url": "https://news.ycombinator.com/item?id=48925245",
+       "where": "HN, Codex Micro thread (zuzululu)",
+       "date": "2026-07-15"
+      }
+     ]
+    },
+    {
+     "theme": "Subscription and pricing fatigue for agent add-ons",
+     "summary": "Monthly fees on top of a Claude or Codex subscription are a recurring objection, especially when an open-source or DIY version exists. Commenters say they would rather spend on the model (top-ups, backup models) than on tools that ration usage.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "20$ a month seems overly expensive when theres an open source end to end encrypted project called happy coding",
+       "url": "https://news.ycombinator.com/item?id=47034957",
+       "where": "HN, Launch HN: Omnara (quotz)",
+       "date": "2026-02-16"
+      },
+      {
+       "text": "Just as some feedback, your pricing doesn't make sense to me.",
+       "url": "https://news.ycombinator.com/item?id=47003215",
+       "where": "HN, Launch HN: Omnara (fluidcruft)",
+       "date": "2026-02-13"
+      },
+      {
+       "text": "Pay to publish your team's ai usage*",
+       "url": "https://news.ycombinator.com/item?id=48153242",
+       "where": "HN, Claude Code vs Codex usage leaderboard (codybontecou)",
+       "date": "2026-05-15"
+      },
+      {
+       "text": "you could just vibe code your own leaderboard and not have to pay monthly?",
+       "url": "https://news.ycombinator.com/item?id=48154757",
+       "where": "HN, Claude Code vs Codex usage leaderboard (Esophagus4)",
+       "date": "2026-05-15"
+      },
+      {
+       "text": "slowing down isn't an option—I just swap to a backup model or buy a top-up.",
+       "url": "https://news.ycombinator.com/item?id=50003012",
+       "where": "HN, Show HN: Pacer (aglhz0752)",
+       "date": "2026-10-08"
+      },
+      {
+       "text": "I honestly only care about money, not about tokens whatever these are.",
+       "url": "https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor",
+       "where": "HN thread for Claude Code Usage Monitor (soco)",
+       "date": "2025-06-19"
+      }
+     ]
+    },
+    {
+     "theme": "Failures, removals and abandonment: cloud-tethered devices brick, first-party fun gets cut, tools break your setup",
+     "summary": "Concrete failure cases. Tidbyt, the closest pixel-desk-display analogue, stopped making hardware after its acquihire by Modal (Nov 2024). Owners feared paperweights and e-waste and were angry about poor communication, and a community self-host project (Tronbyt) appeared. Anthropic's /buddy terminal pet shipped as an April Fools feature, was removed in v2.1.97 without a changelog note, and related issues were closed 'not planned'. Meta's leaderboard died in days. A tmux session manager corrupted a user's session. Remote Control launched 'buggy to no end'. Hobby desk-companion Show HNs mostly sit at 1-6 points with 0-2 comments (as of 2026-11-18), which reads as indifference.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "do I feel like it won't be long until my Tidbyt becomes a paperweight?",
+       "url": "https://discuss.tidbyt.com/t/rip-tidbyt/7048",
+       "where": "Tidbyt forum 'RIP Tidbyt' (GainsMcDonald86)",
+       "date": "2024-11-11"
+      },
+      {
+       "text": "You'd think they could have bothered to tell us, their customers.",
+       "url": "https://discuss.tidbyt.com/t/rip-tidbyt/7048",
+       "where": "Tidbyt forum 'RIP Tidbyt' (gordon)",
+       "date": "2024-11-11"
+      },
+      {
+       "text": "won't prevent thousands of devices becoming e-waste",
+       "url": "https://discuss.tidbyt.com/t/rip-tidbyt/7048",
+       "where": "Tidbyt forum 'RIP Tidbyt' (grum)",
+       "date": "2024-11-12"
+      },
+      {
+       "text": "Tidbyt's stock firmware routes all of its requests through the Tidbyt company's servers.",
+       "url": "https://macwright.com/2025/04/12/tidbyt-second-life",
+       "where": "Tom MacWright, 'Tidbyt without the company'",
+       "date": "2025-04-12"
+      },
+      {
+       "text": "I am currently keeping v2.1.96 to keep /buddy.",
+       "url": "https://github.com/anthropics/claude-code/issues/45596",
+       "where": "GitHub issue 'Bring Back Buddy' (balandari); issue has 1,197 thumbs-up as of 2026-11-18",
+       "date": "2026-04"
+      },
+      {
+       "text": "WARNING! I tried this and it corrupted my entire tmux session, leaving me to have to recreate the entire thing",
+       "url": "https://github.com/njbrake/agent-of-empires",
+       "where": "HN thread for agent-of-empires (chrisvalleybay)",
+       "date": "2026-01-12"
+      },
+      {
+       "text": "This is buggy to no end. Anthropic needs to slow down",
+       "url": "https://news.ycombinator.com/item?id=47151611",
+       "where": "HN, Claude Code Remote Control launch",
+       "date": "2026-02-25"
+      },
+      {
+       "text": "The employee took down the dashboard at their discretion; Meta did not request this action.",
+       "url": "https://fortune.com/2026/04/09/meta-killed-employee-ai-token-dashboard/",
+       "where": "Fortune, on Meta's Claudeonomics leaderboard shutdown",
+       "date": "2026-04-09"
+      }
+     ]
+    },
+    {
+     "theme": "Workplace and lifestyle fit: voice remotes, phone approvals and status gadgets don't suit real jobs",
+     "summary": "Some objections are social, not technical. Voice control in open offices is unwelcome. 'Coding from the toilet' gets ridiculed. Usage pacing tools are 'unusable in a work environment'. Controllers only help if you sit at the keyboard all day. Some engineers also say they do not want more vibe coding away from the laptop.",
+     "strength": "weak",
+     "quotes": [
+      {
+       "text": "Yeah because open offices really need people talking to their computers next to the meetings they always have.",
+       "url": "https://news.ycombinator.com/item?id=48926482",
+       "where": "HN, Codex Micro thread (Anoian)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "I don't want to hear my voice all day, nor my coworkers.",
+       "url": "https://news.ycombinator.com/item?id=48932236",
+       "where": "HN, Codex Micro thread (fooker)",
+       "date": "2026-07-16"
+      },
+      {
+       "text": "And you would need to spend your day at your keyboard for this to be useful anyway.",
+       "url": "https://news.ycombinator.com/item?id=48923705",
+       "where": "HN, Codex Micro thread (delusional)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "coding from your bedroom, AND the toilet... is definitely (hopefully) not the future.",
+       "url": "https://news.ycombinator.com/item?id=47155033",
+       "where": "HN, Claude Code Remote Control (sp1nningaway)",
+       "date": "2026-02-25"
+      },
+      {
+       "text": "Also, I'm not sure many engineers really WANT to be able to do more \"vibe coding\" away from their laptop.",
+       "url": "https://news.ycombinator.com/item?id=46996525",
+       "where": "HN, Launch HN: Omnara (saberience)",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "it's sadly also unusable in a work environment.",
+       "url": "https://news.ycombinator.com/item?id=50002546",
+       "where": "HN, Show HN: Pacer (poisonborz)",
+       "date": "2026-10-08"
+      }
+     ]
+    }
+   ],
+   "feature_requests": [
+    {
+     "request": "Measure outcomes, not consumption: tie usage to shipped work, ROI or engineering progress instead of raw token counts",
+     "evidence_url": "https://news.ycombinator.com/item?id=47066619"
+    },
+    {
+     "request": "Anti-gaming and verification for any stats or leaderboards (verified data, not self-reported local logs)",
+     "evidence_url": "https://news.ycombinator.com/item?id=47067553"
+    },
+    {
+     "request": "Private, anonymous or team-only leaderboards instead of public posting of usage",
+     "evidence_url": "https://news.ycombinator.com/item?id=48153208"
+    },
+    {
+     "request": "Local-only / end-to-end encrypted operation; let code and data stay on the user's device with no remote sandbox",
+     "evidence_url": "https://news.ycombinator.com/item?id=46995459"
+    },
+    {
+     "request": "End-to-end encryption for remote control and approval relays",
+     "evidence_url": "https://news.ycombinator.com/item?id=46995532"
+    },
+    {
+     "request": "A physical quick-silence gesture on desk devices ('face down to silence' like Pixel phones)",
+     "evidence_url": "https://news.ycombinator.com/item?id=47924292"
+    },
+    {
+     "request": "Show remaining subscription usage at a glance, ideally as a single simple number (days of usage left vs days to reset)",
+     "evidence_url": "https://news.ycombinator.com/item?id=50006518"
+    },
+    {
+     "request": "Multi-agent support (Codex as well as Claude Code) so hardware and apps are not locked to one vendor",
+     "evidence_url": "https://news.ycombinator.com/item?id=47151021"
+    },
+    {
+     "request": "Linux support for agent controllers and keypads",
+     "evidence_url": "https://news.ycombinator.com/item?id=48925518"
+    },
+    {
+     "request": "Dynamic LCD keys / small screen rather than just LEDs; Stream Deck emulation layer",
+     "evidence_url": "https://news.ycombinator.com/item?id=48923545"
+    },
+    {
+     "request": "User-configurable button-to-skill/prompt mapping on agent keypads",
+     "evidence_url": "https://news.ycombinator.com/item?id=48923565"
+    },
+    {
+     "request": "Show what is being approved before a one-tap hardware/phone approval (guard against authorizing the wrong task)",
+     "evidence_url": "https://www.axios.com/2026/07/15/openai-keyboard-codex-agents"
+    },
+    {
+     "request": "Per-project, event-specific notifications (know which session finished or needs input)",
+     "evidence_url": "https://news.ycombinator.com/item?id=46990414"
+    },
+    {
+     "request": "Multiple concurrent sessions in remote-control tools (Remote Control launched with one session at a time)",
+     "evidence_url": "https://news.ycombinator.com/item?id=47151466"
+    },
+    {
+     "request": "Work-safe / enterprise-usable mode for usage and pacing tools",
+     "evidence_url": "https://news.ycombinator.com/item?id=50002546"
+    },
+    {
+     "request": "Self-hostable firmware and server so a desk device survives the vendor (no cloud tether, avoid e-waste)",
+     "evidence_url": "https://discuss.tidbyt.com/t/rip-tidbyt/7048"
+    },
+    {
+     "request": "Opt-in companion/pet as a plugin rather than a forced or removed built-in feature",
+     "evidence_url": "https://github.com/anthropics/claude-code/issues/45596"
+    },
+    {
+     "request": "A top-up or buy-capacity button on usage devices (flagged by press as potentially dangerous)",
+     "evidence_url": "https://techcrunch.com/2026/05/14/clawdmeter-turns-your-claude-code-usage-stats-into-a-tiny-desktop-dashboard/"
+    },
+    {
+     "request": "Cheaper or self-hosted tier for companion apps without paid cloud features (sandbox, voice)",
+     "evidence_url": "https://news.ycombinator.com/item?id=46995459"
+    }
+   ],
+   "notes": "Method: HN content was read through the official hn.algolia.com API (items and search endpoints). Quotes link to the matching news.ycombinator.com/item?id= URL: the comment ID where I had it, otherwise the story ID. The Claude-Code-Usage-Monitor and agent-of-empires HN threads are cited by their GitHub repo URL because I did not record the HN story ID; the quotes come from the HN comments on those stories. reddit.com and old.reddit.com could not be fetched. Reddit evidence is secondhand, through TechCrunch (Clawdmeter thread r/ClaudeCode/comments/1takxpl), dev.to (r/Anthropic 1mqs5rf) and remio (r/codex 1v2puf0), so no verbatim Reddit skeptic comment is quoted directly. X/Twitter and YouTube comments could not be searched in depth: the web-search budget for this run ran out before the X-focused query, and the remaining work used only fetches of URLs already found. I did not query search engines through other routes. The TechSpot comments page (403) and qz.com (403) were blocked. Points and reaction counts were seen on 2026-11-18. Counter-signals the skeptic case should be weighed against: (1) the 'Bring Back Buddy' issue #45596 has 1,197 thumbs-up and 646 hearts (as of 2026-11-18), with quotes like 'It made staring into the soulless terminal window bearable', which shows real demand for companions; (2) Clawdmeter's Reddit reaction was warm ('Anthropic should just mail these to us for free', 'hardware Tamagotchi for my context window', per TechCrunch 2026-05-14); (3) in the Codex Micro thread, system2 says 'I own 3 stream decks, and they are incredibly useful' and another commenter ordered one anyway; (4) the slot-machine story's own author called Claude Code 'the most joyful experience in my 25 years of coding'. Takeaways for positioning: skeptics accept glanceable status and limit-awareness. They reject (a) volume-as-achievement metrics, (b) paid wrappers around free hooks/tmux, (c) cloud-tethered or credential-reading designs, and (d) single-vendor, high-priced hardware. Hobby desk-companion launches on HN (Clawy, Nomlings, Desktop Buddy, Tamagotchi statusline) mostly got 1-6 points and 0-2 comments, which suggests indifference more than hostility. Tidbyt is the strongest cautionary failure for a cloud-dependent pixel desk display (hardware ended Nov 2024 after the Modal acquihire, followed by e-waste fears and a community self-host fork).",
+   "lane": "skeptics"
+  },
+  {
+   "themes": [
+    {
+     "theme": "\"Tell me which agent needs me\": demand for attention signals (sound, voice, pings)",
+     "summary": "This is the biggest pull on HN. The Warcraft III Peon voice-notification post for Claude Code was one of the most upvoted posts in this whole category: 1006 points and 301 comments as of 2026-11-18. It was quickly ported to Codex and Windsurf. Across many smaller Show HNs, people say the same thing: agents block silently on permission prompts, users lose track of which terminal or pane is waiting, and they drift off while they wait. Requests go beyond 'a ping' to 'which session, and what state'. A vocal minority dislikes notifications altogether, or only finds them useful for long tasks.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "Warcraft III Peon Voice Notifications for Claude Code (1006 points, 301 comments as of 2026-11-18)",
+       "url": "https://news.ycombinator.com/item?id=46985151",
+       "where": "HN story",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "But I have to admit, making it fun like this beats it by a lot.",
+       "url": "https://news.ycombinator.com/item?id=46985729",
+       "where": "HN comment, bothlabs, Peon-ping thread",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "I had wired up my local Claude Code instance to play back a sound on my Windows machine",
+       "url": "https://news.ycombinator.com/item?id=46985734",
+       "where": "HN comment, disillusioned, Peon-ping thread",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "so you know which session needs attention without looking.",
+       "url": "https://news.ycombinator.com/item?id=47334067",
+       "where": "HN comment, settinghead (Voxlert), CC Usage Bar thread",
+       "date": "2026-03-11"
+      },
+      {
+       "text": "I kept losing track of my terminal as I started using Claude Code, Gemini CLI, and Codex more heavily",
+       "url": "https://news.ycombinator.com/item?id=47676027",
+       "where": "Show HN: back2vibing, wjellyz",
+       "date": "2026-04-07"
+      },
+      {
+       "text": "I tend to get distracted when waiting for agents to run",
+       "url": "https://news.ycombinator.com/item?id=47678613",
+       "where": "HN comment, pmaddi, back2vibing thread",
+       "date": "2026-04-07"
+      },
+      {
+       "text": "agents silently block on permission prompts",
+       "url": "https://news.ycombinator.com/item?id=47310039",
+       "where": "HN comment, Beefin, Amux Show HN",
+       "date": "2026-03-09"
+      },
+      {
+       "text": "I added some simple idle and change detection, so you can see which agent needs your attention.",
+       "url": "https://news.ycombinator.com/item?id=46030840",
+       "where": "HN comment, ttobi, parallel agentic dev app thread",
+       "date": "2025-11-24"
+      },
+      {
+       "text": "jump to the exact window/tab that needs my attention",
+       "url": "https://news.ycombinator.com/item?id=49335164",
+       "where": "HN comment, rickye26, Saggar Show HN",
+       "date": "2026-08-17"
+      },
+      {
+       "text": "I don't like notifications. Then again, I don't have Claude do long things where I can go get a coffee",
+       "url": "https://news.ycombinator.com/item?id=46986198",
+       "where": "HN comment, AceJohnny2 (against), Peon-ping thread",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "a lot of apps go so overboard with them that I generally choose to silence them completely",
+       "url": "https://news.ycombinator.com/item?id=46986881",
+       "where": "HN comment, thunfischtoast (against), Peon-ping thread",
+       "date": "2026-02-12"
+      }
+     ]
+    },
+    {
+     "theme": "Parallel-agent overload: people want one glanceable view across many sessions",
+     "summary": "Power users run 3 to 12 or more agents in tmux, cmux or Ghostty tabs and struggle to keep track of them. Several self-limit because of anxiety. Multi-session tools draw real engagement: cmux got 198 points and Vibe Kanban 195 points (as of 2026-11-18), and a long tail of tmux/TUI dashboards (Amux, claude-dashboard, Corral, Batty, herdr) keeps appearing. The counter-arguments are that these tools drift into reinventing an IDE and that many are buggy.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "new flow state is having 10 terminal tabs in diff worktrees and trying to remember what each bit is",
+       "url": "https://news.ycombinator.com/item?id=48779017",
+       "where": "HN comment, tombot, Ask HN: experimenting with LLMs for coding",
+       "date": "2026-07-03"
+      },
+      {
+       "text": "I try not to run more than three sessions at once, or I get anxiety",
+       "url": "https://news.ycombinator.com/item?id=50366117",
+       "where": "HN comment, marshalla, Ask HN: What's your current AI agentic setup?",
+       "date": "2026-11-04"
+      },
+      {
+       "text": "I switched from Claude CLI to a custom-built harness because I got overwhelmed by walls of text in parallel sessions.",
+       "url": "https://news.ycombinator.com/item?id=50366117",
+       "where": "HN comment, sadilek, Ask HN agentic setup",
+       "date": "2026-11-04"
+      },
+      {
+       "text": "I stay typing in a pane while the agents work in theirs, in my peripheral vision",
+       "url": "https://news.ycombinator.com/item?id=48772574",
+       "where": "HN comment, kordlessagain, Ask HN: experimenting with LLMs",
+       "date": "2026-07-03"
+      },
+      {
+       "text": "~8-12 active Ghostty windows tiled so I can keep an eye on everyone's progress",
+       "url": "https://news.ycombinator.com/item?id=47079718",
+       "where": "HN comment, trevyn, Show HN: cmux (198 points as of 2026-11-18)",
+       "date": "2026-02-19"
+      },
+      {
+       "text": "it essentially flags the state of agents and what needs attention",
+       "url": "https://news.ycombinator.com/item?id=50414320",
+       "where": "HN comment, nvarsj, 'Goodbye Claude, hello Pi'",
+       "date": "2026-11-08"
+      },
+      {
+       "text": "You will end up reinventing an IDE.",
+       "url": "https://news.ycombinator.com/item?id=47079718",
+       "where": "HN comment, danw1979 (against), cmux thread",
+       "date": "2026-02-19"
+      },
+      {
+       "text": "Looks like this could be really cool, but it's a buggy mess.",
+       "url": "https://news.ycombinator.com/item?id=47079718",
+       "where": "HN comment, twostorytower (against), cmux thread",
+       "date": "2026-02-19"
+      }
+     ]
+    },
+    {
+     "theme": "Usage and limit anxiety drives demand for monitors, but the menu-bar monitor is commoditized",
+     "summary": "Limit cuts and opaque usage drive constant HN threads, and usage tools get traction: CodeBurn 112 points, ccusage 75 points (as of 2026-11-18). Users feel pressure to 'use it or lose it' before resets, and fear surprise overage. Users want more than raw tokens: cost per session, where the waste goes, and forecasts. The flip side is that dozens of near-identical menu-bar meters exist (Claude Meter, ClaudeWatch, CC Usage Bar, Claude Battery, LimitBar, Headroom, CodexBar…), and commenters already call this the vibe-coding 'hello world'.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "Seeing the unused weekly limit for codex and the clock ticking down",
+       "url": "https://news.ycombinator.com/item?id=47044729",
+       "where": "HN comment, energy123, 'Token anxiety, a slot machine by any other name'",
+       "date": "2026-02-17"
+      },
+      {
+       "text": "if you have a coding plan with time based limits they there is pressure to make maximum use of it",
+       "url": "https://news.ycombinator.com/item?id=47042379",
+       "where": "HN comment, Havoc, Token anxiety thread",
+       "date": "2026-02-17"
+      },
+      {
+       "text": "It's scary. I turned off extra usage after that.",
+       "url": "https://news.ycombinator.com/item?id=49353772",
+       "where": "HN comment, newAccount2025, 'Claude Code weekly limits reduce by a third tomorrow'",
+       "date": "2026-08-18"
+      },
+      {
+       "text": "How can you burn through your weekly budget in 20 minutes?",
+       "url": "https://news.ycombinator.com/item?id=49350554",
+       "where": "HN comment, vanviegen, weekly limits thread",
+       "date": "2026-08-18"
+      },
+      {
+       "text": "Basically half my turn count this month was chat, not building.",
+       "url": "https://news.ycombinator.com/item?id=47759035",
+       "where": "HN comment, momentmaker, Show HN: CodeBurn (112 points as of 2026-11-18)",
+       "date": "2026-04-13"
+      },
+      {
+       "text": "a dashboard that shows the limits and logs its activities",
+       "url": "https://news.ycombinator.com/item?id=50366117",
+       "where": "HN comment, djeastm, Ask HN agentic setup",
+       "date": "2026-11-04"
+      },
+      {
+       "text": "this is the vibe coding equivalent of 'hello world' at this stage.",
+       "url": "https://news.ycombinator.com/item?id=47292378",
+       "where": "HN comment, bazhand (against), Show HN: CC Usage Bar",
+       "date": "2026-03-07"
+      },
+      {
+       "text": "How is this different from codexbar ?",
+       "url": "https://news.ycombinator.com/item?id=46956460",
+       "where": "HN comment, bicepjai, Show HN: Claude Meter",
+       "date": "2026-02-10"
+      }
+     ]
+    },
+    {
+     "theme": "Steer and approve from anywhere (phone, remote), with heavy trust and reliability caveats",
+     "summary": "There is strong interest in leaving the desk while agents keep working: Anthropic's own Remote Control got 544 points and 313 comments, and Omnara got 310 and 147 points (as of 2026-11-18). Users complain about approving blind on a phone, dropped sessions, thumb-typing, missing E2EE, and opening a remote door into their machine. Many say SSH, mosh and tmux, or the first-party apps, already cover it. Some see a pager/on-call dystopia.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "Claude Code Remote Control (544 points, 313 comments as of 2026-11-18)",
+       "url": "https://news.ycombinator.com/item?id=47148454",
+       "where": "HN story",
+       "date": "2026-02-25"
+      },
+      {
+       "text": "It's ridiculous to be forced to sit in front of a computer to work with AI.",
+       "url": "https://news.ycombinator.com/item?id=46991658",
+       "where": "HN comment, zomglings, Launch HN: Omnara",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "I'm flying blind, approving changes to a button I've never seen.",
+       "url": "https://news.ycombinator.com/item?id=47645915",
+       "where": "HN post, leddo, on Claude Code Remote Control",
+       "date": "2026-04-05"
+      },
+      {
+       "text": "It's a pretty terrible experience using your thumbs.",
+       "url": "https://news.ycombinator.com/item?id=47148454",
+       "where": "HN comment, ebiester, Remote Control thread",
+       "date": "2026-02-25"
+      },
+      {
+       "text": "I really don't want to trust an AI company with a remote access door on my setup",
+       "url": "https://news.ycombinator.com/item?id=47148454",
+       "where": "HN comment, gregoriol, Remote Control thread",
+       "date": "2026-02-25"
+      },
+      {
+       "text": "The lack of E2E encryption was why I didn't chose Omnara.",
+       "url": "https://news.ycombinator.com/item?id=46995532",
+       "where": "HN comment, kovek, Launch HN: Omnara",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "I think the native Claude and Codex apps already do this for free.",
+       "url": "https://news.ycombinator.com/item?id=46992587",
+       "where": "HN comment, CharlesW (against), Launch HN: Omnara",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "We've re-invented GNU screen in the most inefficient way imaginable",
+       "url": "https://news.ycombinator.com/item?id=47148454",
+       "where": "HN comment, bandrami (against), Remote Control thread",
+       "date": "2026-02-25"
+      },
+      {
+       "text": "Are we going back to pagers and on call time?",
+       "url": "https://news.ycombinator.com/item?id=47923970",
+       "where": "HN comment, verdverm (against), Claude Desktop Buddy story",
+       "date": "2026-04-27"
+      }
+     ]
+    },
+    {
+     "theme": "Physical controllers and desk hardware: curiosity, but strong 'just use a Stream Deck' skepticism",
+     "summary": "OpenAI x Work Louder's $230 Codex Micro was the main hardware moment on HN: 306 points and 253 comments as of 2026-11-18. Commenters liked the status lights and asked for a thinking-level knob, agent switching, configurable buttons and a mic. The dominant pushback was price, 'a Stream Deck does this', gimmick fatigue, and a $40 open clone within weeks (OpenMicroKbd, iluvatar). DIY Stream Deck setups that show which agent finished come up repeatedly. Anthropic's Hardware Buddy BLE reference (ESP32 pet that approves prompts) has big GitHub interest (2.7k stars as of 2026-11-18) but tiny HN threads (2 to 3 points). Makers port and extend it themselves. No HN discussion of the slashvibe.ai Kickstarter device was found.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "Codex Micro (306 points, 253 comments as of 2026-11-18)",
+       "url": "https://news.ycombinator.com/item?id=48923079",
+       "where": "HN story (OpenAI x Work Louder)",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "its the status lights that look fun.",
+       "url": "https://news.ycombinator.com/item?id=48925365",
+       "where": "HN comment, hellohello2, Codex Micro",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "if theres a knob to adjust thinking level, and I can switch between agents",
+       "url": "https://news.ycombinator.com/item?id=48925160",
+       "where": "HN comment, jujugoboom, Codex Micro",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "I'm surprised it doesn't have a microphone.",
+       "url": "https://news.ycombinator.com/item?id=48927014",
+       "where": "HN comment, maherbeg, Codex Micro",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "Why not a Stream Deck? I own 3 stream decks, and they are incredibly useful.",
+       "url": "https://news.ycombinator.com/item?id=48923707",
+       "where": "HN comment, system2 (against), Codex Micro",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "it feels like my career has been dwindled down to ... what? a few colors and like 5 buttons?",
+       "url": "https://news.ycombinator.com/item?id=48923519",
+       "where": "HN comment, volkk (against), Codex Micro",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "I built a multi-agent alternative with Stream Deck and cmux/orca and it works pretty well",
+       "url": "https://news.ycombinator.com/item?id=48928223",
+       "where": "HN comment, mrshu, Codex Micro",
+       "date": "2026-07-15"
+      },
+      {
+       "text": "CMUX with folders per project + Stream Deck that shows me which agent has finished :)",
+       "url": "https://news.ycombinator.com/item?id=50378479",
+       "where": "HN comment, virpo, Ask HN agentic setup",
+       "date": "2026-11-05"
+      },
+      {
+       "text": "I have the Stream Deck, can you share one/some of the agent monitoring tools that work with it?",
+       "url": "https://news.ycombinator.com/item?id=50159652",
+       "where": "HN comment, toomuchtodo, Show HN: barn.app",
+       "date": "2026-10-20"
+      },
+      {
+       "text": "I want one!",
+       "url": "https://news.ycombinator.com/item?id=47923970",
+       "where": "HN comment, TheRealGL, Claude Desktop Buddy story",
+       "date": "2026-04-27"
+      },
+      {
+       "text": "I have a (very much!) enhanced version of claude-desktop-buddy running on a different ESP32 board with a case",
+       "url": "https://news.ycombinator.com/item?id=48639177",
+       "where": "HN comment, nl",
+       "date": "2026-06-23"
+      },
+      {
+       "text": "I ported Claude Desktop's Hardware Buddy to a Raspberry Pi Pico 2 W with a Pimoroni Display Pack 2.8.",
+       "url": "https://news.ycombinator.com/item?id=47847940",
+       "where": "Show HN: Claude Buddy Pico, AmarGandhi",
+       "date": "2026-04-21"
+      },
+      {
+       "text": "The Codex Micro Is Physical Slop",
+       "url": "https://news.ycombinator.com/item?id=49011656",
+       "where": "HN story (blog rant, 3 points)",
+       "date": "2026-07-22"
+      }
+     ]
+    },
+    {
+     "theme": "Personality and pets: fun makes the tool sticky, but it has to be fair and well designed",
+     "summary": "Character and play reliably get upvotes and forks: Peon voice packs, swapped spinner verbs, Claude Code's April-Fools /buddy pet, notch tamagotchis (Notchi, Crest, DockTerm), Nomlings and SwarmWatch. When Anthropic removed /buddy, people rebuilt it as MCP apps and desktop pets, which shows real attachment. The criticisms: random 'low rolls' feel bad, and one sound for two different states is bad UX. Some people are sarcastic about it.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "Well worth keeping your \"/buddy on\" and \"/buddy pet\"",
+       "url": "https://news.ycombinator.com/item?id=47665876",
+       "where": "Tell HN: Claude Code /buddy saves the day",
+       "date": "2026-04-06"
+      },
+      {
+       "text": "I built this during a week-long sabbatical after Anthropic removed /buddy from Claude Code.",
+       "url": "https://news.ycombinator.com/item?id=47792741",
+       "where": "HN comment, fiorastudio_jwu"
+      },
+      {
+       "text": "makes users feel like crap when it low rolls.",
+       "url": "https://news.ycombinator.com/item?id=47640411",
+       "where": "HN post, Avicebron, 'Buddy Feature in Claude Code Sucks'",
+       "date": "2026-04-04"
+      },
+      {
+       "text": "omg tamagotchi flashbacks, except this time it's judging my Claude Code habits",
+       "url": "https://news.ycombinator.com/item?id=48796800",
+       "where": "HN comment, avihashu, Show HN: Nomlings",
+       "date": "2026-07-05"
+      },
+      {
+       "text": "a tamagotchi that lives in your Mac notch and emotionally reacts to your Claude Code sessions.",
+       "url": "https://news.ycombinator.com/item?id=47363546",
+       "where": "HN comment, rubansk (Notchi author)"
+      },
+      {
+       "text": "It runs as a tiny always-on-top overlay with a Tamagotchi pet avatar",
+       "url": "https://news.ycombinator.com/item?id=47244514",
+       "where": "Show HN: I no longer monitor my coding agents, my desktop pet does (SwarmWatch)",
+       "date": "2026-03-04"
+      },
+      {
+       "text": "I just swapped all my Claude code spinner verbs to be Warcraft related",
+       "url": "https://news.ycombinator.com/item?id=46986128",
+       "where": "HN comment, itsjustjordan, Peon-ping thread",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "is used for 2 completely states (greeting and alert), which is not good UX-wise.",
+       "url": "https://news.ycombinator.com/item?id=46986518",
+       "where": "HN comment, xandrius, Peon-ping thread",
+       "date": "2026-02-12"
+      }
+     ]
+    },
+    {
+     "theme": "Gamifying token usage (leaderboards, 'Strava for Claude Code') draws backlash; habit and progress framing is tolerated",
+     "summary": "Token-usage leaderboards (Straude, CostHawk, claudeusage.com, CCClub) get modest upvotes and pointed criticism: they reward burning money, not progress, and they raise privacy concerns. The 2026 'tokenmaxxing' wave of corporate token leaderboards (Amazon, Meta, Microsoft, Uber) produced big HN threads, with 251 points on Amazon and 293 on Uber as of 2026-11-18. Those threads condemn usage as a metric (Goodhart's law). Defenders frame it as a habit tracker or contribution graph, or want private and team-scoped boards. Year-end 'Wrapped' recaps exist but get low engagement, and Anthropic shipped its own Claude Wrapped.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "Gamifying Claude Code? Why? A leaderboard of who can can blow the most tokens/money?",
+       "url": "https://news.ycombinator.com/item?id=47065425",
+       "where": "HN comment, nusl, Show HN: Strava for Claude Code",
+       "date": "2026-02-18"
+      },
+      {
+       "text": "AI output in our work should be measured in engineering progress, not in use metrics, right?",
+       "url": "https://news.ycombinator.com/item?id=47065425",
+       "where": "HN comment, maxverse, Strava for Claude Code",
+       "date": "2026-02-18"
+      },
+      {
+       "text": "people on reddit and discord started actively competing for who had the biggest numbers",
+       "url": "https://news.ycombinator.com/item?id=47065425",
+       "where": "HN comment, serf, Strava for Claude Code",
+       "date": "2026-02-18"
+      },
+      {
+       "text": "i think of straude as serving a similar role as habit trackers and github's contribution graph.",
+       "url": "https://news.ycombinator.com/item?id=47065425",
+       "where": "HN comment, ohong (maker, for)",
+       "date": "2026-02-18"
+      },
+      {
+       "text": "Measuring token usage as a productivity metric is like measuring keystrokes.",
+       "url": "https://news.ycombinator.com/item?id=48110719",
+       "where": "HN comment, x187463, 'Amazon employees are tokenmaxxing'",
+       "date": "2026-05-12"
+      },
+      {
+       "text": "when managers are posting token usage leaderboards each week with no further explanation, we take the hint.",
+       "url": "https://news.ycombinator.com/item?id=48113742",
+       "where": "HN comment, traderj0e, Amazon tokenmaxxing thread",
+       "date": "2026-05-12"
+      },
+      {
+       "text": "Meta has a tokenmaxxing leaderboard too.",
+       "url": "https://news.ycombinator.com/item?id=48111175",
+       "where": "HN comment, HarHarVeryFunny",
+       "date": "2026-05-12"
+      },
+      {
+       "text": "Show HN: Claude Code vs. Codex Global Usage Leaderboard (14 points as of 2026-11-18; privacy pushback in comments)",
+       "url": "https://news.ycombinator.com/item?id=48152675",
+       "where": "HN story, CostHawk",
+       "date": "2026-05-15"
+      }
+     ]
+    },
+    {
+     "theme": "Compulsion, slot machine and burnout: a motivation layer can make it worse",
+     "summary": "There is a persistent HN thread of AI coding as a variable-reward 'slot machine', 'one more turn' compulsion, token anxiety, and burnout from always-on agents. A minority reports genuine flow states. This affects motivation and gamification products directly: streaks and 'keep it busy' nudges could read as exploiting the compulsion. Wellbeing-aware design (breaks, stop points, value over volume) is an open angle.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "It hits the exact same endorphin system as \"one more turn\" style games like Civ.",
+       "url": "https://news.ycombinator.com/item?id=48781406",
+       "where": "HN comment, chatmasta, Ask HN: experimenting with LLMs",
+       "date": "2026-07-03"
+      },
+      {
+       "text": "being hooked on a slot machine which pays out 95% of the time",
+       "url": "https://news.ycombinator.com/item?id=47039426",
+       "where": "HN comment, presbyterian, Token anxiety thread",
+       "date": "2026-02-16"
+      },
+      {
+       "text": "The temptation is to pull the lever 10 times in a row because it was so easy",
+       "url": "https://news.ycombinator.com/item?id=47040107",
+       "where": "HN comment, saulpw, Token anxiety thread",
+       "date": "2026-02-16"
+      },
+      {
+       "text": "AI coding now is something close to gambling addiction.",
+       "url": "https://news.ycombinator.com/item?id=46592863",
+       "where": "HN comment, alexsmirnov",
+       "date": "2026-01-12"
+      },
+      {
+       "text": "You are going to burn out so badly and you won't even realize it until it's too late.",
+       "url": "https://news.ycombinator.com/item?id=50366117",
+       "where": "HN comment, LittleBox, Ask HN agentic setup",
+       "date": "2026-11-04"
+      },
+      {
+       "text": "I haven't rebooted my laptop for weeks because there is always an agent building something.",
+       "url": "https://news.ycombinator.com/item?id=50366117",
+       "where": "HN comment, thefourthchime, Ask HN agentic setup",
+       "date": "2026-11-04"
+      },
+      {
+       "text": "It sounds silly but lately I've been able to hit flow states doing exactly this.",
+       "url": "https://news.ycombinator.com/item?id=48779171",
+       "where": "HN comment, codybontecou (for)",
+       "date": "2026-07-03"
+      }
+     ]
+    },
+    {
+     "theme": "Trust, privacy and platform risk for third-party add-ons",
+     "summary": "Recurring objections: random curl|sh installers and vibe-coded scripts running in your terminal, cloud relays without E2EE, and leaderboards uploading usage. HN commenters praise local-first or no-LLM designs. Commenters also expect Anthropic, OpenAI and Google to absorb these features, and that has partly happened: Remote Control, the /buddy pet, the Hardware Buddy BLE API in developer mode, and Claude Wrapped.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "PLEASE watch out for malicious code/supply chain attacks from random vibe-coded .sh scripts",
+       "url": "https://news.ycombinator.com/item?id=46986535",
+       "where": "HN comment, GeorgeOldfield, Peon-ping thread",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "You're blind-trusting someone to run stuff in the context of your terminal.",
+       "url": "https://news.ycombinator.com/item?id=46993496",
+       "where": "HN comment, nusl, Peon-ping thread",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "That means you don't have E2EE, period.",
+       "url": "https://news.ycombinator.com/item?id=46997846",
+       "where": "HN comment, sneak, Launch HN: Omnara",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "I don't quite see the appeal, because Claude Code already supports something similar.",
+       "url": "https://news.ycombinator.com/item?id=46991920",
+       "where": "HN comment, ncphillips, Launch HN: Omnara",
+       "date": "2026-02-12"
+      },
+      {
+       "text": "Say hello to Claude Wrapped (first-party recap, The Verge)",
+       "url": "https://news.ycombinator.com/item?id=48848901",
+       "where": "HN story linking theverge.com",
+       "date": "2026-07-09"
+      }
+     ]
+    }
+   ],
+   "feature_requests": [
+    {
+     "request": "A different voice or sound per agent session, so you know which one needs you without looking",
+     "evidence_url": "https://news.ycombinator.com/item?id=47334067"
+    },
+    {
+     "request": "Separate, unambiguous cues per state (done vs needs input vs greeting), for example a 'Job done!' sound for completion",
+     "evidence_url": "https://news.ycombinator.com/item?id=46986518"
+    },
+    {
+     "request": "User-swappable sound and voice packs (Warcraft II, StarCraft Infested Terran, etc.)",
+     "evidence_url": "https://news.ycombinator.com/item?id=46985539"
+    },
+    {
+     "request": "Play the alert on a different machine from the one running the agent (remote audio)",
+     "evidence_url": "https://news.ycombinator.com/item?id=46985734"
+    },
+    {
+     "request": "Support beyond Claude Code: Codex, Windsurf, Gemini CLI, Kiro CLI, Cursor Agent",
+     "evidence_url": "https://news.ycombinator.com/item?id=47079718"
+    },
+    {
+     "request": "Linux and Windows support for notifiers and usage tools",
+     "evidence_url": "https://news.ycombinator.com/item?id=46986365"
+    },
+    {
+     "request": "One-click jump to the exact terminal window, tab or tmux pane that needs attention",
+     "evidence_url": "https://news.ycombinator.com/item?id=49335164"
+    },
+    {
+     "request": "Live per-agent status detection (working / needs input / idle), including agents blocked on permission prompts",
+     "evidence_url": "https://news.ycombinator.com/item?id=47310039"
+    },
+    {
+     "request": "Stream Deck integration whose keys show which agent finished and open that session",
+     "evidence_url": "https://news.ycombinator.com/item?id=50159652"
+    },
+    {
+     "request": "Monitor all workflows as buttons on a Stream Deck XL",
+     "evidence_url": "https://news.ycombinator.com/item?id=48779307"
+    },
+    {
+     "request": "Hardware knob for thinking or reasoning level, plus switching between agents",
+     "evidence_url": "https://news.ycombinator.com/item?id=48925160"
+    },
+    {
+     "request": "Controller buttons mappable to configurable skills and prompts",
+     "evidence_url": "https://news.ycombinator.com/item?id=48923565"
+    },
+    {
+     "request": "Built-in microphone (push-to-talk) on the agent controller; some want speakers too. Always-on mics are contested.",
+     "evidence_url": "https://news.ycombinator.com/item?id=48927014"
+    },
+    {
+     "request": "Macro pad with a small LCD that works on Mac and Linux",
+     "evidence_url": "https://news.ycombinator.com/item?id=48923545"
+    },
+    {
+     "request": "Status lights showing agent state on the hardware (cited as the appealing part)",
+     "evidence_url": "https://news.ycombinator.com/item?id=48925365"
+    },
+    {
+     "request": "Cost broken down per session when running parallel sessions",
+     "evidence_url": "https://news.ycombinator.com/item?id=47759035"
+    },
+    {
+     "request": "Analyze usage for inefficiencies and suggest how to cut cost; separate exploration turns (grep/read) from thinking turns",
+     "evidence_url": "https://news.ycombinator.com/item?id=47759035"
+    },
+    {
+     "request": "Dashboard showing limits plus an activity log of what agents did",
+     "evidence_url": "https://news.ycombinator.com/item?id=50366117"
+    },
+    {
+     "request": "Peripheral dashboard showing which files are changing and by how much",
+     "evidence_url": "https://news.ycombinator.com/item?id=48772574"
+    },
+    {
+     "request": "End-to-end encryption for remote control and mobile relays",
+     "evidence_url": "https://news.ycombinator.com/item?id=46995532"
+    },
+    {
+     "request": "Voice control of remote agents, including phone calls and SMS via Twilio",
+     "evidence_url": "https://news.ycombinator.com/item?id=44878650"
+    },
+    {
+     "request": "Reliable remote sessions that reconnect and recover, with a preview of the change being approved",
+     "evidence_url": "https://news.ycombinator.com/item?id=47645915"
+    },
+    {
+     "request": "'Log out all sessions' and keep-awake (caffeinate) controls for remote control",
+     "evidence_url": "https://news.ycombinator.com/item?id=47148454"
+    },
+    {
+     "request": "Private, team-scoped or sprint-level leaderboards with rewards instead of a public token-spend board",
+     "evidence_url": "https://news.ycombinator.com/item?id=48152675"
+    },
+    {
+     "request": "Companion pets that react to real work rather than random rolls that can 'low roll' and demotivate",
+     "evidence_url": "https://news.ycombinator.com/item?id=47640411"
+    },
+    {
+     "request": "Context-sensitive physical controls on DIY Hardware Buddy builds",
+     "evidence_url": "https://news.ycombinator.com/item?id=48639177"
+    }
+   ],
+   "notes": "Lane: Hacker News only, via hn.algolia.com API (story and comment items), all read 2026-11-18. Point and comment counts are as of 2026-11-18. Where I did not record a comment's own item ID, the URL points to its parent thread (e.g. Omnara Show HN 44878650, cmux 47079718, Strava for Claude Code 47065425, CodeBurn 47759035, Ask HN agentic setup 50366117, Remote Control 47148454). The author name in 'where' identifies the comment. Several large threads were read only to their first 100k characters, so more comments exist.\n\nKey engagement benchmarks, as of 2026-11-18:\n- Peon-ping voice notifications: 1006 points, 301 comments (2026-02-12)\n- Claude Code Remote Control: 544/313 (2026-02-25)\n- Omnara Show HN: 310/168 (2025-08-12)\n- Omnara Launch HN: 147/161 (2026-02-12)\n- Codex Micro: 306/253 (2026-07-15, $230 per The New Stack headline)\n- Uber COO tokenmaxxing: 293/338\n- Amazon tokenmaxxing: 251/253\n- cmux: 198/77\n- Vibe Kanban: 195 (2025-07-11)\n- CodeBurn: 112/27\n- ccusage: 75/30 (2025-07-18)\n- Strava for Claude Code (Straude): 19\n- CostHawk leaderboard: 14\n- Claude Wrapped terminal: 15\n\nHardware-specific HN threads are tiny:\n- Claude Desktop Buddy stories: 1 to 3 points\n- Claude Buddy Pico: 3\n- ESP32 lamps and pulses: 1\n- Caps Lock LED status light: 2\n\nThe anthropics/claude-desktop-buddy repo showed about 2.7k stars and 474 forks on 2026-11-18. It is a BLE reference that needs developer mode and is 'not an officially supported product feature'.\n\nSlashVibe: no HN discussion of the slashvibe.ai Kickstarter device was found. The only HN hit was '/Vibe – Social Layer for Claude Code' (slashvibe.dev, 2 points, 0 comments, 2026-01-23), which looks like a different product. From the slashvibe.ai page (seen 2026-11-18):\n- Hardware: 3.96-inch display plus a detachable 2.4 GHz handheld with mics, speaker, Kailh switches and joystick.\n- Claims 20+ agents, including Claude Code, Codex, Copilot, OpenCode, Cursor, Gemini CLI and Kiro.\n- Says it will publish its source under AGPL-3.0 before devices ship.\n- First batch expected March 2027.\n- No price or backer numbers on the page.\n\nOther observations:\n- HN searches for Kickstarter AI-agent hardware, physical approve buttons, and lights or busylights for agents returned nothing substantive.\n- The menu-bar usage-meter niche is saturated: more than 10 near-identical Show HNs with 1 to 9 points each.\n- Notch apps are a busy, low-engagement cluster: Notch Pilot 9, Crest 6, Notchi 4, DockTerm 1, Fetch 2.\n- Net reading: attention and notification plus multi-session glanceability is the clearest demand.\n- Usage visibility is wanted but commoditized.\n- Hardware draws curiosity but heavy 'Stream Deck already does this' and price skepticism.\n- Gamification that rewards token volume is widely disliked, while progress or habit framing and fun personality are tolerated or liked.",
+   "lane": "hn"
+  },
+  {
+   "themes": [
+    {
+     "theme": "Not noticing when the agent is waiting or done (the alt-tab and babysitting loop)",
+     "summary": "This is the pain people describe most. They hand off a task, switch away, then either check back over and over or come back to find the agent has been stuck on a question for an hour. It drives most of the DIY builds: menu-bar monitors, sound mods, phone calls, desk lights, pets. The same request shows up in GitHub issues for Claude Code, Codex, Gemini CLI and Cursor. Two details matter for anyone building here. First, the 'waiting for input' state (idle_prompt) is often missed even when 'done' is caught. Second, no event fires when the user answers, so a status display gets stuck showing the old state.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "Paranoidly switch back every 30 seconds to check if it's done ... Realize I'm wasting more time checking than actually working",
+       "url": "https://www.reddit.com/r/macapps/comments/1nnrfzv/got_tired_of_constantly_checking_if_claude_code/",
+       "date": "2025-09-22",
+       "where": "r/macapps, OP (menu bar monitor), score 50 as recorded in archive"
+      },
+      {
+       "text": "I kept leaving long Claude Code runs going and coming back to find them stuck on a question for an hour.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xhvnjw/my_claude_code_now_calls_my_phone_when_it_needs/",
+       "date": "2026-10-28",
+       "where": "r/ClaudeCode, OP of agentring, score 466"
+      },
+      {
+       "text": "Usually I check it periodically, but sometimes I forget and leave it there for an hour.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1x50xme/attentionsound_a_claude_code_mod_that_plays_a/",
+       "date": "2026-10-13",
+       "where": "r/ClaudeCode, OP (attention-sound mod)"
+      },
+      {
+       "text": "one of them needs input, another needs some approval, but im headsdown doing a PR review while my sessions are working and i don't notice.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1v80vcr/session_pet_a_menubar_pet_that_shows_which_claude/",
+       "date": "2026-07-27",
+       "where": "r/ClaudeCode, OP (Session pet)"
+      },
+      {
+       "text": "not just you. the quiet one is the one I miss.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1v80vcr/session_pet_a_menubar_pet_that_shows_which_claude/",
+       "date": "2026-07-27",
+       "where": "r/ClaudeCode, u/buskerrrrrr (also: 'nothing fires when it's answered though')"
+      },
+      {
+       "text": "I kept leaving Claude Code to work and then either staring at it waiting, or wandering off and coming back to find it had been sat on",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1xumt47/i_built_lump_a_quirky_desk_creature_who_shows_me/",
+       "date": "2026-11-12",
+       "where": "r/ClaudeAI, OP of 'Lump' desk creature, score 244"
+      },
+      {
+       "text": "The work was fine. The babysitting was not.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1u3ffo4/i_never_know_if_my_overnight_claude_code_runs_are/",
+       "date": "2026-06-11",
+       "where": "r/ClaudeCode, OP (ESP32-S3 desk screen for overnight runs)"
+      },
+      {
+       "text": "Claude Code doesn't notify you when it finishes or needs permission. You tab away, lose focus, and waste 15 minutes getting back into flow.",
+       "url": "https://news.ycombinator.com/item?id=46986198",
+       "date": "2026-02-12",
+       "where": "Hacker News (supporting, not Reddit), u/AceJohnny2 in the peon-ping thread (1006 points)"
+      },
+      {
+       "text": "The VSCode native extension currently has no way to notify the user when Claude needs attention (permission approval, task completion, waiting for input).",
+       "url": "https://github.com/anthropics/claude-code/issues/57230",
+       "where": "GitHub issue (supporting), open, 56 thumbs-up as of 2026-11-18"
+      }
+     ]
+    },
+    {
+     "theme": "Usage limits and token burn: wanting to see it, and anxiety about it",
+     "summary": "Usage is the loudest topic overall on r/ClaudeCode, and in Nov 2026 one user asked for a usage megathread because so many posts were about it. People want a visible, trustworthy meter. They also want history ('which command ate my quota') because they feel drain they can't prove, and Cursor users report sudden jumps. The top-voted hardware posts are usage meters (Clawdmeter: 1674). There is a clear split. Many love an always-on meter, while others say it feeds 'usage anxiety', or that the numbers are already in /usage and the status line.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "At this point Anthropic should just mail these to us for free",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1takxpl/clawdmeter_a_small_esp32_usage_limit_monitor/",
+       "date": "2026-05-12",
+       "where": "r/ClaudeCode, u/mobcat_40 (379) on Clawdmeter ESP32 usage meter, post score 1674"
+      },
+      {
+       "text": "It would be cool if it also could display a chart of the history, I’d like to see how each command affected the usage. I feel like my usage runs out way faster these days but I can’t really prove it.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1takxpl/clawdmeter_a_small_esp32_usage_limit_monitor/",
+       "date": "2026-05-12",
+       "where": "r/ClaudeCode, u/Middle-Nerve1732"
+      },
+      {
+       "text": "lol, I don't need _more_ Claude usage anxiety 😂",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1takxpl/clawdmeter_a_small_esp32_usage_limit_monitor/",
+       "date": "2026-05-12",
+       "where": "r/ClaudeCode, u/drhappy13"
+      },
+      {
+       "text": "I said “H” and it used 26% of the daily usage on the new fable",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xs5kde/",
+       "date": "2026-11-09",
+       "where": "r/ClaudeCode post title, score 1160"
+      },
+      {
+       "text": "Claude Code’s $100/month plan — 73% of my weekly limit gone in 2 days",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xhfch4/",
+       "date": "2026-10-28",
+       "where": "r/ClaudeCode post title, score 86, 151 comments"
+      },
+      {
+       "text": "I was at 40%, then i was at 80% immediately after. I watch it often.",
+       "url": "https://www.reddit.com/r/cursor/comments/1xkubzj/40_of_weekly_usage_stolen_in_1_second/",
+       "date": "2026-11-01",
+       "where": "r/cursor, OP"
+      },
+      {
+       "text": "My workflow barely changed. I'm doing the same thing. But my token usage has exploded.",
+       "url": "https://www.reddit.com/r/cursor/comments/1wkr3d8/im_starting_to_think_they_pushed_some_update/",
+       "date": "2026-09-19",
+       "where": "r/cursor, OP, score 60"
+      },
+      {
+       "text": "I'm ok using a limited resource _if_ I know how much of it I am using. The lack of visible progress towards limits is annoying.",
+       "url": "https://news.ycombinator.com/item?id=44713757",
+       "date": "2025-07-28",
+       "where": "Hacker News (supporting), 'Claude Code weekly rate limits' thread, 609 points"
+      },
+      {
+       "text": "There's a weird 'token anxiety' you get on these platforms.",
+       "url": "https://news.ycombinator.com/item?id=47586176",
+       "date": "2026-03-31",
+       "where": "Hacker News (supporting), 'usage limits way faster than expected' thread, 331 points"
+      },
+      {
+       "text": "set up a basic routine that fires every 5 hours. Mine is simply “say hi. That’s it”. That will trigger a token reset, so then you’ll always have a known token window.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1u3ffo4/i_never_know_if_my_overnight_claude_code_runs_are/",
+       "date": "2026-06-12",
+       "where": "r/ClaudeCode, u/Bigbluepopsicle2 (hack for anchoring the 5h window)"
+      }
+     ]
+    },
+    {
+     "theme": "Juggling several parallel sessions: overload and 'which one needs me?'",
+     "summary": "Heavy users run 4 to 15 sessions, often across Claude Code, Codex and Gemini. Threads asking how to manage this without 'losing your mind' draw 50 to 250 comments. The answers are scattered: herdr, Orca, tmux, iTerm windows, even paper. Many say 2 or 3 sessions is their real cognitive limit, and that the bottleneck has moved to review. Session-manager posts get upvotes but also 'there are so many of these' fatigue.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "How do you actually manage multiple parallel Claude Code sessions without losing your mind?",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1vm8u30/",
+       "date": "2026-08-12",
+       "where": "r/ClaudeCode post title, 100 comments"
+      },
+      {
+       "text": "I feel like I have to babysit everything.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1x0r5v3/",
+       "date": "2026-10-08",
+       "where": "r/ClaudeCode post title (runs 4-5 sessions)"
+      },
+      {
+       "text": "A piece of paper. Not kidding you. Works best.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1x0r5v3/",
+       "date": "2026-10-08",
+       "where": "r/ClaudeCode, u/jur_gn"
+      },
+      {
+       "text": "Herdr. For my use cases across multiple projects running all at once. It's amazing!",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1wsfm2w/",
+       "date": "2026-09-28",
+       "where": "r/ClaudeCode, u/jvertrees in 'Best mac app / dashboard for managing multiple agents and projects'"
+      },
+      {
+       "text": "kept losing track of which terminal was doing what, which one was stuck waiting for me, and how much of each account's window I had used.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xmym86/i_built_a_3d_office_where_every_claude_code/",
+       "date": "2026-11-03",
+       "where": "r/ClaudeCode, OP of clalt '3D office', score 99"
+      },
+      {
+       "text": "I usually have 5-15 chat open in paralell I'll cycle through, maybe 4-8+ agents will run in paralell depending on length of tasks.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1uiucd1/made_a_10_desk_light_that_tells_me_when_my_ai/",
+       "date": "2026-06-29",
+       "where": "r/ClaudeCode, u/Okoear"
+      },
+      {
+       "text": "You don't need to run several things in parallel just because it feels like \"doing nothing\" waiting for one agent to complete its task.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xn1urm/claude_code_makes_me_10x_more_productive_but/",
+       "date": "2026-11-03",
+       "where": "r/ClaudeCode, u/magicmulder"
+      },
+      {
+       "text": "Two parallel sessions already feel like my limit. Once I go beyond that, my brain starts falling apart within minutes.",
+       "url": "https://news.ycombinator.com/item?id=47573483",
+       "date": "2026-03-30",
+       "where": "Hacker News (supporting), Ask HN OP"
+      },
+      {
+       "text": "I feel like we have so many versions of this just with different UIs lol",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1vj5ktu/i_coded_terminal_manager_for_adhd_brains_100/",
+       "date": "2026-08-08",
+       "where": "r/ClaudeCode, u/kylef5993 on 'terminal manager for ADHD brains' (score 894)"
+      }
+     ]
+    },
+    {
+     "theme": "Glanceable ambient status per session (lights, keys, small screens) with one-press jump",
+     "summary": "When people do build hardware or ambient UI, what they ask for is one indicator per agent: running, waiting on me, done, error. Pressing it should focus that session. Single-lamp builds are very popular, yet the top replies immediately ask 'what about multiple sessions?'. Builders say live session state is rarer than usage meters.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "I do wonder the best light indicator to have if you do run multiple sessions 🤔",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1t4gfc7/turned_a_desk_lamp_into_a_claude_code_status/",
+       "date": "2026-05-05",
+       "where": "r/ClaudeAI, u/24props on the desk-lamp status indicator, post score 1637"
+      },
+      {
+       "text": "Each key lights up based on a session, and when one has a question or permission prompt, key goes red. Press the key and VSCode comes into focus.",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1t4gfc7/turned_a_desk_lamp_into_a_claude_code_status/",
+       "date": "2026-05-05",
+       "where": "r/ClaudeAI, u/GoldAny8608"
+      },
+      {
+       "text": "By the time you have 16 lamps in a 4x4 array, you think... there has to be a better way.",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1t4gfc7/turned_a_desk_lamp_into_a_claude_code_status/",
+       "date": "2026-05-05",
+       "where": "r/ClaudeAI, u/NoWarning789"
+      },
+      {
+       "text": "I'd do 1 led per agent.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1uiucd1/made_a_10_desk_light_that_tells_me_when_my_ai/",
+       "date": "2026-06-29",
+       "where": "r/ClaudeCode, u/Okoear on the $10 ESP32/WLED 'emberglow' light"
+      },
+      {
+       "text": "I run several coding agents in parallel and kept alt-tabbing just to check on them.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1vszoh7/i_put_my_coding_agents_on_my_keyboards_rgb_frow_a/",
+       "date": "2026-08-19",
+       "where": "r/ClaudeCode, OP (agents on keyboard RGB F-row), score 68"
+      },
+      {
+       "text": "This is the kind of content i crave on this forum.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1vszoh7/i_put_my_coding_agents_on_my_keyboards_rgb_frow_a/",
+       "date": "2026-08-20",
+       "where": "r/ClaudeCode, u/AlphaGeeky (wants it on a 15-LCD-button Launchpad)"
+      },
+      {
+       "text": "So far I've only come across usage limits trackers, not actual live session status/metrics.",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1ui85ys/i_built_a_claude_statusbar_hardware_display_for/",
+       "date": "2026-06-28",
+       "where": "r/ClaudeAI, u/brokenodo (builder of hooks-driven status bar display), post score 411"
+      }
+     ]
+    },
+    {
+     "theme": "Approving and steering from elsewhere (phone, remote control)",
+     "summary": "Remote Control is now the default answer, and people praise it a lot (625-point 'life changing' thread). Complaints are about reliability, not being able to start new sessions remotely, prompts that don't show up, and that reviewing diffs on a phone is hard. A strong minority warn about always-on work creep. A phone-call escalation tool got 466 upvotes, but replies said the native push in RC is enough and that 'development is too visual' for voice.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "If you are not using /remote-control you need to start using it now. It will be life changing.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1tkv87g/remotecontrol_is_a_window_into_what_the_future_is/",
+       "date": "2026-05-22",
+       "where": "r/ClaudeCode OP, score 625, 261 comments"
+      },
+      {
+       "text": "Tried it, works great, but I don't want to work all the time. Don't forget to live buddy",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1tkv87g/remotecontrol_is_a_window_into_what_the_future_is/",
+       "date": "2026-05-22",
+       "where": "r/ClaudeCode, u/Annual_Manner_8654 (top comment, 505)"
+      },
+      {
+       "text": "Yeah I thought I wanted remote control. Then i was checking at lunch, then at dinner, then at home, then on the weekends, then while exercising, and in meetings.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1tkv87g/remotecontrol_is_a_window_into_what_the_future_is/",
+       "date": "2026-05-22",
+       "where": "r/ClaudeCode, u/samarijackfan"
+      },
+      {
+       "text": "how you reviewing all the code they generate? Is that something you’re easily able to do on your phone?",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1tkv87g/remotecontrol_is_a_window_into_what_the_future_is/",
+       "date": "2026-05-22",
+       "where": "r/ClaudeCode, u/koolex"
+      },
+      {
+       "text": "This is a complete UX nightmare. Not only can we not start a new session from Remote Control",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xcsrss/for_the_love_of_god_let_usclaude_start_sessions/",
+       "date": "2026-10-22",
+       "where": "r/ClaudeCode OP, score 58"
+      },
+      {
+       "text": "It's sucks though, if it disconnects for any reason it is GG.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1thyrr2/claude_code_needs_real_remote_control_from_mobile/",
+       "date": "2026-05-19",
+       "where": "r/ClaudeCode, u/ThomasToIndia"
+      },
+      {
+       "text": "Very often the session is stuck because a permission prompt isn't displaying",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1tigkw5/",
+       "date": "2026-05-20",
+       "where": "r/ClaudeCode, 'Feature request: enable ctrl+c interrupt on remote control'"
+      },
+      {
+       "text": "figure out a way it can reach me away from my computer, then I can go do something else entirely.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1vkwiuw/",
+       "date": "2026-08-10",
+       "where": "r/ClaudeCode, u/TechgeekOne (87) in the flow-state thread"
+      },
+      {
+       "text": "Development is too visual",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xhvnjw/my_claude_code_now_calls_my_phone_when_it_needs/",
+       "date": "2026-10-28",
+       "where": "r/ClaudeCode, u/HeyItsYourDad_AMA, prefers RC over having the agent phone him"
+      },
+      {
+       "text": "Head to dog park, play fetch. Answer Claude from your phone.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xgvsoh/",
+       "date": "2026-10-27",
+       "where": "r/ClaudeCode, u/BigBootyWholes (recipe also includes 'caffeinate -d')"
+      }
+     ]
+    },
+    {
+     "theme": "Focus and drift during the wait",
+     "summary": "The wait between prompts is too long to stay focused and too short to do real work. People drift to TikTok, X or HN, and some lose flow for 15 minutes. Workarounds include parallel sessions, exercise between prompts, microtask feeders, and novelty 'waiting' toys. A plugin that matches you with a stranger who is also waiting got 983 upvotes. Others push back that you shouldn't fill every gap.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "How do you guys stay in a flow state while waiting for Claude?",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1vkwiuw/",
+       "date": "2026-08-10",
+       "where": "r/ClaudeCode post title, score 307, 248 comments"
+      },
+      {
+       "text": "I do dead hangs and push ups between Claude prompts in auto mode",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1vkwiuw/",
+       "date": "2026-08-10",
+       "where": "r/ClaudeCode, u/burntpm"
+      },
+      {
+       "text": "Delete TikTok, it's training you to have way worse ADHD. Multiple sessions at once is how I deal with it.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1vkwiuw/",
+       "date": "2026-08-10",
+       "where": "r/ClaudeCode, u/krugerlive"
+      },
+      {
+       "text": "The most boring part of my job now is waiting for AI to spit out code",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xgvsoh/",
+       "date": "2026-10-27",
+       "where": "r/ClaudeCode post title, score 172, 126 comments"
+      },
+      {
+       "text": "Turning claude thinking time into productive microtasks",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1r255kz/",
+       "date": "2026-02-11",
+       "where": "r/ClaudeCode post title, score 135 (hooks feed <=10s microtasks; repo github.com/mdgale/microtasks)"
+      },
+      {
+       "text": "This is the dumbest thing I’ve seen in a long time.  I love it.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1waef2c/waiting_room_a_claudecode_plugin_to_let_u_wait/",
+       "date": "2026-09-08",
+       "where": "r/ClaudeCode, u/slackmaster2k (443) on 'Waiting Room' plugin, post score 983"
+      },
+      {
+       "text": "Just curious when U vibe coding and waiting for AI response, what do you normal do?",
+       "url": "https://www.reddit.com/r/vibecoding/comments/1t1ev3l/",
+       "date": "2026-05-02",
+       "where": "r/vibecoding post title, 40 comments"
+      },
+      {
+       "text": "I get easily distracted, my mind wonders and I find myself reading HN and browsing the internet.",
+       "url": "https://news.ycombinator.com/item?id=44811457",
+       "date": "2025-08-06",
+       "where": "Hacker News (supporting), Ask HN on flow state with AI coding tools"
+      }
+     ]
+    },
+    {
+     "theme": "Feeling productive vs mentally exhausted (motivation, dopamine, ADHD)",
+     "summary": "Many say the agents are 'rocket fuel', especially those with ADHD. Others say the payoff of a finished feature is gone and the work feels fragmented, tiring and managerial. This is the emotional opening for motivation and recap features. But the evidence points toward healthy pacing and a sense of accomplishment, not more pressure to be busy.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "Claude Code makes me 10x more productive, but mentally exhausted. Anyone else?",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xn1urm/claude_code_makes_me_10x_more_productive_but/",
+       "date": "2026-11-03",
+       "where": "r/ClaudeCode post title, score 306, 110 comments"
+      },
+      {
+       "text": "I’ve got ADHD, I finally got a tool that can keep up with my thoughts and my drive to create things.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xn1urm/claude_code_makes_me_10x_more_productive_but/",
+       "date": "2026-11-03",
+       "where": "r/ClaudeCode, u/KrydanX (165)"
+      },
+      {
+       "text": "Then just go do something fun for 3-4 hours and come back. You still get shit done, it should be pretty thorough, and you got a mental health break.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xn1urm/claude_code_makes_me_10x_more_productive_but/",
+       "date": "2026-11-03",
+       "where": "r/ClaudeCode, u/0DayMaker"
+      },
+      {
+       "text": "AI lets me think the way my brain already thinks without paying the burnout tax.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1qeb6od/why_ai_coding_tools_accidentally_feel_perfect_for/",
+       "date": "2026-01-16",
+       "where": "r/ClaudeCode, u/nnennahacks, post score 142"
+      },
+      {
+       "text": "Vibe coding fuels the same dopamine, but without the existential dread.",
+       "url": "https://www.reddit.com/r/vibecoding/comments/1uh6ohg/i_used_to_be_a_hardcore_gamer_vibe_coding_fuels/",
+       "date": "2026-06-27",
+       "where": "r/vibecoding post title, score 157"
+      },
+      {
+       "text": "AI has demotivated me from it quite a bit lately",
+       "url": "https://www.reddit.com/r/vibecoding/comments/1uh6ohg/i_used_to_be_a_hardcore_gamer_vibe_coding_fuels/",
+       "date": "2026-06-27",
+       "where": "r/vibecoding, u/WingZeroCoder"
+      },
+      {
+       "text": "I don't get the feeling of accomplishment after finishing a new feature and everything feels fragmented.",
+       "url": "https://news.ycombinator.com/item?id=44811457",
+       "date": "2025-08-06",
+       "where": "Hacker News (supporting), Ask HN OP"
+      }
+     ]
+    },
+    {
+     "theme": "Companions, pets, streaks and leaderboards (gamification)",
+     "summary": "People got genuinely attached to Claude Code's April Fools /buddy. When it was removed in v2.1.97 there were mourning threads, open-source replacements, and calls to 'gamify it' with levels. Some even used the buddy as a second reviewer. Pets tied to usage (sweating near the limit, confetti on reset) and Wrapped-style recaps get warm reactions. Friend and company leaderboards exist and are seen as fun, but they are niche. Streaks matter enough that people file bugs when they are miscounted. Most of these posts score lower than the attention and usage tools.",
+     "strength": "moderate",
+     "quotes": [
+      {
+       "text": "Anthropic murdered /buddy. F in chat, my friend.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1smsk3i/they_killed_my_buddy/",
+       "date": "2026-04-16",
+       "where": "r/ClaudeCode OP, score 33"
+      },
+      {
+       "text": "Felt the same void.  so I put a buddy in my status line instead.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1smsk3i/they_killed_my_buddy/",
+       "date": "2026-04-16",
+       "where": "r/ClaudeCode, u/Parking-Turnip-7889"
+      },
+      {
+       "text": "Especially if they built more on and gamified it to keep people paying/consuming to level up their buddies.",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1sgcbcj/they_removed_the_buddy_from_latest_claude_code/",
+       "date": "2026-04-09",
+       "where": "r/ClaudeAI, u/wigelsworth (OP), post score 122, 79 comments"
+      },
+      {
+       "text": "Buddy caught a race condition opus 4.6 missed - with a snide remark before a commit.",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1sgcbcj/they_removed_the_buddy_from_latest_claude_code/",
+       "date": "2026-04-09",
+       "where": "r/ClaudeAI, u/NotATurntable"
+      },
+      {
+       "text": "he walks around, sleeps when no session is running, sweats near the limit and jumps with confetti when your 5 hour window resets.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xck2ei/claude_now_lives_on_my_phone_home_screen_and/",
+       "date": "2026-10-22",
+       "where": "r/ClaudeCode OP (Android widget pet), score 78"
+      },
+      {
+       "text": "I built a pixel pet that eats your Claude Code tokens (and warns you before the 5h wall)",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1vy5fcr/",
+       "date": "2026-08-25",
+       "where": "r/ClaudeCode post title (Clauddy), score 94"
+      },
+      {
+       "text": "We have this for the whole company (+1000 people), quite fun xD.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1r66oqo/i_built_a_cli_leaderboard_to_see_which_of_my/",
+       "date": "2026-02-16",
+       "where": "r/ClaudeCode, u/Global_Strain_4219 on ccclub friend leaderboard (post score 20)"
+      },
+      {
+       "text": "My Claude Code Wrapped is making me question some life choices",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1px9u9e/",
+       "date": "2025-12-27",
+       "where": "r/ClaudeCode post title, score 23"
+      },
+      {
+       "text": "Active days and streak count session creation days, not days with actual user messages",
+       "url": "https://github.com/anthropics/claude-code/issues/59168",
+       "where": "GitHub issue on the first-party Claude Code activity dashboard streaks (supporting)"
+      }
+     ]
+    },
+    {
+     "theme": "Desk hardware for agents: huge upvotes, DIY culture, price skepticism",
+     "summary": "Desk gadgets are among the most upvoted posts in these subs: a usage meter (1674), a desk lamp (1637), the VibeKeys keyboard (1010), a status display (411), a touch strip (389), and a 'Lump' creature (244). The crowd assumes they can build it themselves with Claude for $10 to $40. Commercial units get called out ('flashed M5Stack for 10x the price'), and so do subscriptions. Comments ask for finish and polish (cable at the back, one-click setup). Dedicated keypads like Codex Micro draw 'I just use my keyboard' replies, plus DIY clones from people who can't afford it.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "Agreed, what am I paying every month for and still no hardware device!!",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1takxpl/clawdmeter_a_small_esp32_usage_limit_monitor/",
+       "date": "2026-05-12",
+       "where": "r/ClaudeCode, u/LookAtMyKeyboard (Clawdmeter maker)"
+      },
+      {
+       "text": "I actually built the vibe coding keyboard. It's not a meme.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1tq5odl/",
+       "date": "2026-05-28",
+       "where": "r/ClaudeCode post title (VibeKeys), score 1010"
+      },
+      {
+       "text": "It’s a desk gadget. We don’t necessarily need gadgets but we love them all the same.",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1tmo1sz/fav_desk_gadget_claude_code_usage_display/",
+       "date": "2026-05-24",
+       "where": "r/ClaudeAI, u/ThroatNagasaki on codeMeter, post score 306"
+      },
+      {
+       "text": "isn't it a 40 usd device on a 2 usd printed stand with a code that you can vibecode in less than 10min ?",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1tmo1sz/fav_desk_gadget_claude_code_usage_display/",
+       "date": "2026-05-25",
+       "where": "r/ClaudeAI, u/Lanfeust09 (codeMeter sold for about $130 per this comment)"
+      },
+      {
+       "text": "if the charge cable was at the back",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1tmo1sz/fav_desk_gadget_claude_code_usage_display/",
+       "date": "2026-05-24",
+       "where": "r/ClaudeAI, u/Sketaverse (31), 'LOVE*' conditional on it"
+      },
+      {
+       "text": "if you're able to produce these with a one click set up you'd definitely sell a lot",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1xumt47/i_built_lump_a_quirky_desk_creature_who_shows_me/",
+       "date": "2026-11-12",
+       "where": "r/ClaudeAI, u/nokia7110 on 'Lump'"
+      },
+      {
+       "text": "Codex Micro didn’t work well for me, so I decided to put my Stream Deck to work instead.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xqdnu9/i_cant_afford_codex_micro_so_i_turned_my_stream/",
+       "date": "2026-11-07",
+       "where": "r/ClaudeCode OP, title 'I can't afford Codex Micro...' (supports OpenCode, Codex, Claude Code, Antigravity)"
+      },
+      {
+       "text": "I have a keyboard with 40 keys I can press without even looking down",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1v7qri2/would_this_be_better_than_codex_micro/",
+       "date": "2026-07-27",
+       "where": "r/ClaudeCode, u/StaticFanatic3 on a Codex Micro alternative"
+      },
+      {
+       "text": "Tell claude code it's attached to your machine and it writes the driver, dashboard and whatever you want.",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1xoxnhp/built_a_little_touchscreen_dashboard_for_my_desk/",
+       "date": "2026-11-06",
+       "where": "r/ClaudeAI, u/crewone on a XENEON Edge desk dashboard (post score 389)"
+      }
+     ]
+    },
+    {
+     "theme": "Counter-signal: 'it's already native' and 'how many of these does the world need?'",
+     "summary": "Every category draws pushback. Notifications are native, and Remote Control has push. Usage is visible in /usage and the status line. Session managers and usage displays are now the 'hello world' of Claude projects. For a new entrant this means bare notifications, usage meters and session lists are crowded, low-value features unless they offer something clearly new: multi-agent, multi-session glance plus action, history and insight, or real craft and character.",
+     "strength": "strong",
+     "quotes": [
+      {
+       "text": "I truly do not understand why people here are so obsessed with building usage trackers. The usage stats aren't ever hidden and are always easy to access.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xck2ei/claude_now_lives_on_my_phone_home_screen_and/",
+       "date": "2026-10-22",
+       "where": "r/ClaudeCode, u/SPEDpunk"
+      },
+      {
+       "text": "a claude usage statusbar is the new \"hello world\"",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1ui85ys/i_built_a_claude_statusbar_hardware_display_for/",
+       "date": "2026-06-28",
+       "where": "r/ClaudeAI, u/gphie (59)"
+      },
+      {
+       "text": "How many of these does the world need?",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xmym86/i_built_a_3d_office_where_every_claude_code/",
+       "date": "2026-11-03",
+       "where": "r/ClaudeCode, u/dpaanlka on a session-visualizer"
+      },
+      {
+       "text": "I could be bugging but I swear this is a native feature",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1x50xme/attentionsound_a_claude_code_mod_that_plays_a/",
+       "date": "2026-10-13",
+       "where": "r/ClaudeCode, u/diamonqq on a sound-alert mod"
+      },
+      {
+       "text": "I really don't understand the use-case. I configured Claude to show me all of these stats in the status bar",
+       "url": "https://www.reddit.com/r/ClaudeAI/comments/1tmo1sz/fav_desk_gadget_claude_code_usage_display/",
+       "date": "2026-05-24",
+       "where": "r/ClaudeAI, u/MarathonHampster on codeMeter"
+      },
+      {
+       "text": "Why not just have it send you push notifications for things that need your attention, which is a native feature of remote control",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xhvnjw/my_claude_code_now_calls_my_phone_when_it_needs/",
+       "date": "2026-10-28",
+       "where": "r/ClaudeCode, u/Alexandur"
+      },
+      {
+       "text": "If I use something like this, it will look like a graveyard, a crowded graveyard, because each session is just to do a single task",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xmym86/i_built_a_3d_office_where_every_claude_code/",
+       "date": "2026-11-03",
+       "where": "r/ClaudeCode, u/Machine2024"
+      }
+     ]
+    },
+    {
+     "theme": "Keeping the machine awake and sessions alive while away",
+     "summary": "This is a smaller, practical need. Closing the laptop lid kills remote sessions, so people run caffeinate or tmux on a Mac mini, and several 'keep Mac awake only while agents work' apps launched (on HN: Adrafinil 124 points, plus StayUp, Vigil, Macchiato).",
+     "strength": "weak",
+     "quotes": [
+      {
+       "text": "My Claude Code remote-control sessions disconnected every time I closed my laptop lid. This was unpleasant.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1wad7fl/",
+       "date": "2026-09-08",
+       "where": "r/ClaudeCode OP (also cross-posted to r/ClaudeAI 1wabfvi)"
+      },
+      {
+       "text": "make sure it’s plugged in, run “caffeinate -d” in another terminal.",
+       "url": "https://www.reddit.com/r/ClaudeCode/comments/1xgvsoh/",
+       "date": "2026-10-27",
+       "where": "r/ClaudeCode, u/BigBootyWholes"
+      },
+      {
+       "text": "Show HN: Adrafinil – keep a lid-closed Mac awake only while agents work",
+       "url": "https://news.ycombinator.com/item?id=48701512",
+       "date": "2026-06-27",
+       "where": "Hacker News (supporting) title, 124 points as recorded by HN Algolia, seen 2026-11-18"
+      }
+     ]
+    }
+   ],
+   "feature_requests": [
+    {
+     "request": "One indicator per agent or session (LED, key or tile), not one lamp for everything. Show running / waiting on me / done / error, and pressing it focuses that session's window.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeAI/comments/1t4gfc7/turned_a_desk_lamp_into_a_claude_code_status_indicator/"
+    },
+    {
+     "request": "Treat 'waiting for input' (idle_prompt / Notification) as its own state alongside 'done' (Stop), and clear the alert when the user answers (UserPromptSubmit / PostToolUse), since no event fires on answer.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1v80vcr/session_pet_a_menubar_pet_that_shows_which_claude/"
+    },
+    {
+     "request": "Usage history chart showing how each command or turn moved the 5h and weekly meters, so users can prove abnormal drain.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1takxpl/clawdmeter_a_small_esp32_usage_limit_monitor/"
+    },
+    {
+     "request": "Live session metrics on the desk display (current tool, permission requests, context size, tokens in/out, effort), not just the usage limit.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeAI/comments/1ui85ys/i_built_a_claude_statusbar_hardware_display_for/"
+    },
+    {
+     "request": "Cover several agents and accounts in one place (Claude Code plus Codex, Gemini, OpenCode, Antigravity; personal and work accounts).",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1xqdnu9/i_cant_afford_codex_micro_so_i_turned_my_stream/"
+    },
+    {
+     "request": "Start new sessions (not only continue existing ones) from the phone or Remote Control.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1xcsrss/for_the_love_of_god_let_usclaude_start_sessions/"
+    },
+    {
+     "request": "Interrupt (Ctrl+C) a stuck session remotely, and reliably show pending permission prompts remotely.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1tigkw5/"
+    },
+    {
+     "request": "Push notification when a remote session needs permission approval (iOS Remote Control).",
+     "evidence_url": "https://github.com/anthropics/claude-code/issues/29438"
+    },
+    {
+     "request": "Native system notifications in the VS Code extension for permission requests, task complete, waiting for input and errors, with per-event settings.",
+     "evidence_url": "https://github.com/anthropics/claude-code/issues/57230"
+    },
+    {
+     "request": "Expose 5-hour and weekly usage percent to the status line (and so to third-party displays).",
+     "evidence_url": "https://github.com/anthropics/claude-code/issues/20636"
+    },
+    {
+     "request": "Auto-resume a session when the usage limit resets, and show or plan around reset windows (users already schedule 'say hi' pings to anchor the 5h window).",
+     "evidence_url": "https://github.com/openai/codex/issues/21073"
+    },
+    {
+     "request": "Escalation that doesn't spam: a tunable threshold for what is worth a ping or call versus silent status (users fear 'a call every 2 minutes').",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1xhvnjw/my_claude_code_now_calls_my_phone_when_it_needs/"
+    },
+    {
+     "request": "Bring back the /buddy companion and give it progression (levels, rarity), and let it act as a light second reviewer of output.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeAI/comments/1sgcbcj/they_removed_the_buddy_from_latest_claude_code/"
+    },
+    {
+     "request": "Streaks and active-day counts that credit every calendar day the user actually sent messages, not just session start dates.",
+     "evidence_url": "https://github.com/anthropics/claude-code/issues/59168"
+    },
+    {
+     "request": "Pets or companions that react to usage state: sleep when idle, sweat near the limit, celebrate the reset.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1xck2ei/claude_now_lives_on_my_phone_home_screen_and/"
+    },
+    {
+     "request": "Hardware finish details: power cable at the back, one-click setup, no required subscription or cloud account for a desk device.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeAI/comments/1tmo1sz/fav_desk_gadget_claude_code_usage_display/"
+    },
+    {
+     "request": "Auto-hide or dispose of finished single-task sessions so a session view doesn't become a 'graveyard'.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1xmym86/i_built_a_3d_office_where_every_claude_code/"
+    },
+    {
+     "request": "Fill or redirect wait time: microtasks during agent thinking time, social 'waiting room', or prompts to take a break instead of doomscrolling.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1r255kz/"
+    },
+    {
+     "request": "A way to review diffs or results comfortably away from the desk, not only approve and continue (phone review is called hard).",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1tkv87g/remotecontrol_is_a_window_into_what_the_future_is/"
+    },
+    {
+     "request": "Per-project, event-specific spoken or sound alerts (for example a different line for 'done' vs 'needs permission', naming the project) instead of a generic ding.",
+     "evidence_url": "https://news.ycombinator.com/item?id=46985151"
+    },
+    {
+     "request": "Keep the machine awake only while agents are working, and keep remote sessions alive with the lid closed.",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1wad7fl/"
+    },
+    {
+     "request": "Make 'auto-approve / YOLO' a physical, stateful control (switch) rather than a momentary button on agent keypads (paraphrased from VibeKeys thread comments).",
+     "evidence_url": "https://www.reddit.com/r/ClaudeCode/comments/1tq5odl/"
+    }
+   ],
+   "notes": "Method and caveats:\n1) reddit.com, old.reddit.com, the Reddit JSON API, Pullpush and Redlib were all blocked or rate-limited from this environment. Reddit posts and comments were read through the Arctic Shift Reddit archive API (arctic-shift.photon-reddit.com), and the thread URLs above are the canonical reddit.com permalinks of those posts. Scores and comment counts are as recorded in the archive and were seen 2026-11-18. Archive scores are captured at ingest and may be lower than live Reddit. Comment quotes link to the parent post, not the comment permalink.\n2) Archive full-text search often returned HTTP 422 for large subreddits (r/codex, r/esp32, r/ChatGPTCoding, some r/ClaudeAI queries). Coverage is therefore heaviest for r/ClaudeCode and r/ClaudeAI, with some r/vibecoding, r/cursor and r/macapps. r/esp32, r/ChatGPTCoding and r/codex are under-covered, and there are no Codex Micro reception quotes from r/codex itself.\n3) The session's web-search budget ran out near the end. I stopped searching rather than work around it, so a few leads (Codex Micro reactions, permission-prompt fatigue threads) were not followed up.\n4) Hacker News and GitHub-issue quotes are marked as supporting, not Reddit. They came from the HN Algolia API and the GitHub REST API. GitHub thumbs-up counts were seen 2026-11-18.\n5) Distinct sources used: about 45 Reddit threads plus 6 HN threads and 6 GitHub issues.\n6) Strongest overall signals, by upvotes: desk hardware posts (1000+), usage-limit pain (1000+ titles), Remote Control (625), the waiting/flow threads (300-983).\n7) Strongest counter-signal: usage trackers, notification dings and session managers are seen as saturated or already native.\n8) Gap stated by a builder: live per-session status and actions are rarer than usage meters.\n9) No files were written. Scratch helpers only were in the session scratchpad.",
+   "lane": "reddit"
+  }
+ ],
+ "finders": [
+  {
+   "lane": "maker:r1",
+   "returned": 103,
+   "searched": 47
+  },
+  {
+   "lane": "crowdfunding:r1",
+   "returned": 67,
+   "searched": 31
+  },
+  {
+   "lane": "usage-monitor:r1",
+   "returned": 92,
+   "searched": 12
+  },
+  {
+   "lane": "approval-remote:r1",
+   "returned": 69,
+   "searched": 9
+  },
+  {
+   "lane": "desktop-companion:r1",
+   "returned": 75,
+   "searched": 13
+  },
+  {
+   "lane": "buddy-protocol:r1",
+   "returned": 63,
+   "searched": 14
+  },
+  {
+   "lane": "gamification:r1",
+   "returned": 47,
+   "searched": 14
+  },
+  {
+   "lane": "reddit:r1",
+   "returned": 65,
+   "searched": 11
+  },
+  {
+   "lane": "press:r1",
+   "returned": 59,
+   "searched": 8
+  },
+  {
+   "lane": "producthunt-hn:r1",
+   "returned": 107,
+   "searched": 7
+  },
+  {
+   "lane": "platform:r1",
+   "returned": 51,
+   "searched": 16
+  },
+  {
+   "lane": "adjacent:r1",
+   "returned": 112,
+   "searched": 7
+  },
+  {
+   "lane": "non-english:r1",
+   "returned": 118,
+   "searched": 15
+  },
+  {
+   "lane": "approval-remote:r2",
+   "returned": 74,
+   "searched": 7
+  },
+  {
+   "lane": "usage-monitor:r2",
+   "returned": 244,
+   "searched": 6
+  },
+  {
+   "lane": "maker:r2",
+   "returned": 190,
+   "searched": 22
+  },
+  {
+   "lane": "buddy-protocol:r2",
+   "returned": 138,
+   "searched": 13
+  },
+  {
+   "lane": "producthunt-hn:r2",
+   "returned": 99,
+   "searched": 19
+  },
+  {
+   "lane": "crowdfunding:r2",
+   "returned": 54,
+   "searched": 8
+  },
+  {
+   "lane": "desktop-companion:r2",
+   "returned": 160,
+   "searched": 14
+  },
+  {
+   "lane": "reddit:r2",
+   "returned": 155,
+   "searched": 15
+  },
+  {
+   "lane": "gamification:r2",
+   "returned": 88,
+   "searched": 11
+  },
+  {
+   "lane": "gap2",
+   "returned": 68,
+   "searched": 6
+  },
+  {
+   "lane": "gap1",
+   "returned": 35,
+   "searched": 12
+  }
+ ],
+ "synthesis_check": {
+  "as_of": "2026-11-18",
+  "fixes": 41,
+  "note": "Rewritten from the curated data, then every number, id and claim checked against it; fixes lists what the checker changed.",
+  "log": [
+   {
+    "where": "headline",
+    "was": "Burnbot is the only profiled product that judges a Claude Code session... It lags on what rivals now treat as basic: more agents, plan limits, sound and approving from the device.",
+    "now": "...which none of the 37 profiled products does. It lags on features many rivals have: more agents, plan limits, sound and approving from the device.",
+    "why": "Burnbot is the reference, not one of the profiled products. Plan limits (12 of 27) and approve from device (11 of 27) are under half of T1, so they are not 'basic'."
+   },
+   {
+    "where": "summary_bullets[2]",
+    "was": "Burnbot is behind on the basics.",
+    "now": "Burnbot is behind on common features.",
+    "why": "Plan limits, approving from the device and sound are not table stakes in prevalence_t1. Only agent status, permission alert and multi-session are."
+   },
+   {
+    "where": "summary_bullets[4]",
+    "was": "...ships in March 2027. Most other agent-only campaigns raised little.",
+    "now": "...due to start shipping in March 2027. Other coding-agent hardware campaigns mostly raised little.",
+    "why": "The spot check says the first batch is 'expected to begin shipping' in March 2027. The wording now matches the crowdfunding lane, which says coding-agent-only crowdfunding mostly raises little."
+   },
+   {
+    "where": "summary_bullets[5], threats[0].why, platform category obs 1",
+    "was": "streaks, a heatmap, achievements",
+    "now": "a usage streak, a heatmap (and active days in the Stats tab)",
+    "why": "The cc-native spot check lists a heatmap, a usage streak, active days and a most-active day. Achievements appears only in an unverified summary line, so it was removed."
+   },
+   {
+    "where": "threats[0].why",
+    "was": "These come with the paid plan users already have.",
+    "now": "They cost nothing extra on a paid plan, though status-line limits reach only Pro, Max and Ultra.",
+    "why": "Applies the spot_check correction: rate-limit fields reach only Pro, Max and Ultra subscribers."
+   },
+   {
+    "where": "categories: Desktop pets obs 1",
+    "was": "It does approvals, one-click jump, plan limits, sound and history, for nearly 30 agents.",
+    "now": "It covers nearly 30 agents and does approvals (not for every agent), one-click jump, plan limits, sound and history.",
+    "why": "The clawd-on-desk spot check says the permission bubbles do not work for every agent."
+   },
+   {
+    "where": "categories: Desktop pets obs 2",
+    "was": "10,300 stars and 98,475 VS Code installs",
+    "now": "10,286 stars and 98,492 VS Code installs",
+    "why": "The pixel-agents spot check corrects these to 10,286 stars and 98,492 Marketplace installs."
+   },
+   {
+    "where": "categories: Desktop pets obs 3",
+    "was": "A character plus live status plus a permission alert is now the default. Every product here is free and open source.",
+    "now": "Most pair a character with live status and a permission alert. All of them are free and open source.",
+    "why": "Lockpaw has the character and status only at partial, and Clauddy has the permission alert only at partial. So 5 of 7 have all three, which is 'most', not 'the default'."
+   },
+   {
+    "where": "categories: Notch description",
+    "was": "This is the only place where companion software is sold, at $19.99 one-time.",
+    "now": "Both paid companion apps in the profiled set sit here: Vibe Island and Fetch, each $19.99 one-time.",
+    "why": "Usagebar ($9) and CloudCLI's hosted plans are also paid software. Only the two paid desktop companions are both here."
+   },
+   {
+    "where": "categories: Notch obs 1",
+    "was": "Vibe Island covers 30 agents and can approve and jump from the notch, for $19.99 one-time.",
+    "now": "Vibe Island covers 30 agents for $19.99 one-time. It can approve from the notch, but only for Claude Code, OpenCode and MiMoCode.",
+    "why": "The profile limits approval to three agents. The item also had two ideas in one sentence."
+   },
+   {
+    "where": "categories: Agent hardware displays obs 3",
+    "was": "Clawdmeter's tray app flashes firmware onto 28 ESP32 boards. Token Monitor's campaign failed, raising EUR 1,153 of EUR 28,000.",
+    "now": "Two finished displays show little pull. Token Monitor's Kickstarter failed at EUR 1,153 of EUR 28,000. FreakStudio's Tindie page shows no units sold.",
+    "why": "The original made two unrelated points in one item. The Clawdmeter point already appears in reference_behind and opportunities. The FreakStudio traction comes from its profile."
+   },
+   {
+    "where": "categories: Usage monitors obs 1",
+    "was": "It has 23,200 stars.",
+    "now": "It has 23,213 stars.",
+    "why": "Uses the exact figure from the codexbar spot check."
+   },
+   {
+    "where": "categories: Gamification obs 1",
+    "was": "Viberank and Tokscale rank people by spend.",
+    "now": "Viberank and Tokscale rank people by spend or tokens.",
+    "why": "Tokscale sorts by tokens or estimated cost."
+   },
+   {
+    "where": "categories: Platform description",
+    "was": "They set the free baseline users compare against.",
+    "now": "They set the baseline users get at no extra charge.",
+    "why": "Spot check: Claude Code is not free. It needs a paid plan or API billing."
+   },
+   {
+    "where": "feature_landscape[0] and [1]",
+    "was": "Item 1 had status and alert. Item 2 had 'Multi-session is close to universal' plus the about-half features.",
+    "now": "Multi-session (16 yes, 9 partial) moved into table stakes. Item 2 now covers only the features about half have, plus Burnbot's gap.",
+    "why": "Keeps one idea per item. 'Close to universal' overstated 16 of 27 at yes."
+   },
+   {
+    "where": "feature_landscape[3]",
+    "was": "streaks or goals (3 products in all) ... loop stopping (CodeBurn only)",
+    "now": "streaks or goals (3 of 37 at yes) ... loop detection (CodeBurn only)",
+    "why": "Makes the count's basis explicit (2 T1 plus 1 T2 at yes). The prevalence field is loop_stuck_detection."
+   },
+   {
+    "where": "feature_landscape[5]",
+    "was": "Many cells are unknown, mostly for hardware that has not shipped.",
+    "now": "Many cells are unknown, mostly for hardware.",
+    "why": "Unshipped hardware (Keychron, V14, CtrlVibe, SlashVibe) accounts for 49 of 102 unknown cells, under half. All hardware accounts for 67 of 102."
+   },
+   {
+    "where": "reference_unique[3]",
+    "was": "Streaks exist in Agent Cat, Hardware Buddy, Viberank and Claude Code's own Stats tab.",
+    "now": "Agent Cat, Viberank and Claude Code's Stats tab have streaks... Hardware Buddy levels up every 50K tokens.",
+    "why": "Hardware Buddy's profile note says it has no streaks. Its 'yes' comes from token-based levels."
+   },
+   {
+    "where": "reference_unique[4]",
+    "was": "Point: \"Going round\" when your asks repeat without progress. Evidence began 'This one is close, not unique.'",
+    "now": "Point flags it as close, not unique. Evidence adds that Notchi reacts when a prompt sounds stuck.",
+    "why": "Moves the caveat into the point so the list does not read as unique. Notchi's loop_stuck_detection is partial and is also nearby prior work."
+   },
+   {
+    "where": "reference_behind[1]",
+    "was": "12 of 27 T1 and 5 of 10 T2 show 5-hour and weekly limits... Usage is the loudest demand topic.",
+    "now": "...show plan limits... Usage is the loudest topic on r/ClaudeCode.",
+    "why": "Not every plan_limits 'yes' shows both windows. The demand data scopes 'loudest topic' to r/ClaudeCode."
+   },
+   {
+    "where": "reference_behind[2]",
+    "was": "Hardware buyers say approve and deny is the one action that matters.",
+    "now": "Hardware threads call approve and deny the one action that matters.",
+    "why": "The evidence is commenters in crowdfunding and HN threads, not verified buyers."
+   },
+   {
+    "where": "reference_behind[5]",
+    "was": "Vibe Buddy sells finished at $49.",
+    "now": "Vibe Buddy takes $49 pre-orders for a finished unit.",
+    "why": "Vibe Buddy's stage is preorder, with shipping planned around November 2026."
+   },
+   {
+    "where": "threats[1].why",
+    "was": "...an Espressif library. It is still labelled not officially supported.",
+    "now": "...and Espressif has a library for it. It needs developer mode and is labelled not officially supported.",
+    "why": "The hardware-buddy spot check says the API works only in developer mode."
+   },
+   {
+    "where": "threats[2].why",
+    "was": "...fast-moving (v1.6.0 on 8 Nov 2026). Pixel Agents has 98,475 installs. Either could add a motivation layer faster than Burnbot can add agents and OSes.",
+    "now": "...ships every 8 to 12 days, though it avoids scoring by design. Pixel Agents has 98,492 VS Code installs, and its roadmap mentions scores and game elements.",
+    "why": "The 'faster than Burnbot' line was speculation. The Clawd profile says it deliberately avoids productivity scoring. The Pixel Agents spot check confirms the roadmap's game and score elements and the install count."
+   },
+   {
+    "where": "threats[3].why",
+    "was": "Codex Micro (sold out in 12 hours)... SlashVibe's SDK already shows a pixel pet as an example. It ships in March 2027.",
+    "now": "...sold out in about 12 hours... SlashVibe's campaign lists a pixel pet as an SDK example. Its first batch is due to ship in March 2027.",
+    "why": "The data says 'about 12 hours'. The pixel pet appears only as an SDK or campaign example, and the SDK is not released. The first batch is only expected in March 2027."
+   },
+   {
+    "where": "threats[5].why",
+    "was": "The name and the fire at the top level reward token volume.",
+    "now": "The name and the top-level fire put token burn first, and burn is 40% of each level.",
+    "why": "Burn is weighted 40% alongside typing and actions, so the levels do not purely reward volume. The 40% weight comes from the reference notes."
+   },
+   {
+    "where": "opportunities[1].evidence",
+    "was": "A requested pet sweats near the limit and cheers on reset. The status line gives 5-hour and weekly limits free...",
+    "now": "Pets that sweat near the limit and throw confetti on reset get warm reactions. ...at no extra charge, but only to Pro, Max and Ultra subscribers.",
+    "why": "Matches the demand note's wording. 'Free' is replaced per the spot check, because Claude Code needs a paid plan."
+   },
+   {
+    "where": "opportunities[2].evidence",
+    "was": "The \"$100 plan, 73% of weekly limit in 2 days\" post got 151 comments.",
+    "now": "A post about losing 73% of a weekly limit in 2 days on the $100 plan got 151 comments.",
+    "why": "The quoted text was not the real post title, so the quote marks are dropped."
+   },
+   {
+    "where": "opportunities[4].evidence",
+    "was": "Critics dislike noisy alerts, which fits Burnbot's restraint.",
+    "now": "They also fear being pinged too often, which fits Burnbot's restraint.",
+    "why": "The data supports a fear of over-alerting (requests for escalation that doesn't spam, and 'a call every 2 minutes'), not a general dislike of noise."
+   },
+   {
+    "where": "opportunities[6].evidence",
+    "was": "No profiled product does this. ...\"10x more productive, but mentally exhausted\" got 306.",
+    "now": "The closest today are Peon-ping's exercise reminders and Clauddy's stretch remark after 90 minutes. ...",
+    "why": "'No profiled product does this' is contradicted by Peon Trainer's reminders and Clauddy's stretch remark. The duplicate 306 figure is already in demand_takeaways."
+   },
+   {
+    "where": "opportunities[7].evidence",
+    "was": "AgentDeck turns a cheap Ulanzi D200 pad into an agent console.",
+    "now": "The open-source agentdeck app turns an off-the-shelf Ulanzi D200 pad into an agent console.",
+    "why": "Avoids confusion with the AgentDeck Kickstarter hardware (a different product) and matches the agentdeck-ulanzi profile."
+   },
+   {
+    "where": "opportunities[8].evidence",
+    "was": "Burnbot already knows when the user is at the desk.",
+    "now": "Burnbot already tracks typing and which app is in front.",
+    "why": "The reference data shows typing and app-focus signals. It does not show desk presence detection."
+   },
+   {
+    "where": "pricing_benchmarks: DIY boards range",
+    "was": "About $21 to $70 in parts",
+    "now": "About $21 to $70 for the hardware",
+    "why": "The $69.99 Divoom MiniToo is a retail speaker, not a set of parts."
+   },
+   {
+    "where": "pricing_benchmarks: Finished displays",
+    "was": "Token Monitor: $115 (campaign failed)",
+    "now": "Token Monitor: EUR 99, about $115 (campaign failed)",
+    "why": "The tier was priced at EUR 99, and $115 is a conversion."
+   },
+   {
+    "where": "pricing_benchmarks: Keypads",
+    "was": "CtrlVibe: from $109 early bird",
+    "now": "CtrlVibe: from $109 super early bird",
+    "why": "$109 was the 24-hour Super Early Bird. The Early Bird was $139."
+   },
+   {
+    "where": "pricing_benchmarks: Platform built-ins range",
+    "was": "Included with the paid plan",
+    "now": "No extra charge on top of the plan",
+    "why": "Codex pets come with ChatGPT plans, not only paid Claude plans. This also keeps the spot check's 'no extra charge' framing."
+   },
+   {
+    "where": "demand_takeaways[1]",
+    "was": "Usage is the loudest topic.",
+    "now": "Usage is the loudest topic on r/ClaudeCode.",
+    "why": "The Reddit lane scopes the claim to r/ClaudeCode."
+   },
+   {
+    "where": "demand_takeaways[2]",
+    "was": "But buyers expect $10 to $40 DIY prices",
+    "now": "But commenters assume they can build one for $10 to $40",
+    "why": "The source is Reddit commenters assuming they can build it themselves, not a study of buyers."
+   },
+   {
+    "where": "demand_takeaways[5]",
+    "was": "Personality is loved when it reacts to real work.",
+    "now": "Personality is loved, but it has to feel fair.",
+    "why": "The HN theme says personality 'has to be fair and well designed'. The 'reacts to real work' framing was not in the data."
+   },
+   {
+    "where": "demand_takeaways[6]",
+    "was": "\"How do you manage multiple parallel sessions\" got 34 points but 100 comments.",
+    "now": "A thread on managing parallel sessions got 34 points but 100 comments.",
+    "why": "The quoted title did not match the real post title."
+   },
+   {
+    "where": "open_questions[6]",
+    "was": "Coverage gaps: no Windows 11 taskbar agents, Zed, ... paid notch or dictation apps, or agent-deck. Reddit came from an archive. Do they change the picture?",
+    "now": "Would the missing products change the picture? The data lacks first-party features from Windows 11, Zed, Windsurf, Devin, Amp and Factory, plus paid notch apps, most dictation apps and agent-deck.",
+    "why": "Wispr Flow is already listed, so 'most dictation apps' is accurate. The archive note was a separate idea and is dropped to keep one idea per item."
+   }
+  ]
+ }
+}
