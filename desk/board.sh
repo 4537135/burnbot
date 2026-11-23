@@ -8,6 +8,7 @@
 #   desk/board.sh send LINE…           send lines and show what comes back (each LINE is one line)
 #   desk/board.sh upload SKETCH        build a sketch (its folder or its .ino) and put it on the board
 #   desk/board.sh screen               put Burnbot's screen program on the board (the XIAO, for now)
+#   desk/board.sh perch                put Burnbot on the Desk Buddy Perch (ESP32 + 1.5" OLED + six keys)
 #   desk/board.sh backup [FILE]        ESP32: save everything on it (to desk/backup/ unless FILE)
 #   desk/board.sh restore FILE         ESP32: put a saved FILE back, replacing everything on it
 #   desk/board.sh setup                install arduino-cli and what the boards need
@@ -325,8 +326,51 @@ upload_esp32() {
   free_port
   say "Uploading to $PORT…"
   if ! arduino-cli upload -p "$PORT" --fqbn "$ESP32_FQBN" --input-dir "$WORK/out" "$SKETCH"; then
-    die "The upload did not take. If it stopped at \"Connecting…\", hold the board's BOOT button while it tries, and run this again."
+    say
+    say "That stopped partway. Writing it again in small pieces, each tried until it takes…"
+    upload_esp32_pieces || die "The upload did not take. If it stopped at \"Connecting…\", hold the board's BOOT button while it tries, and run this again."
   fi
+}
+
+# Some USB cables drop a few bytes now and then; esptool gives up on the whole upload when
+# that happens. This writes the same files 64 KB at a time at 115200, tries each piece up to
+# five times, then has the chip check every file against what was sent.
+upload_esp32_pieces() {
+  local et name out boot_app0 pieces off size at try f
+  et=$(esptool_bin)
+  name=$(basename "$SKETCH")
+  out="$WORK/out"
+  boot_app0=$(ls "$HOME"/Library/Arduino15/packages/esp32/hardware/esp32/*/tools/partitions/boot_app0.bin 2>/dev/null | tail -1)
+  [ -f "$out/$name.ino.bin" ] && [ -f "$out/$name.ino.bootloader.bin" ] && [ -f "$out/$name.ino.partitions.bin" ] && [ -f "$boot_app0" ] || return 1
+  pieces="$WORK/pieces"
+  rm -rf "$pieces" && mkdir -p "$pieces"
+  # offset file, for each thing to write
+  local plan=("0x1000 $out/$name.ino.bootloader.bin" "0x8000 $out/$name.ino.partitions.bin" "0xe000 $boot_app0")
+  size=$(stat -f%z "$out/$name.ino.bin")
+  for ((at = 0; at < size; at += 65536)); do
+    f="$pieces/app-$at.bin"
+    dd if="$out/$name.ino.bin" of="$f" bs=65536 skip=$((at / 65536)) count=1 2>/dev/null
+    plan+=("$(printf '0x%x' $((0x10000 + at))) $f")
+  done
+  for step in "${plan[@]}"; do
+    off=${step%% *}
+    f=${step#* }
+    for try in 1 2 3 4 5; do
+      if "$et" --port "$PORT" -b 115200 write-flash "$off" "$f" >"$WORK/piece.log" 2>&1; then
+        say "  $off ok"
+        break
+      fi
+      [ "$try" = 5 ] && { tail -3 "$WORK/piece.log"; return 1; }
+    done
+  done
+  for try in 1 2 3; do
+    if "$et" --port "$PORT" -b 115200 verify-flash 0x1000 "$out/$name.ino.bootloader.bin" 0x8000 "$out/$name.ino.partitions.bin" 0xe000 "$boot_app0" 0x10000 "$out/$name.ino.bin" >"$WORK/piece.log" 2>&1; then
+      say "  checked: the board holds exactly what was built"
+      return 0
+    fi
+  done
+  tail -3 "$WORK/piece.log"
+  return 1
 }
 
 # ---------- commands ----------
@@ -422,6 +466,31 @@ cmd_screen() {
   esac
 }
 
+cmd_perch() {
+  local now
+  if [ "$BUILD_ONLY" = 1 ]; then pick 0 esp32; else pick 1 esp32; fi
+  [ "$KIND" = esp32 ] || die "The Perch is an ESP32; the board plugged in is a $(label "$KIND")."
+  ensure_core esp32
+  arduino-cli lib list 2>/dev/null | grep -q "Adafruit SH110X" || arduino-cli lib install "Adafruit SH110X"
+  prepare_sketch "$DESK/burnbot_perch"
+  cp "$DESK/burnbot_screen/render.h" "$DESK/burnbot_screen/perch.h" "$SKETCH"/   # the drawing it shares with the colour screen
+  build
+  if [ "$BUILD_ONLY" = 1 ]; then say "Built. Not uploaded."; return 0; fi
+  upload_esp32
+  sleep 2   # it restarts after the upload
+  now=$(serial ask "$PORT" | cut -f1)
+  case "$now" in
+    BURNBOT*)
+      say
+      say "Done: the Perch runs $now. The robot is asleep on the OLED, waiting for the Mac. Open Burnbot and it wakes up."
+      say "A press of any key closes the card on screen, like a knock. \"$ME send s\" shows the OLED and the keys." ;;
+    *)
+      say
+      say "The upload did not take: the board answers \"${now:-nothing}\"."
+      die "Unplug the board, plug it back in, and run this again." ;;
+  esac
+}
+
 cmd_backup() {
   local file et
   [ "$KIND" != xiao ] || die "Backups are for the ESP32. A XIAO does not let its program be read back; keep the sketch instead."
@@ -497,6 +566,7 @@ case "$COMMAND" in
   send) cmd_send "${REST[@]}" ;;
   upload) cmd_upload "${REST[@]}" ;;
   screen) cmd_screen ;;
+  perch) cmd_perch ;;
   backup) cmd_backup "${REST[@]}" ;;
   restore) cmd_restore "${REST[@]}" ;;
   setup) cmd_setup ;;

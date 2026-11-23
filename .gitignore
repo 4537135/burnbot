@@ -9,3 +9,5 @@ node_modules/
 generated_images/
 desk/backup/
 .env
+research/gallery/*
+shots/

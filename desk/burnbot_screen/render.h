@@ -24,6 +24,11 @@ const int AW = W / PX;                      // 80
 const int AH = (H - HUD_H + PX - 1) / PX;   // 71 (the last row is cut short)
 const int FH = 36;                          // rows the fire can reach
 const int ROBOT_X = 45;                     // the art column the robot stands on
+const int MAX_AW = 128;                     // the widest scene a screen can ask for (the Perch's OLED)
+
+// A picture of the scene, w x h art pixels. The colour screen's is AW x AH; another
+// screen can have a scene of its own size (see Scene).
+struct Art { uint16_t *px; int w, h; };
 
 // 0xRRGGBB -> the display's 16 bits.
 constexpr uint16_t rgb(uint32_t c) { return (uint16_t)(((c >> 8) & 0xF800) | ((c >> 5) & 0x07E0) | ((c >> 3) & 0x001F)); }
@@ -315,18 +320,20 @@ inline void drawHud(Band &b, const State &s, bool waiting, const Moment &m) {
 
 // ---------------------------------------------------------------- the pixel-art scene
 
-inline void rect(uint16_t *fb, float fx, float fy, int w, int h, uint16_t c, int a = 255) {
+inline void rect(Art fb, float fx, float fy, int w, int h, uint16_t c, int a = 255) {
   int x = (int)lroundf(fx), y = (int)lroundf(fy);
-  int x1 = x + w > AW ? AW : x + w, y1 = y + h > AH ? AH : y + h;
+  int x1 = x + w > fb.w ? fb.w : x + w, y1 = y + h > fb.h ? fb.h : y + h;
   if (x < 0) x = 0;
   if (y < 0) y = 0;
-  for (int yy = y; yy < y1; yy++)
-    for (int xx = x; xx < x1; xx++) fb[yy * AW + xx] = a >= 255 ? c : mix(fb[yy * AW + xx], c, a);
+  for (int yy = y; yy < y1; yy++) {
+    uint16_t *row = fb.px + yy * fb.w;
+    for (int xx = x; xx < x1; xx++) row[xx] = a >= 255 ? c : mix(row[xx], c, a);
+  }
 }
 
 /** The robot, standing with its feet at (cx, gy): steel grey, with a face that glows in the level's colour.
  *  The same drawing as on the Mac, look for look; `expr` is a reaction over the face (Expr). */
-inline void robot(uint16_t *fb, int cx, int gy, int look, float t, int expr = EX_NONE) {
+inline void robot(Art fb, int cx, int gy, int look, float t, int expr = EX_NONE) {
   bool asleep = look == ASLEEP && expr == EX_NONE, idle = look == IDLE, locked = look == LOCKED, over = look == OVERDRIVE, autop = look == AUTOPILOT;
   bool working = look == WARMING || look == CRUISING || locked || over;
   uint16_t accent = ACCENT[look];
@@ -619,9 +626,11 @@ const char *const TOKEN[3][3] = {
 
 /** The moving part of the screen: fire, falling tokens, embers, and the robot standing in them. */
 struct Scene {
-  static const int CX = ROBOT_X, GY = 54;   // the robot's feet
-  uint8_t fire[AW * FH];
-  float bump[AW];
+  int aw = AW, ah = AH;                     // its size in art pixels
+  int cx = ROBOT_X, gy = 54;                // the robot's feet
+  float reach = 27;                         // how high the fire can climb: to the robot's waist, never over its face
+  uint8_t fire[MAX_AW * FH];
+  float bump[MAX_AW];
   uint16_t palette[37];
   uint8_t soft[37];
   Drop drops[20];
@@ -630,7 +639,20 @@ struct Scene {
   uint32_t seed = 0x2545F491;
   bool primed = false;
 
-  Scene() {
+  /** A scene of w x h art pixels with the robot's feet `lift` rows above the bottom. The colour
+   *  screen's is 80 x 71 with the feet 17 up; the Perch's OLED has one of its own. */
+  Scene(int w = AW, int h = AH, int lift = AH - 54) { size(w, h, lift); }
+
+  void size(int w, int h, int lift) {
+    aw = w > MAX_AW ? MAX_AW : w;
+    ah = h;
+    cx = aw * ROBOT_X / AW;                 // the same place across, 45 of 80
+    gy = ah - lift;
+    reach = (float)(lift + 10);             // up to the waist, 10 rows above the feet
+    clear();
+  }
+
+  void clear() {
     memset(fire, 0, sizeof(fire));
     memset(bump, 0, sizeof(bump));
     memset(drops, 0, sizeof(drops));
@@ -654,24 +676,24 @@ struct Scene {
   float chance() { return (next() & 0xFFFFFF) / 16777216.0f; }
 
   void stepFire() {
-    const int base = (FH - 1) * AW;
-    for (int x = 0; x < AW; x++) {
+    const int base = (FH - 1) * aw;
+    for (int x = 0; x < aw; x++) {
       float lump = 0.74f + 0.26f * sinf(x * 0.23f + t * 2.3f) * sinf(x * 0.061f - t * 1.1f);
-      float h = 27 * flame * lump + bump[x];              // 27, not the full 36: flames to the robot's waist, never over its face
+      float h = reach * flame * lump + bump[x];           // not the full 36: flames to the robot's waist, never over its face
       if (flame < 0.1f && chance() < 0.5f) h *= 0.4f;       // embers flicker
       bump[x] *= 0.9f;
       fire[base + x] = h <= 0 ? 0 : h >= 36 ? 36 : (uint8_t)h;
     }
     for (int y = 1; y < FH; y++) {
-      int row = y * AW;
-      for (int x = 0; x < AW; x++) {
+      int row = y * aw;
+      for (int x = 0; x < aw; x++) {
         int v = fire[row + x];
         uint32_t r = next();
         int dx = x - (int)(r % 3) + 1;
         if (dx < 0) dx = 0;
-        else if (dx >= AW) dx = AW - 1;
+        else if (dx >= aw) dx = aw - 1;
         int cool = ((r >> 8) & 255) < 235 ? 1 : 0;
-        fire[row - AW + dx] = (uint8_t)(v > cool ? v - cool : 0);
+        fire[row - aw + dx] = (uint8_t)(v > cool ? v - cool : 0);
       }
     }
   }
@@ -679,12 +701,12 @@ struct Scene {
   void burst(float x) {
     for (int d = -4; d <= 4; d++) {
       int i = (int)lroundf(x) + d;
-      if (i >= 0 && i < AW) bump[i] += 16 - abs(d) * 3;
+      if (i >= 0 && i < aw) bump[i] += 16 - abs(d) * 3;
     }
     int made = 0;
     for (Ember &e : embers) {
       if (e.on || made >= 4) continue;
-      e = {x + chance() * 4 - 2, AH - 3 - chance() * 5, (chance() - 0.5f) * 16, -(18 + chance() * 26), 1, 0.8f + chance() * 1.2f, true};
+      e = {x + chance() * 4 - 2, ah - 3 - chance() * 5, (chance() - 0.5f) * 16, -(18 + chance() * 26), 1, 0.8f + chance() * 1.2f, true};
       made++;
     }
   }
@@ -717,11 +739,11 @@ struct Scene {
       dropAcc -= 1;
       for (Drop &d : drops) {
         if (d.on) continue;
-        d = {14 + chance() * (AW - 20), -6, 14 + chance() * 18, chance() * 4, true};
+        d = {14 + chance() * (aw - 20), -6, 14 + chance() * 18, chance() * 4, true};
         break;
       }
     }
-    float surface = AH - 5 - flame * 14;
+    float surface = ah - 5 - flame * 14 * (reach / 27);
     for (Drop &d : drops) {
       if (!d.on) continue;
       d.vy += 110 * dt;
@@ -733,12 +755,12 @@ struct Scene {
       }
     }
 
-    emberAcc += flame * AW * 0.22f * dt;
+    emberAcc += flame * aw * 0.22f * dt;
     while (emberAcc >= 1) {
       emberAcc -= 1;
       for (Ember &e : embers) {
         if (e.on) continue;
-        e = {chance() * AW, AH - 2 - chance() * flame * 26, (chance() - 0.5f) * 6, -(7 + chance() * 16), 1, 1.4f + chance() * 2.4f, true};
+        e = {chance() * aw, ah - 2 - chance() * flame * 26 * (reach / 27), (chance() - 0.5f) * 6, -(7 + chance() * 16), 1, 1.4f + chance() * 2.4f, true};
         break;
       }
     }
@@ -751,18 +773,18 @@ struct Scene {
     }
   }
 
-  /** Draws the scene into fb, AW x AH. */
-  void draw(uint16_t *fb, const State &s, bool waiting) {
+  /** Draws the scene into fb, aw x ah. */
+  void draw(Art fb, const State &s, bool waiting) {
     int look = waiting ? ASLEEP : s.look;
     uint16_t ground = GROUND[look];
-    for (int i = 0; i < AW * AH; i++) fb[i] = ground;
+    for (int i = 0; i < aw * ah; i++) fb.px[i] = ground;
 
     // stars come out when nothing is happening
     if (night > 0.02f) {
       uint32_t h = 0x9E3779B9;
       for (int k = 0; k < 26; k++) {
         h = h * 1664525u + 1013904223u;
-        int x = (h >> 8) % AW, y = (h >> 20) % (AH * 6 / 10);
+        int x = (h >> 8) % aw, y = (h >> 20) % (ah * 6 / 10);
         float twinkle = 0.35f + 0.65f * fabsf(sinf(t * 0.7f + k));
         rect(fb, x, y, 1, 1, rgb(0xcfd8f0), (int)(255 * night * twinkle));
       }
@@ -777,7 +799,7 @@ struct Scene {
         int steps = (int)(r * 5);
         for (int i = 0; i < steps; i++) {
           float a = i * 6.2831853f / steps;
-          rect(fb, CX + cosf(a) * r, GY - 28 + sinf(a) * r, 1, 1, ACCENT[look], alpha);
+          rect(fb, cx + cosf(a) * r, gy - 28 + sinf(a) * r, 1, 1, ACCENT[look], alpha);
         }
       }
     }
@@ -803,15 +825,15 @@ struct Scene {
       int lit = s.wins >= s.target ? lamps : s.wins * lamps / s.target;
       for (int k = 0; k < lamps; k++) {
         int y = 45 - k * 8;
-        rect(fb, 71, y, 7, 6, k < lit ? green : off, 255);
-        if (k < lit && s.wins >= s.target) rect(fb, 73, y + 2, 3, 2, ground, 255);
+        rect(fb, aw - 9, y, 7, 6, k < lit ? green : off, 255);
+        if (k < lit && s.wins >= s.target) rect(fb, aw - 7, y + 2, 3, 2, ground, 255);
       }
       if (s.streak > 1) {
         static const uint8_t DIGIT[10][5] = {{7,5,5,5,7},{2,6,2,2,7},{7,1,7,4,7},{7,1,7,1,7},{5,5,7,1,1},
                                              {7,4,7,1,7},{7,4,7,5,7},{7,1,2,2,2},{7,5,7,5,7},{7,5,7,1,7}};
         char text[4];
         int n = snprintf(text, sizeof(text), "%d", s.streak > 99 ? 99 : s.streak);
-        int x = 78 - n * 4 + 1, top = 45 - (lamps - 1) * 8 - 7;
+        int x = aw - 2 - n * 4 + 1, top = 45 - (lamps - 1) * 8 - 7;
         for (int i = 0; i < n; i++, x += 4)
           for (int r = 0; r < 5; r++)
             for (int c = 0; c < 3; c++)
@@ -820,12 +842,12 @@ struct Scene {
     }
 
     // platform
-    rect(fb, CX - 19, GY + 3, 3, AH - GY, rgb(0x10141b));
-    rect(fb, CX + 16, GY + 3, 3, AH - GY, rgb(0x10141b));
-    rect(fb, CX - 24, GY, 48, 3, rgb(0x1d232d));
-    rect(fb, CX - 24, GY, 48, 1, rgb(0x2f3846));
+    rect(fb, cx - 19, gy + 3, 3, ah - gy, rgb(0x10141b));
+    rect(fb, cx + 16, gy + 3, 3, ah - gy, rgb(0x10141b));
+    rect(fb, cx - 24, gy, 48, 3, rgb(0x1d232d));
+    rect(fb, cx - 24, gy, 48, 1, rgb(0x2f3846));
 
-    robot(fb, CX, GY, look, t, waiting ? EX_NONE : s.expr);
+    robot(fb, cx, gy, look, t, waiting ? EX_NONE : s.expr);
 
     // tokens
     const uint16_t white = rgb(0xffffff);
@@ -843,11 +865,11 @@ struct Scene {
 
     // fire, over the robot's feet
     for (int y = 0; y < FH; y++) {
-      int ay = AH - FH + y;
+      int ay = ah - FH + y;
       if (ay < 0) continue;
-      for (int x = 0; x < AW; x++) {
-        int v = fire[y * AW + x];
-        if (v) fb[ay * AW + x] = mix(fb[ay * AW + x], palette[v], soft[v]);
+      for (int x = 0; x < aw; x++) {
+        int v = fire[y * aw + x];
+        if (v) fb.px[ay * aw + x] = mix(fb.px[ay * aw + x], palette[v], soft[v]);
       }
     }
 

@@ -396,7 +396,7 @@ void loop() {
     float dt = frameAt ? (now - frameAt) / 1000.0f : 0.066f;
     frameAt = now;
     scene.step(dt, state, waiting);
-    scene.draw(art, state, waiting);
+    scene.draw({art, bb::AW, bb::AH}, state, waiting);
     showScene(sceneStale);
     sceneStale = false;
   }
