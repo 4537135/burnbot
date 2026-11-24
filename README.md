@@ -325,6 +325,32 @@ medium, firm), and with **Knock to Dismiss** on, a double knock closes the
 speech bubble, and takes you back to your terminal if the bubble was asking
 for you.
 
+**The Claude Pad.** An LCDwiki ES3C28P (ESP32-S3 with a 2.8" colour screen)
+in a case with four keys under the screen, on GPIO 2, 3, 14 and 21. It shows
+the robot sideways, 320 × 240, with what each key does along the bottom:
+
+| Key | When Claude asks to run something | Otherwise |
+|---|---|---|
+| 1 | **Deny** | close the bubble |
+| 2 | **Talk** (hold): brings the session forward and holds dictation down | the same |
+| 3 | **Show**: goes to the session | the same |
+| 4 | **Approve** | nothing |
+
+Approve and Deny answer Claude Code's permission prompt from the pad. Burnbot
+adds a second hook for it (`ask.sh`), which Claude Code waits for. It only
+waits while the pad is plugged in and Burnbot is running, for up to 45
+seconds. If nobody presses a key, or you start typing in your terminal, the
+prompt shows on the Mac as usual. Questions and plan approvals always stay on
+the Mac.
+
+Talk uses Wispr Flow if it is running (it holds `fn`), or else macOS
+Dictation (it presses its shortcut twice). It needs Burnbot to have
+Accessibility access, which macOS asks for the first time.
+
+Put Burnbot on it with `desk/board.sh pad`. `desk/board.sh pad-test` checks
+its screen and keys on their own. It uses USB only: the pad's own Wi-Fi
+program is replaced.
+
 To put the program on the board: quit Burnbot, plug the board in, and
 double-click `desk/Upload to the screen.command`. It needs `arduino-cli`
 (`brew install arduino-cli`, or `desk/board.sh setup`, which gets the
@@ -339,12 +365,13 @@ desk/board.sh listen                  # what the board prints; type a line to se
 desk/board.sh send V                  # send a line and show the answer ("BURNBOT 3")
 desk/board.sh upload ~/Arduino/blink  # build any sketch and put it on the board
 desk/board.sh screen                  # Burnbot's screen program, as the .command does
-desk/board.sh backup                  # ESP32: save everything on it to desk/backup/
-desk/board.sh restore FILE            # ESP32: put a saved file back
+desk/board.sh pad                     # Burnbot on the Claude Pad
+desk/board.sh backup                  # ESP32 or pad: save everything on it to desk/backup/
+desk/board.sh restore FILE            # ESP32 or pad: put a saved file back
 desk/board.sh setup                   # arduino-cli and both boards' tools
 ```
 
-With both boards plugged in, add `--esp32` or `--xiao`. Add `--build-only`
+With several boards plugged in, add `--esp32`, `--xiao` or `--pad`. Add `--build-only`
 to only check that a sketch builds (no board needed). `screen` builds the
 same program for whichever board it finds.
 
@@ -446,6 +473,7 @@ app/Runs.swift        what a command Claude ran was, whether it passed, red to g
 app/Summaries.swift   remembered sessions, AI recaps and loop checks
 app/Replay.swift      replays a recorded session (tests, Play Every Moment)
 app/DeskScreen.swift  finds the desk screen on USB and feeds it
+app/PadKeys.swift     the Claude Pad's keys: Approve and Deny through ask.sh, Talk
 app/Pages.swift       serves the pages to the app's own windows
 public/               the dashboard, the desktop robot and its second-screen scene
 desk/                 the desk screen's own program, its simulator, upload command and board.sh

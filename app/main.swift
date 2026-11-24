@@ -95,6 +95,8 @@ final class Engine {
     private var dailyGoal = 0               // wins a day you set; 0 = worked out from your days
     private var olderDays: [[String: Any]] = []     // the days before the live window, for the streak
     private let desk = DeskScreen()
+    private let asks = PadAsks(dataFolder: dataFolder)
+    private var asking: PadAsk?              // the permission prompt the pad shows, while ask.sh waits
     private let queue = DispatchQueue(label: "burnbot.engine", qos: .utility)
     private var timer: DispatchSourceTimer?
     private var state: [String: Any]?
@@ -110,6 +112,8 @@ final class Engine {
     var onState: ((String) -> Void)?
     /// A knock on the desk screen closed a bubble that was asking for you, with its session (main thread).
     var onFocus: ((String) -> Void)?
+    /// The pad's Talk key went down (true) or up, with the session to talk to ("" for none) (main thread).
+    var onTalk: ((String, Bool) -> Void)?
     /// Whether the desk screen can feel knocks, and its knock setting, when that changes (main thread).
     var onDeskKnocks: ((Bool, Int) -> Void)?
     private var knockDismiss = false        // a knock closes the bubble; off until you have tried it on your desk
@@ -124,6 +128,7 @@ final class Engine {
         tracker = Tracker(root: root, storePath: storePath)
         desk.log = { log($0) }
         desk.onKnock = { [weak self] in self?.knocked() }
+        desk.onKey = { [weak self] key, down in self?.pressed(key, down: down) }
         moments.voice = Voice(file: pagesFolder.appendingPathComponent("voice.json"))
         moments.isWork = { [attention] in attention.isWork($0) }
         moments.sessionInfo = { [tracker] id, now, since in tracker.session(id, now: now, since: since) }
@@ -242,7 +247,23 @@ final class Engine {
                 : now < testKnockUntil ? (felt ? "M|k=b|h=1|t=KNOCK!|a=FELT THAT ONE." : "M|k=m|h=1|t=TEST KNOCK|a=KNOCK TWICE ON|b=THE CASE.")
                 : deskMoment(shown.card)
             let expr = !speaks ? "" : now < testKnockUntil ? (felt ? "happy" : "") : shown.expr
-            desk.send(deskLine(state, names: names, expr: expr), moment: moment)
+            var keys = ""
+            if desk.hasKeys {
+                asks.beat()
+                asking = asks.pending(now: now)
+                // Typing in your terminal or editor: you are there, so the prompt is answered there.
+                if let ask = asking, now - ask.ms > 2000, attention.isWork(place.front),
+                   CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown) < 1.5 {
+                    asks.letGo(ask)
+                    asking = nil
+                    log("Pad: you are typing, so \(ask.tool) is asked on the Mac")
+                }
+                keys = padLine(ask: asking, card: shown.card)
+            } else if asks.beating {
+                asks.stop()
+                asking = nil
+            }
+            desk.send(deskLine(state, names: names, expr: expr) + keys, moment: moment)
         }
         let knocks = (desk.knocks, desk.sensitivity)
         if reportedKnocks == nil || reportedKnocks! != knocks {
@@ -400,6 +421,48 @@ final class Engine {
         deliver()
     }
 
+    /// A key on the desk pad. While Claude waits for a yes: Deny, Talk, Show, Approve. Otherwise the first
+    /// closes the bubble, Talk and Show go to the session the robot is talking about, and the last does nothing.
+    private func pressed(_ key: Int, down: Bool) {
+        let now = Date().timeIntervalSince1970 * 1000
+        let ask = asking, card = shown.card
+        let session = ask?.session ?? card?.session ?? ""
+        switch (key, down) {
+        case (1, true):
+            if let ask {
+                asks.answer(ask, allow: false)
+                log("Pad: denied \(ask.tool)")
+                settle(ask, now: now)
+            } else if let card {
+                log("Pad closed \"\(card.title)\"")
+                close(card.id, now: now)
+            } else {
+                return
+            }
+        case (4, true):
+            guard let ask else { return }
+            asks.answer(ask, allow: true)
+            log("Pad: approved \(ask.tool)")
+            settle(ask, now: now)
+        case (3, true):
+            DispatchQueue.main.async { self.onFocus?(session) }
+            return
+        case (2, _):
+            DispatchQueue.main.async { self.onTalk?(session, down) }
+            return
+        default:
+            return
+        }
+        encode()
+        deliver()
+    }
+
+    /// An answer from the pad: the prompt is gone, and so is the bubble asking about it.
+    private func settle(_ ask: PadAsk, now: Double) {
+        asking = nil
+        if let card = shown.card, card.kind == "waiting", card.session == ask.session { close(card.id, now: now) }
+    }
+
     func setKnock(dismiss: Bool) { queue.async { self.knockDismiss = dismiss } }
     func setKnockSensitivity(_ level: Int) { queue.async { self.desk.setSensitivity(level) } }
     func testKnock() {
@@ -417,6 +480,7 @@ final class Engine {
             timer?.cancel()
             tracker.save()
             desk.shutDown()
+            asks.stop()
             inbox.close()
         }
     }
@@ -472,6 +536,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         // The hooks run this script; it is rewritten each launch so it is always this version's.
         // Whether the hooks are in Claude Code's settings is up to you (the welcome, or the Robot menu).
         hooks.writeScript()
+        if hooks.lacksAsk {
+            // Added by a Burnbot from before the desk pad's keys: add them again, with the pad's.
+            do { try hooks.install() } catch { log("Could not add the desk pad's hook: \(error.localizedDescription)") }
+        }
         engine.setOptions(intelligence: intelligence, aiOn: aiOn, dailyGoal: dailyGoal)
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         // Which app you are in decides whether the robot speaks up or just pulls a face.
@@ -483,6 +551,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         engine.onState = { [weak self] json in self?.push(json) }
         engine.onFocus = { [weak self] session in self?.goTo(session: session) }
+        engine.onTalk = { [weak self] session, down in self?.talk(session: session, down: down) }
         engine.onDeskKnocks = { [weak self] can, level in
             self?.deskKnocks = can
             self?.deskSensitivity = level
@@ -712,6 +781,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 }
             }
         }
+    }
+
+    /// The pad's Talk key: down brings the session forward and starts dictation, up stops it, so
+    /// what you said lands in its prompt. Both wait a moment, so the window is in front first.
+    private func talk(session: String, down: Bool) {
+        if down { goTo(session: session) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { down ? Dictation.start() : Dictation.stop() }
     }
 
     /// Editors that run the Claude Code VS Code extension, with the link scheme each one answers.

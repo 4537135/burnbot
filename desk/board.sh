@@ -2,6 +2,7 @@
 # One command for the boards Burnbot's desk screen can run on:
 #   the Seeed XIAO nRF52840 (Sense / Sense Plus), which shows up as /dev/cu.usbmodem…
 #   an ESP32 dev board (a CP2102 or CH340 on it), which shows up as /dev/cu.usbserial-…
+#   the Claude Pad (LCDwiki ES3C28P, an ESP32-S3 with a 2.8" screen and four keys), /dev/cu.usbmodem…
 #
 #   desk/board.sh                      which boards are plugged in, and what they run
 #   desk/board.sh listen [SECONDS]     what the board prints; type a line to send it, Ctrl-C stops
@@ -9,12 +10,14 @@
 #   desk/board.sh upload SKETCH        build a sketch (its folder or its .ino) and put it on the board
 #   desk/board.sh screen               put Burnbot's screen program on the board (the XIAO, for now)
 #   desk/board.sh perch                put Burnbot on the Desk Buddy Perch (ESP32 + 1.5" OLED + six keys)
-#   desk/board.sh backup [FILE]        ESP32: save everything on it (to desk/backup/ unless FILE)
-#   desk/board.sh restore FILE         ESP32: put a saved FILE back, replacing everything on it
+#   desk/board.sh pad                  put Burnbot on the Claude Pad (ESP32-S3 + 2.8" screen + four keys)
+#   desk/board.sh pad-test             the Claude Pad's screen and keys, without Burnbot
+#   desk/board.sh backup [FILE]        ESP32 or pad: save everything on it (to desk/backup/ unless FILE)
+#   desk/board.sh restore FILE         ESP32 or pad: put a saved FILE back, replacing everything on it
 #   desk/board.sh setup                install arduino-cli and what the boards need
 #
 # Options, anywhere on the line:
-#   --esp32, --xiao    which board, when both are plugged in (setup: only that board's tools)
+#   --esp32, --xiao, --pad   which board, when several are plugged in (setup: only that board's tools)
 #   --port /dev/cu.…   that port exactly
 #   --build-only       upload, screen: build, and do not need a board
 #   --reset            listen: restart the ESP32 first, to see it from the beginning
@@ -30,12 +33,17 @@ PY=/usr/bin/python3
 XIAO_FQBN="${XIAO_FQBN:-Seeeduino:nrf52:xiaonRF52840SensePlus}"   # a plain Sense: Seeeduino:nrf52:xiaonRF52840Sense
 ESP32_FQBN="${ESP32_FQBN:-esp32:esp32:esp32:UploadSpeed=230400}"   # faster than this garbles on some cables
 ESP32_BAUD="${ESP32_BAUD:-230400}"                                  # the same, for backup and restore
+PAD_FQBN="${PAD_FQBN:-esp32:esp32:esp32s3:CDCOnBoot=cdc,PSRAM=opi,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB}"
+PAD_BAUD="${PAD_BAUD:-921600}"                                      # the S3's own USB: fast and clean
 SEEED_URL=https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
 ESP32_URL=https://espressif.github.io/arduino-esp32/package_esp32_index.json
 
 say() { printf '%s\n' "$*"; }
 die() { printf '%s\n' "$*" >&2; exit 1; }
-label() { if [ "$1" = esp32 ]; then printf 'ESP32'; else printf 'XIAO'; fi; }
+label() { case "$1" in esp32) printf 'ESP32' ;; pad) printf 'Claude Pad' ;; *) printf 'XIAO' ;; esac; }
+is_esp() { [ "$1" = esp32 ] || [ "$1" = pad ]; }   # esptool works on it: backups, restores, piece-wise uploads
+fqbn_of() { case "$1" in esp32) echo "$ESP32_FQBN" ;; pad) echo "$PAD_FQBN" ;; *) echo "$XIAO_FQBN" ;; esac; }
+baud_of() { if [ "$1" = pad ]; then echo "$PAD_BAUD"; else echo "$ESP32_BAUD"; fi; }
 
 # ---------- talking to a board over USB ----------
 # Always at 115200. Never 1200: opening a XIAO at 1200 tells it to wait for a new program.
@@ -146,8 +154,28 @@ serial() { "$PY" -I -c "$SERIAL_PY" "$@"; }
 
 # ---------- finding the boards ----------
 esp_ports() { ls /dev/cu.usbserial-* /dev/cu.SLAB_USBtoUART* /dev/cu.wchusbserial* 2>/dev/null || true; }
-xiao_ports() { ls /dev/cu.usbmodem* 2>/dev/null || true; }
-kind_of() { case "$1" in *usbmodem*) echo xiao ;; *) echo esp32 ;; esac; }
+# The XIAO and the pad both show up as /dev/cu.usbmodem…; their USB vendor tells them apart
+# (Seeed 0x2886, Espressif 0x303A). Prints "PORT VENDOR" for each usbmodem port.
+usbmodem_vendors() {
+  ioreg -r -c IOUSBHostDevice -l -w0 2>/dev/null | "$PY" -I -c '
+import re, sys
+vid = None
+for line in sys.stdin:
+    m = re.search(r"\"idVendor\" = (\d+)", line)
+    if m: vid = int(m.group(1))
+    m = re.search(r"\"IOCalloutDevice\" = \"(/dev/cu\.usbmodem[^\"]*)\"", line)
+    if m and vid is not None: print(m.group(1), hex(vid))
+'
+}
+modem_ports() { usbmodem_vendors | awk -v v="$1" '$2 == v { print $1 }'; }
+xiao_ports() { modem_ports 0x2886; }
+pad_ports() { modem_ports 0x303a; }
+kind_of() {
+  case "$1" in
+    *usbmodem*) if usbmodem_vendors | grep -q "^$1 0x303a"; then echo pad; else echo xiao; fi ;;
+    *) echo esp32 ;;
+  esac
+}
 
 # Which program has a port open, if one does ("Burnbot", "screen", …).
 holder() { lsof -Fc "$1" 2>/dev/null | sed -n 's/^c//p' | head -1; }
@@ -162,26 +190,29 @@ free_port() {
 # Sets KIND (esp32 or xiao) and PORT from the options and what is plugged in.
 # $1: 1 when a board has to be plugged in. $2: the kind to assume when nothing is plugged in.
 pick() {
-  local need=$1 assume=$2 esp xiao
+  local need=$1 assume=$2 esp xiao pad
   if [ -n "$PORT" ]; then
-    [ -e "$PORT" ] || die "There is no $PORT. Plugged in now:$(printf ' %s' $(esp_ports) $(xiao_ports))"
+    [ -e "$PORT" ] || die "There is no $PORT. Plugged in now:$(printf ' %s' $(esp_ports) $(xiao_ports) $(pad_ports))"
     [ -n "$KIND" ] || KIND=$(kind_of "$PORT")
     return 0
   fi
   esp=$(esp_ports | head -1)
   xiao=$(xiao_ports | head -1)
+  pad=$(pad_ports | head -1)
   case "$KIND" in
     esp32) PORT=$esp ;;
     xiao) PORT=$xiao ;;
+    pad) PORT=$pad ;;
     *)
-      if [ -n "$esp" ] && [ -n "$xiao" ]; then
-        die "Both boards are plugged in ($esp and $xiao). Add --esp32 or --xiao."
+      if [ $(printf '%s\n' "$esp" "$xiao" "$pad" | grep -c .) -gt 1 ]; then
+        die "Several boards are plugged in ($(printf '%s ' $esp $xiao $pad)). Add --esp32, --xiao or --pad."
       elif [ -n "$esp" ]; then KIND=esp32 PORT=$esp
       elif [ -n "$xiao" ]; then KIND=xiao PORT=$xiao
+      elif [ -n "$pad" ]; then KIND=pad PORT=$pad
       elif [ -n "$assume" ]; then KIND=$assume
       fi ;;
   esac
-  [ -n "$KIND" ] || die "No board is plugged in. (To only build, add --esp32 or --xiao and --build-only.)"
+  [ -n "$KIND" ] || die "No board is plugged in. (To only build, add --esp32, --xiao or --pad and --build-only.)"
   if [ "$need" = 1 ] && [ -z "$PORT" ]; then
     die "The $(label "$KIND") is not plugged in. Plug it in by USB and run this again."
   fi
@@ -196,7 +227,7 @@ need_cli() {
 ensure_core() {
   local core url
   need_cli
-  if [ "$1" = esp32 ]; then core=esp32:esp32 url=$ESP32_URL; else core=Seeeduino:nrf52 url=$SEEED_URL; fi
+  if is_esp "$1"; then core=esp32:esp32 url=$ESP32_URL; else core=Seeeduino:nrf52 url=$SEEED_URL; fi
   if arduino-cli core list 2>/dev/null | grep -q "^$core "; then return 0; fi
   say "Installing what the $(label "$1") needs (once; a large download)…"
   arduino-cli config init >/dev/null 2>&1 || true
@@ -268,7 +299,7 @@ prepare_sketch() {
 build() {
   local fqbn
   ensure_core "$KIND"
-  if [ "$KIND" = esp32 ]; then fqbn=$ESP32_FQBN; else fqbn=$XIAO_FQBN; fi
+  fqbn=$(fqbn_of "$KIND")
   say "Building $(basename "$SKETCH") for the $(label "$KIND")…"
   arduino-cli compile --fqbn "$fqbn" --build-path "$WORK/out" "$SKETCH"
 }
@@ -325,7 +356,7 @@ upload_xiao() {
 upload_esp32() {
   free_port
   say "Uploading to $PORT…"
-  if ! arduino-cli upload -p "$PORT" --fqbn "$ESP32_FQBN" --input-dir "$WORK/out" "$SKETCH"; then
+  if ! arduino-cli upload -p "$PORT" --fqbn "$(fqbn_of "$KIND")" --input-dir "$WORK/out" "$SKETCH"; then
     say
     say "That stopped partway. Writing it again in small pieces, each tried until it takes…"
     upload_esp32_pieces || die "The upload did not take. If it stopped at \"Connecting…\", hold the board's BOOT button while it tries, and run this again."
@@ -345,7 +376,9 @@ upload_esp32_pieces() {
   pieces="$WORK/pieces"
   rm -rf "$pieces" && mkdir -p "$pieces"
   # offset file, for each thing to write
-  local plan=("0x1000 $out/$name.ino.bootloader.bin" "0x8000 $out/$name.ino.partitions.bin" "0xe000 $boot_app0")
+  local boot=0x1000
+  [ "$KIND" != pad ] || boot=0x0   # the S3 keeps its bootloader at the start
+  local plan=("$boot $out/$name.ino.bootloader.bin" "0x8000 $out/$name.ino.partitions.bin" "0xe000 $boot_app0")
   size=$(stat -f%z "$out/$name.ino.bin")
   for ((at = 0; at < size; at += 65536)); do
     f="$pieces/app-$at.bin"
@@ -364,7 +397,7 @@ upload_esp32_pieces() {
     done
   done
   for try in 1 2 3; do
-    if "$et" --port "$PORT" -b 115200 verify-flash 0x1000 "$out/$name.ino.bootloader.bin" 0x8000 "$out/$name.ino.partitions.bin" 0xe000 "$boot_app0" 0x10000 "$out/$name.ino.bin" >"$WORK/piece.log" 2>&1; then
+    if "$et" --port "$PORT" -b 115200 verify-flash "$boot" "$out/$name.ino.bootloader.bin" 0x8000 "$out/$name.ino.partitions.bin" 0xe000 "$boot_app0" 0x10000 "$out/$name.ino.bin" >"$WORK/piece.log" 2>&1; then
       say "  checked: the board holds exactly what was built"
       return 0
     fi
@@ -376,7 +409,7 @@ upload_esp32_pieces() {
 # ---------- commands ----------
 cmd_status() {
   local found=0 p kind who reply program said
-  for p in $(esp_ports) $(xiao_ports); do
+  for p in $(esp_ports) $(xiao_ports) $(pad_ports); do
     found=1
     kind=$(kind_of "$p")
     who=$(holder "$p")
@@ -398,7 +431,7 @@ cmd_status() {
     esac
   done
   if [ "$found" = 0 ]; then
-    say "No board is plugged in. (The XIAO shows up as /dev/cu.usbmodem…, the ESP32 as /dev/cu.usbserial-…)"
+    say "No board is plugged in. (The XIAO and the Claude Pad show up as /dev/cu.usbmodem…, the ESP32 as /dev/cu.usbserial-…)"
   fi
   return 0
 }
@@ -408,7 +441,7 @@ cmd_listen() {
   pick 1 ""
   free_port
   if [ "$RESET" = 1 ]; then
-    if [ "$KIND" = esp32 ]; then reset=1; else say "(--reset is for the ESP32; listening without it)"; fi
+    if is_esp "$KIND"; then reset=1; else say "(--reset is for the ESP32; listening without it)"; fi
   fi
   serial listen "$PORT" "${1:-0}" "$reset"
 }
@@ -426,9 +459,9 @@ cmd_upload() {
   prepare_sketch "$1"
   build
   if [ "$BUILD_ONLY" = 1 ]; then say "Built. Not uploaded."; return 0; fi
-  if [ "$KIND" = esp32 ]; then
+  if is_esp "$KIND"; then
     upload_esp32
-    say "Done: the ESP32 runs $(basename "$SKETCH"). To see what it prints:  $ME listen --reset"
+    say "Done: the $(label "$KIND") runs $(basename "$SKETCH"). To see what it prints:  $ME listen --reset"
   else
     upload_xiao
     if [ "$UPLOADED" = 1 ]; then
@@ -447,7 +480,7 @@ cmd_screen() {
   prepare_sketch "$DESK/burnbot_screen"
   build
   if [ "$BUILD_ONLY" = 1 ]; then say "Built. Not uploaded."; return 0; fi
-  if [ "$KIND" = esp32 ]; then
+  if is_esp "$KIND"; then
     upload_esp32
     sleep 2   # it restarts after the upload
   else
@@ -491,20 +524,61 @@ cmd_perch() {
   esac
 }
 
+cmd_pad_test() {
+  if [ "$BUILD_ONLY" = 1 ]; then pick 0 pad; else pick 1 pad; fi
+  [ "$KIND" = pad ] || die "That is a $(label "$KIND"), not the Claude Pad. (Add --pad if several boards are plugged in.)"
+  ensure_core pad
+  ensure_screen_library
+  prepare_sketch "$DESK/pad_test"
+  build
+  if [ "$BUILD_ONLY" = 1 ]; then say "Built. Not uploaded."; return 0; fi
+  upload_esp32
+  say
+  say "Done: the pad shows colour bars and four key boxes; each box lights while its key is down."
+  say "To see the key presses here:  $ME listen --pad"
+}
+
+cmd_pad() {
+  local now
+  if [ "$BUILD_ONLY" = 1 ]; then pick 0 pad; else pick 1 pad; fi
+  [ "$KIND" = pad ] || die "That is a $(label "$KIND"), not the Claude Pad. (Add --pad if several boards are plugged in.)"
+  ensure_core pad
+  ensure_screen_library
+  prepare_sketch "$DESK/burnbot_pad"
+  cp "$DESK/burnbot_screen/render.h" "$DESK/burnbot_screen/pad.h" "$SKETCH"/   # the drawing it shares with the other screens
+  build
+  if [ "$BUILD_ONLY" = 1 ]; then say "Built. Not uploaded."; return 0; fi
+  upload_esp32
+  sleep 3   # it restarts after the upload, and its USB port comes back
+  PORT=$(pad_ports | head -1)
+  now=""
+  [ -z "$PORT" ] || now=$(serial ask "$PORT" | cut -f1)
+  case "$now" in
+    BURNBOT*)
+      say
+      say "Done: the pad runs $now. The robot is asleep on the screen, waiting for the Mac. Open Burnbot and it wakes up."
+      say "Keys, left to right: Deny, Talk (hold), Show, Approve." ;;
+    *)
+      say
+      say "The upload did not take: the board answers \"${now:-nothing}\"."
+      die "Unplug the pad, plug it back in, and run this again." ;;
+  esac
+}
+
 cmd_backup() {
   local file et
   [ "$KIND" != xiao ] || die "Backups are for the ESP32. A XIAO does not let its program be read back; keep the sketch instead."
   pick 1 esp32
-  [ "$KIND" = esp32 ] || die "Backups are for the ESP32. A XIAO does not let its program be read back; keep the sketch instead."
-  file=${1:-"$DESK/backup/esp32-$(date +%Y-%m-%d-%H%M).bin"}
+  is_esp "$KIND" || die "Backups are for the ESP32. A XIAO does not let its program be read back; keep the sketch instead."
+  file=${1:-"$DESK/backup/$KIND-$(date +%Y-%m-%d-%H%M).bin"}
   [ ! -e "$file" ] || die "$file already exists. Give another name:  $ME backup FILE"
   et=$(esptool_bin)
   free_port
   mkdir -p "$(dirname "$file")"
-  say "Saving everything on the ESP32 to $file (about 3 minutes for 4 MB)…"
-  "$et" --port "$PORT" -b "$ESP32_BAUD" read-flash 0 ALL "$file"
+  say "Saving everything on the $(label "$KIND") to $file (ESP32 4 MB: about 3 minutes; pad 16 MB: about 1)…"
+  "$et" --port "$PORT" -b "$(baud_of "$KIND")" read-flash 0 ALL "$file"
   say "Checking the file against the board…"
-  "$et" --port "$PORT" -b "$ESP32_BAUD" verify-flash 0 "$file" >/dev/null ||
+  "$et" --port "$PORT" -b "$(baud_of "$KIND")" verify-flash 0 "$file" >/dev/null ||
     die "The file does not match what is on the board. Run the backup again."
   say "Saved and checked. To put it back:  $ME restore \"$file\""
 }
@@ -513,7 +587,7 @@ cmd_restore() {
   local et
   [ "$KIND" != xiao ] || die "Restore is for the ESP32."
   pick 1 esp32
-  [ "$KIND" = esp32 ] || die "Restore is for the ESP32."
+  is_esp "$KIND" || die "Restore is for the ESP32."
   if [ -z "$1" ]; then
     say "Which file? Saved so far:"
     ls -1 "$DESK"/backup/*.bin 2>/dev/null | sed 's/^/  /' || say "  (none)"
@@ -522,8 +596,8 @@ cmd_restore() {
   [ -f "$1" ] || die "There is no file at $1."
   et=$(esptool_bin)
   free_port
-  say "Putting $1 on the ESP32. This replaces everything on it…"
-  "$et" --port "$PORT" -b "$ESP32_BAUD" write-flash 0 "$1"
+  say "Putting $1 on the $(label "$KIND"). This replaces everything on it…"
+  "$et" --port "$PORT" -b "$(baud_of "$KIND")" write-flash 0 "$1"
   say "Done: it restarted and runs what the file holds."
 }
 
@@ -533,7 +607,7 @@ cmd_setup() {
     brew install arduino-cli
   fi
   if [ "$KIND" != esp32 ]; then ensure_core xiao; fi
-  if [ "$KIND" != xiao ]; then ensure_core esp32; fi
+  if [ "$KIND" != xiao ]; then ensure_core esp32; fi   # the pad uses the same core
   ensure_screen_library
   say "Ready. Plug a board in and run:  $ME"
 }
@@ -547,6 +621,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --esp32) KIND=esp32 ;;
     --xiao) KIND=xiao ;;
+    --pad) KIND=pad ;;
     --port) [ -n "$2" ] || die "--port needs a port, for example --port /dev/cu.usbserial-0001"; PORT=$2; shift ;;
     --port=*) PORT=${1#--port=} ;;
     --build-only) BUILD_ONLY=1 ;;
@@ -567,6 +642,8 @@ case "$COMMAND" in
   upload) cmd_upload "${REST[@]}" ;;
   screen) cmd_screen ;;
   perch) cmd_perch ;;
+  pad) cmd_pad ;;
+  pad-test) cmd_pad_test ;;
   backup) cmd_backup "${REST[@]}" ;;
   restore) cmd_restore "${REST[@]}" ;;
   setup) cmd_setup ;;

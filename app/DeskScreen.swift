@@ -2,7 +2,7 @@
 // shows the robot and the level (see desk/). The app sends it one line a
 // second; the board draws and animates by itself.
 //
-// The board appears as a serial port (/dev/cu.usbmodem… for the XIAO,
+// The board appears as a serial port (/dev/cu.usbmodem… for the XIAO and the Claude Pad,
 // /dev/cu.usbserial-… for an ESP32). A board that runs another program, or
 // none, is left alone.
 
@@ -26,18 +26,22 @@ final class DeskScreen {
     var log: (String) -> Void = { _ in }
     /// Someone knocked twice on the case (called on the engine's queue).
     var onKnock: (() -> Void)?
+    /// A key on a board with keys went down (true) or up: 1 to 4, left to right (engine's queue).
+    var onKey: ((Int, Bool) -> Void)?
 
     /// The board's program can show the robot's faces and speech bubbles: "BURNBOT 2" or later.
     /// One on "BURNBOT 1" still shows the levels, and the dashboard says its program is out of date.
     var speaks: Bool { state == "connected" && version >= 2 }
     /// "BURNBOT 3" and later report knocks, when the board has the sensor for it.
     var knocks: Bool { state == "connected" && version >= 3 && feelsKnocks }
+    /// "BURNBOT 4" and later have keys under the screen, and say which one (the Claude Pad).
+    var hasKeys: Bool { state == "connected" && version >= 4 }
     private var version: Int { program.flatMap { Int($0.split(separator: " ").last ?? "") } ?? 0 }
     static let current = 3                  // the program in desk/burnbot_screen
 
     var status: [String: Any] {
         ["state": state, "port": port ?? NSNull(), "program": program ?? NSNull(), "answering": Date().timeIntervalSince1970 - heardAt < 5,
-         "outdated": state == "connected" && version < DeskScreen.current, "knocks": knocks, "sensitivity": sensitivity]
+         "outdated": state == "connected" && version < DeskScreen.current, "knocks": knocks, "sensitivity": sensitivity, "keys": hasKeys]
     }
 
     /// The XIAO shows up as cu.usbmodem…; an ESP32 board as its USB chip names it
@@ -171,6 +175,11 @@ final class DeskScreen {
             let reply = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             if reply == "OK" { heardAt = now }
             else if reply == "K" { heardAt = now; onKnock?() }
+            else if reply.count == 3, reply.hasPrefix("K"), let key = Int(String(Array(reply)[1])), (1...4).contains(key),
+                    reply.hasSuffix("d") || reply.hasSuffix("u") {
+                heardAt = now
+                onKey?(key, reply.hasSuffix("d"))
+            }
             else if reply.hasPrefix("Q|") {
                 heardAt = now
                 for field in reply.split(separator: "|").dropFirst() {

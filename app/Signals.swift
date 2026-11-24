@@ -25,6 +25,31 @@ struct HookEvent {
     let ms: Double                          // when it came
 }
 
+extension HookEvent {
+    /// What one hook call sent (the JSON Claude Code gives a hook), or nil when it is not one.
+    /// `limit`: how long the detail may be.
+    static func read(_ path: String, ms: Double, limit: Int = 48) -> HookEvent? {
+        guard let data = FileManager.default.contents(atPath: path),
+              let raw = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let event = raw["hook_event_name"] as? String, let session = raw["session_id"] as? String else { return nil }
+        let cwd = raw["cwd"] as? String ?? ""
+        var project = (cwd as NSString).lastPathComponent
+        if let range = cwd.range(of: "/.claude/worktrees/") { project = (String(cwd[..<range.lowerBound]) as NSString).lastPathComponent }
+        let tool = raw["tool_name"] as? String ?? ""
+        let input = raw["tool_input"] as? [String: Any] ?? [:]
+        var detail = ""
+        if let command = input["command"] as? String {
+            detail = command
+        } else if let path = (input["file_path"] ?? input["notebook_path"] ?? input["path"]) as? String {
+            detail = (path as NSString).lastPathComponent
+        } else if let address = input["url"] as? String {
+            detail = URL(string: address)?.host ?? address
+        }
+        return HookEvent(event: event, session: session, agent: raw["agent_id"] as? String ?? "", project: project, tool: tool,
+                         detail: shortened(detail, limit), reason: raw["reason"] as? String ?? "", ms: ms)
+    }
+}
+
 /// One line, at most `limit` characters, for a card.
 func shortened(_ text: String, _ limit: Int = 60) -> String {
     let flat = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespaces)
@@ -59,24 +84,7 @@ final class HookInbox {
         var events: [HookEvent] = []
         for entry in found.sorted(by: { $0.ms < $1.ms }) {
             defer { try? manager.removeItem(atPath: entry.path) }
-            guard let data = manager.contents(atPath: entry.path),
-                  let raw = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-                  let event = raw["hook_event_name"] as? String, let session = raw["session_id"] as? String else { continue }
-            let cwd = raw["cwd"] as? String ?? ""
-            var project = (cwd as NSString).lastPathComponent
-            if let range = cwd.range(of: "/.claude/worktrees/") { project = (String(cwd[..<range.lowerBound]) as NSString).lastPathComponent }
-            let tool = raw["tool_name"] as? String ?? ""
-            let input = raw["tool_input"] as? [String: Any] ?? [:]
-            var detail = ""
-            if let command = input["command"] as? String {
-                detail = command
-            } else if let path = (input["file_path"] ?? input["notebook_path"] ?? input["path"]) as? String {
-                detail = (path as NSString).lastPathComponent
-            } else if let address = input["url"] as? String {
-                detail = URL(string: address)?.host ?? address
-            }
-            events.append(HookEvent(event: event, session: session, agent: raw["agent_id"] as? String ?? "", project: project, tool: tool,
-                                    detail: shortened(detail, 48), reason: raw["reason"] as? String ?? "", ms: entry.ms))
+            if let event = HookEvent.read(entry.path, ms: entry.ms) { events.append(event) }
         }
         return events
     }
@@ -114,13 +122,16 @@ final class ClaudeHooks {
     static let marker = "# burnbot"         // ends each command Burnbot adds, so it can find them again
     let settingsPath: String
     let script: String
+    let askScript: String                   // waits for the desk pad's Approve or Deny (see PadAsks)
 
     init(dataFolder: String, settingsPath: String) {
         self.settingsPath = settingsPath
         script = dataFolder + "/hook.sh"
+        askScript = dataFolder + "/ask.sh"
     }
 
     private var command: String { "\"\(script)\" \(ClaudeHooks.marker)" }
+    private var askCommand: String { "\"\(askScript)\" \(ClaudeHooks.marker)" }
 
     /// The script the hooks run. Written at every launch so it is always this version's.
     func writeScript() {
@@ -138,6 +149,43 @@ final class ClaudeHooks {
         """
         try? FileManager.default.createDirectory(atPath: (script as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: script, contents: Data(body.utf8), attributes: [.posixPermissions: 0o755])
+        // Claude Code waits for this one. Without a desk pad that Burnbot keeps alive it is gone at
+        // once, saying nothing, and Claude asks you as usual; so it is when nobody presses a key.
+        let ask = """
+        #!/bin/sh
+        # Burnbot: lets the desk pad's keys answer Claude Code's permission prompt.
+        # Prints nothing, so Claude asks you as usual, unless Burnbot is running with the pad plugged in.
+        # Then the pad shows what Claude wants to do, and this waits up to \(PadAsks.waitSeconds) seconds for Approve or Deny.
+        d="$(dirname "$0")"
+        a="$d/pad-alive"
+        alive() { [ -f "$a" ] && [ $(( $(date +%s) - $(stat -f %m "$a" 2>/dev/null || echo 0) )) -le 5 ]; }
+        input="$(cat)"
+        alive || exit 0
+        printf '%s' "$input" | grep -q -E '"tool_name" *: *"(AskUserQuestion|ExitPlanMode)"' && exit 0
+        mkdir -p "$d/asks" "$d/answers" || exit 0
+        id="$(date +%s).$$"
+        trap 'rm -f "$d/asks/$id.json" "$d/answers/$id.json"' EXIT
+        trap 'exit 0' INT TERM HUP
+        printf '%s' "$input" > "$d/asks/.$id.tmp" && mv "$d/asks/.$id.tmp" "$d/asks/$id.json" || exit 0
+        n=0
+        while [ $n -lt \(PadAsks.waitSeconds * 5) ]; do
+          if [ -f "$d/answers/$id.json" ]; then cat "$d/answers/$id.json"; exit 0; fi
+          alive || exit 0
+          sleep 0.2
+          n=$((n + 1))
+        done
+        exit 0
+
+        """
+        FileManager.default.createFile(atPath: askScript, contents: Data(ask.utf8), attributes: [.posixPermissions: 0o755])
+    }
+
+    /// The hooks were added by a Burnbot from before the desk pad's keys: add them again, with ask.sh.
+    var lacksAsk: Bool {
+        guard installed, let settings = try? readSettings().settings, let hooks = settings["hooks"] as? [String: Any] else { return false }
+        return !((hooks["PermissionRequest"] as? [[String: Any]]) ?? []).contains {
+            (($0["hooks"] as? [Any]) ?? []).contains { ($0 as? [String: Any])?["command"] as? String == askCommand }
+        }
     }
 
     private func readSettings() throws -> (settings: [String: Any], original: Data?) {
@@ -186,7 +234,7 @@ final class ClaudeHooks {
         try (data + Data("\n".utf8)).write(to: URL(fileURLWithPath: settingsPath), options: .atomic)
     }
 
-    /// Adds Burnbot's three hooks (replacing any it added before). Other hooks and settings are kept.
+    /// Adds Burnbot's hooks (replacing any it added before): hook.sh on three events, and ask.sh for the pad. Other hooks and settings are kept.
     func install() throws {
         writeScript()
         let (settings, original) = try readSettings()
@@ -195,6 +243,10 @@ final class ClaudeHooks {
         for event in ClaudeHooks.events {
             var groups = hooks[event] as? [[String: Any]] ?? []
             groups.append(["hooks": [["type": "command", "command": command, "async": true, "timeout": 10]]])
+            // Not async: Claude Code waits for the pad's answer (ask.sh is gone at once without one).
+            if event == "PermissionRequest" {
+                groups.append(["hooks": [["type": "command", "command": askCommand, "timeout": PadAsks.waitSeconds + 15]]])
+            }
             hooks[event] = groups
         }
         merged["hooks"] = hooks

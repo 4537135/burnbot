@@ -24,7 +24,7 @@ const int AW = W / PX;                      // 80
 const int AH = (H - HUD_H + PX - 1) / PX;   // 71 (the last row is cut short)
 const int FH = 36;                          // rows the fire can reach
 const int ROBOT_X = 45;                     // the art column the robot stands on
-const int MAX_AW = 128;                     // the widest scene a screen can ask for (the Perch's OLED)
+const int MAX_AW = 160;                     // the widest scene a screen can ask for (the Claude Pad, 320 wide at 2x)
 
 // A picture of the scene, w x h art pixels. The colour screen's is AW x AH; another
 // screen can have a scene of its own size (see Scene).
