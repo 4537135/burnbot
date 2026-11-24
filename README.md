@@ -326,15 +326,36 @@ speech bubble, and takes you back to your terminal if the bubble was asking
 for you.
 
 **The Claude Pad.** An LCDwiki ES3C28P (ESP32-S3 with a 2.8" colour screen)
-in a case with four keys under the screen, on GPIO 2, 3, 14 and 21. It shows
-the robot sideways, 320 × 240, with what each key does along the bottom:
+in a case with four keys under the screen (GPIO 2, 3, 14 and 21), a touch
+screen, a microphone and a speaker. It shows three pages, 320 × 240, with dots
+along the bottom; swipe sideways, or press key 1 or 4, to step through them:
+
+- **Home**: the robot, big, with its faces and moods, over a floor that burns
+  as hard as you are working. On top: how it is going (WORKING, ON FIRE…) and
+  how long this stretch has run.
+- **Usage**: how much of your Claude plan you have used, the 5-hour and the
+  weekly limit with when each resets, and how full the latest session's
+  context is. It comes from Claude Code's status line (below).
+- **Today**: your tokens hour by hour, focus time (minutes at Warming up or
+  above), how many sessions you worked in, and your peak burn against your
+  usual one.
+
+The pad goes back to Home after two minutes. When Claude asks something, the
+labelled keys take over:
 
 | Key | When Claude asks to run something | Otherwise |
 |---|---|---|
-| 1 | **Deny** | close the bubble |
-| 2 | **Talk** (hold): brings the session forward and holds dictation down | the same |
-| 3 | **Show**: goes to the session | the same |
-| 4 | **Approve** | nothing |
+| 1 | **Deny** | the page before |
+| 2 | (hold to talk: coming) | |
+| 3 | **Show**: goes to the session | goes to the latest session |
+| 4 | **Approve** | the next page |
+
+**Usage needs a status line.** Claude Code tells a status line command your
+plan's usage (for Pro and Max, once Claude has replied in a session). If you
+have no status line of your own, Burnbot adds one (`status.sh`): it keeps what
+it is told in Burnbot's data folder, readable by you alone, and prints
+nothing, so you see no status line. If you have your own, Burnbot leaves it,
+and the Usage page says it has nothing to show.
 
 Approve and Deny answer Claude Code's permission prompt from the pad. Burnbot
 adds a second hook for it (`ask.sh`), which Claude Code waits for. It only
@@ -351,10 +372,6 @@ nothing on the pad to approve: commands of more than one line, files outside
 the project, tools with other input, and anything too long or with letters
 the pad lacks. What Claude asks stays private to you (`asks/` and `answers/`
 are readable by you alone).
-
-Talk uses Wispr Flow if it is running (it holds `fn`), or else macOS
-Dictation (it presses its shortcut twice). It needs Burnbot to have
-Accessibility access, which macOS asks for the first time.
 
 Put Burnbot on it with `desk/board.sh pad`. `desk/board.sh pad-test` checks
 its screen and keys on their own. It uses USB only: the pad's own Wi-Fi
@@ -482,7 +499,8 @@ app/Runs.swift        what a command Claude ran was, whether it passed, red to g
 app/Summaries.swift   remembered sessions, AI recaps and loop checks
 app/Replay.swift      replays a recorded session (tests, Play Every Moment)
 app/DeskScreen.swift  finds the desk screen on USB and feeds it
-app/PadKeys.swift     the Claude Pad's keys: Approve and Deny through ask.sh, Talk
+app/PadKeys.swift     the Claude Pad's keys: Approve and Deny through ask.sh
+app/PadPages.swift    the Claude Pad's Usage and Today pages (U and D lines)
 app/Pages.swift       serves the pages to the app's own windows
 public/               the dashboard, the desktop robot and its second-screen scene
 desk/                 the desk screen's own program, its simulator, upload command and board.sh
