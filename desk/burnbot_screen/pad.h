@@ -28,11 +28,13 @@ const int COLS = 25;                        // letters across a card, at twice t
 
 // The pad's own fields of the B line, which other boards ignore:
 //   ky=DENY,TALK,SHOW,APPROVE   what each key does now, left to right ("" for a key that does nothing)
-//   pr=BASH: NPM TEST           what Claude is waiting for a yes to (absent when nothing waits)
+//   pr=BASH: NPM TEST           what Claude is waiting for a yes to (absent when nothing waits); the
+//                               whole request, which the Mac sends only when it fits a card; a "|" in
+//                               it comes as the byte 0x7F, since "|" ends a field
 //   pp=SHOP                     the project asking
 struct Pad {
   char keys[4][10] = {{0}, {0}, {0}, {0}};
-  char ask[100] = "";
+  char ask[112] = "";                       // four rows of COLS letters and the spaces between
   char who[20] = "";
 };
 
@@ -55,7 +57,11 @@ inline bool parsePad(const char *line, Pad &out) {
           bb::copyText(p.keys[k++], sizeof(p.keys[0]), from, (size_t)(c - from));
           from = c + 1;
         }
-    } else if (klen == 2 && !strncmp(at, "pr", 2)) bb::copyText(p.ask, sizeof(p.ask), v, vlen);
+    } else if (klen == 2 && !strncmp(at, "pr", 2)) {
+      bb::copyText(p.ask, sizeof(p.ask), v, vlen);
+      for (char *c = p.ask; *c; c++)
+        if (*c == 0x7F) *c = '|';
+    }
     else if (klen == 2 && !strncmp(at, "pp", 2)) bb::copyText(p.who, sizeof(p.who), v, vlen);
     at = *end ? end + 1 : end;
   }

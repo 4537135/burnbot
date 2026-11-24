@@ -4,6 +4,11 @@
 // Code waits for: while Burnbot keeps "pad-alive" fresh it copies the request into asks/ and waits
 // for answers/<same name>; with no answer it says nothing and Claude asks you as usual.
 //
+// The pad offers Approve only for a request it can show whole: the full command (or a file inside
+// the project, or the full address), every letter of it one the pad draws, in four rows of 25. It
+// shows capitals only and runs of spaces as one. Anything else is handed back at once, so Claude
+// asks on the Mac with everything in view.
+//
 // Talk holds the Mac's dictation down: Wispr Flow's push-to-talk (fn held) when it is running, or
 // macOS Dictation's own shortcut pressed twice to start and twice to stop.
 
@@ -16,7 +21,8 @@ struct PadAsk: Equatable {
     let session: String
     let project: String
     let tool: String
-    let detail: String
+    let shown: String                       // what the pad shows: "BASH: NPM TEST"
+    let whole: Bool                         // `shown` is all of the request, so it may be approved on the pad
     let ms: Double                          // when it came
 
     static func == (a: PadAsk, b: PadAsk) -> Bool { a.id == b.id }
@@ -42,7 +48,13 @@ final class PadAsks {
         let manager = FileManager.default
         if !manager.fileExists(atPath: alive) { manager.createFile(atPath: alive, contents: nil) }
         try? manager.setAttributes([.modificationDate: Date()], ofItemAtPath: alive)
-        if !beating { try? manager.createDirectory(atPath: answers, withIntermediateDirectories: true) }
+        if !beating {
+            // Only you can read what Claude asks, or answer it.
+            for folder in [asks, answers] {
+                try? manager.createDirectory(atPath: folder, withIntermediateDirectories: true)
+                try? manager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder)
+            }
+        }
         beating = true
     }
 
@@ -69,9 +81,12 @@ final class PadAsks {
                 continue
             }
             live.insert(id)
-            guard !answered.contains(id), let event = HookEvent.read(path, ms: ms, limit: 96) else { continue }
+            guard !answered.contains(id), let event = HookEvent.read(path, ms: ms),
+                  let data = manager.contents(atPath: path),
+                  let raw = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { continue }
             if newest == nil || ms > newest!.ms {
-                newest = PadAsk(id: id, session: event.session, project: event.project, tool: event.tool, detail: event.detail, ms: ms)
+                let (shown, whole) = padRequest(raw)
+                newest = PadAsk(id: id, session: event.session, project: event.project, tool: event.tool, shown: shown, whole: whole, ms: ms)
             }
         }
         answered.formIntersection(live)
@@ -96,6 +111,57 @@ final class PadAsks {
     }
 }
 
+/// The letters the pad draws, besides a to z (shown as capitals) and the space.
+let padLetters = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.,!%/:+&'\"()?=_*#;<>@$|[]~`^{}\\")
+
+/// Whether `text` fits a card on the pad: words of at most `cols` letters, in at most `rows` rows,
+/// wrapped as pad.h's wrap() does.
+func padFits(_ text: String, cols: Int = 25, rows: Int = 4) -> Bool {
+    var full = 0, length = 0                    // rows filled; letters in the row being filled
+    for word in text.split(separator: " ") {
+        if word.count > cols { return false }
+        if length > 0 && length + 1 + word.count > cols { full += 1; length = 0 }
+        length += (length > 0 ? 1 : 0) + word.count
+    }
+    return full < rows
+}
+
+/// What a permission prompt (the JSON Claude Code gives the hook) asks, as the pad shows it, and
+/// whether that is all of it: the command; a file by its place in the project (one outside the
+/// project is never whole); an address in full; a tool with other input never whole.
+func padRequest(_ raw: [String: Any]) -> (shown: String, whole: Bool) {
+    let tool = raw["tool_name"] as? String ?? "?"
+    let input = raw["tool_input"] as? [String: Any] ?? [:]
+    let cwd = raw["cwd"] as? String ?? ""
+    var what = ""
+    var whole = true
+    if let command = input["command"] as? String {
+        what = command
+        if command.contains("\n") || command.contains("\r") { whole = false }   // lines would read as one
+    } else if let path = (input["file_path"] ?? input["notebook_path"] ?? input["path"]) as? String {
+        if !cwd.isEmpty, path.hasPrefix(cwd + "/") {
+            what = String(path.dropFirst(cwd.count + 1))
+        } else {
+            what = path
+            whole = false
+        }
+    } else if let address = input["url"] as? String {
+        what = address
+    } else if !input.isEmpty {
+        whole = false
+    }
+    let text = what.isEmpty ? tool : tool + ": " + what
+    var shown = ""
+    for c in text {
+        let drawn: Character = c == "\t" ? " " : c
+        if drawn != " " && !padLetters.contains(drawn) && !(drawn >= "a" && drawn <= "z") { whole = false }
+        shown.append(drawn)
+    }
+    shown = shown.uppercased()
+    if !padFits(shown) { whole = false }
+    return (shown, whole)
+}
+
 /// What the pad's labels say now, left to right, and what it shows for a prompt (the B line's
 /// ky=, pr= and pp=). Its letters: capitals, digits and the marks the board draws; no "|", which
 /// ends a field.
@@ -111,9 +177,10 @@ func padLine(ask: PadAsk?, card: Card?) -> String {
         }
         return String(out.trimmingCharacters(in: .whitespaces).prefix(limit))
     }
-    if let ask {
-        let what = ask.detail.isEmpty ? ask.tool : ask.tool + ": " + ask.detail
-        return "|ky=DENY,TALK,SHOW,APPROVE|pr=" + clean(what, 96) + "|pp=" + clean(ask.project, 18)
+    if let ask, ask.whole {
+        // Sent whole (pad.h shows it whole, as padFits checked); a "|" goes as 0x7F, since "|" ends a field.
+        let what = ask.shown.split(separator: " ").joined(separator: " ").replacingOccurrences(of: "|", with: "\u{7F}")
+        return "|ky=DENY,TALK,SHOW,APPROVE|pr=" + what + "|pp=" + clean(ask.project, 18)
     }
     return "|ky=" + (card == nil ? "" : "CLOSE") + ",TALK,SHOW,"
 }

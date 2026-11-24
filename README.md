@@ -343,6 +343,15 @@ seconds. If nobody presses a key, or you start typing in your terminal, the
 prompt shows on the Mac as usual. Questions and plan approvals always stay on
 the Mac.
 
+The pad only offers Approve for a request it can show in full: the whole
+command, a file inside the project, or a whole address, in four rows of 25
+letters, every letter one the pad can draw. It shows everything in capitals
+and runs of spaces as one. Anything else goes straight to the Mac, with
+nothing on the pad to approve: commands of more than one line, files outside
+the project, tools with other input, and anything too long or with letters
+the pad lacks. What Claude asks stays private to you (`asks/` and `answers/`
+are readable by you alone).
+
 Talk uses Wispr Flow if it is running (it holds `fn`), or else macOS
 Dictation (it presses its shortcut twice). It needs Burnbot to have
 Accessibility access, which macOS asks for the first time.

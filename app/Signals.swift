@@ -159,11 +159,13 @@ final class ClaudeHooks {
         d="$(dirname "$0")"
         a="$d/pad-alive"
         alive() { [ -f "$a" ] && [ $(( $(date +%s) - $(stat -f %m "$a" 2>/dev/null || echo 0) )) -le 5 ]; }
+        umask 077
         input="$(cat)"
         alive || exit 0
         printf '%s' "$input" | grep -q -E '"tool_name" *: *"(AskUserQuestion|ExitPlanMode)"' && exit 0
         mkdir -p "$d/asks" "$d/answers" || exit 0
-        id="$(date +%s).$$"
+        id="$(od -An -N12 -tx1 /dev/urandom 2>/dev/null | tr -d ' \\n')"
+        [ -n "$id" ] || id="$(date +%s).$$"
         trap 'rm -f "$d/asks/$id.json" "$d/answers/$id.json"' EXIT
         trap 'exit 0' INT TERM HUP
         printf '%s' "$input" > "$d/asks/.$id.tmp" && mv "$d/asks/.$id.tmp" "$d/asks/$id.json" || exit 0

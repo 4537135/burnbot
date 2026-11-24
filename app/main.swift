@@ -251,6 +251,12 @@ final class Engine {
             if desk.hasKeys {
                 asks.beat()
                 asking = asks.pending(now: now)
+                // A request the pad cannot show in full is never approved there: Claude asks on the Mac.
+                if let ask = asking, !ask.whole {
+                    asks.letGo(ask)
+                    asking = nil
+                    log("Pad: \(ask.tool) is asked on the Mac, since the pad cannot show all of it")
+                }
                 // Typing in your terminal or editor: you are there, so the prompt is answered there.
                 if let ask = asking, now - ask.ms > 2000, attention.isWork(place.front),
                    CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown) < 1.5 {
