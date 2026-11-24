@@ -683,6 +683,7 @@ cmd_pad() {
   ensure_screen_library
   prepare_sketch "$DESK/burnbot_pad"
   cp "$DESK/burnbot_screen/render.h" "$DESK/burnbot_screen/pad.h" "$SKETCH"/   # the drawing it shares with the other screens
+  cp "$DESK"/pad_hw/*.h "$SKETCH"/        # the codec, touch and sound drivers
   build
   if [ "$BUILD_ONLY" = 1 ]; then say "Built. Not uploaded."; return 0; fi
   upload_esp32
