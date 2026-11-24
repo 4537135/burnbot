@@ -14,7 +14,12 @@
 // --perch draws the Desk Buddy Perch's one-colour OLED instead (perch.h), four times
 // the size, white on black, with the rows the case hides shown dimmed below.
 // --pad draws the Claude Pad's 320 x 240 colour screen (pad.h), twice the size. Add k1 to k4
-// after the line's seconds (as in 6k4) to show that key held down.
+// after the line's seconds (as in 6k4) to show that key held down. It also takes, in any order
+// after the B line:
+//   'S|m=q|t=...'      a screen the Mac chooses (version 5)
+//   --rec=LEVEL,SECS   listening, as loud as LEVEL (0 to 100), SECS seconds in
+//   --cal=STEP[,NOTE]  touch setup at cross STEP (0 to 4, 5 done), with NOTE under it
+//   --hits             the places a finger may tap, outlined in magenta
 
 #include <stdio.h>
 
@@ -66,11 +71,25 @@ int main(int argc, char **argv) {
     fprintf(stderr, "could not read the line\n");
     return 1;
   }
-  float seconds = argc > 3 ? (float)atof(argv[3]) : 6;
+  float seconds = 6;
+  const char *held = nullptr, *screenLine = nullptr, *rec = nullptr, *cal = nullptr;
+  bool showHits = false;
   bb::Moment moment;
-  if (argc > 4 && !bb::parseMoment(argv[4], moment)) {
-    fprintf(stderr, "could not read the M line\n");
-    return 1;
+  for (int i = 3; i < argc; i++) {
+    const char *a = argv[i];
+    if (!strncmp(a, "M|", 2)) {
+      if (!bb::parseMoment(a, moment)) {
+        fprintf(stderr, "could not read the M line\n");
+        return 1;
+      }
+    } else if (!strncmp(a, "S|", 2)) screenLine = a;
+    else if (!strncmp(a, "--rec=", 6)) rec = a + 6;
+    else if (!strncmp(a, "--cal=", 6)) cal = a + 6;
+    else if (!strcmp(a, "--hits")) showHits = true;
+    else {
+      seconds = (float)atof(a);
+      held = strchr(a, 'k');
+    }
   }
 
   if (pad) {
@@ -78,14 +97,47 @@ int main(int argc, char **argv) {
     if (!waiting) pd::parsePad(argv[2], keys);
     else strcpy(keys.keys[0], "");
     bool down[4] = {false, false, false, false};
-    const char *k = argc > 3 ? strchr(argv[3], 'k') : nullptr;
-    if (k && k[1] >= '1' && k[1] <= '4') down[k[1] - '1'] = true;
+    if (held && held[1] >= '1' && held[1] <= '4') down[held[1] - '1'] = true;
+    static pd::Screen screen;
+    if (screenLine && !pd::parseScreen(screenLine, screen)) {
+      fprintf(stderr, "could not read the S line\n");
+      return 1;
+    }
+    static pd::Live live;
+    live.ms = (uint32_t)(seconds * 1000);
+    if (rec) {
+      live.recording = true;
+      int level = atoi(rec);
+      const char *comma = strchr(rec, ',');
+      live.seconds = comma ? atoi(comma + 1) : 3;
+      for (int i = 0; i < 40; i++) {           // a voice: louder and quieter, a gap now and then
+        int v = level * (40 + (i * 37 % 61)) / 100;
+        live.level[i] = (uint8_t)(i % 13 < 2 ? v / 6 : v);
+      }
+    }
+    if (cal) {
+      live.calStep = atoi(cal);
+      const char *comma = strchr(cal, ',');
+      if (comma) snprintf(live.note, sizeof(live.note), "%s", comma + 1);
+      const int t[5][2] = {{30, 30}, {290, 30}, {290, 210}, {30, 210}, {160, 120}};
+      memcpy(live.targets, t, sizeof(t));
+    }
+    static pd::Hits hits;
     static bb::Scene scene(pd::AW, pd::AH, pd::LIFT);
     static uint16_t art[pd::AW * pd::AH];
     static uint16_t frame[pd::W * pd::H];
     for (float t = 0; t < seconds; t += 1 / 15.0f) scene.step(1 / 15.0f, state, waiting);
     scene.draw({art, pd::AW, pd::AH}, state, waiting);
-    pd::draw(frame, art, state, waiting, moment, keys, scene.cx, down);
+    pd::draw(frame, art, state, waiting, moment, keys, scene.cx, down, screenLine ? &screen : nullptr, &live, &hits);
+    if (showHits)
+      for (int i = 0; i < hits.n; i++) {
+        const pd::Hits::Zone &z = hits.zone[i];
+        const uint16_t magenta = bb::rgb(0xff3df5);
+        pd::fill(frame, z.x0, z.y0, z.x1 - z.x0, 1, magenta);
+        pd::fill(frame, z.x0, z.y1 - 1, z.x1 - z.x0, 1, magenta);
+        pd::fill(frame, z.x0, z.y0, 1, z.y1 - z.y0, magenta);
+        pd::fill(frame, z.x1 - 1, z.y0, 1, z.y1 - z.y0, magenta);
+      }
     // twice the size, as it looks on the glass
     const int S = 2, w = pd::W * S, h = pd::H * S;
     static uint16_t big[pd::W * 2 * pd::H * 2];
