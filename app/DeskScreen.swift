@@ -20,6 +20,8 @@ final class DeskScreen {
     private(set) var port: String?
     private(set) var program: String?
     private var said = ""                   // the last M line sent (what the robot is saying)
+    private var sentPages: [String] = []    // the last U and D lines sent
+    private var pagesAt = 0.0
     private var saidAt = 0.0
     private(set) var feelsKnocks = false    // the board has a motion sensor and it answered ("k=1")
     private(set) var sensitivity = 1        // how hard a knock has to be, as the board keeps it: 0 light, 1 medium, 2 firm
@@ -36,6 +38,8 @@ final class DeskScreen {
     var knocks: Bool { state == "connected" && version >= 3 && feelsKnocks }
     /// "BURNBOT 4" and later have keys under the screen, and say which one (the Claude Pad).
     var hasKeys: Bool { state == "connected" && version >= 4 }
+    /// "BURNBOT 6" and later swipe between Home, Usage and Today, fed by the U and D lines.
+    var hasPages: Bool { state == "connected" && version >= 6 }
     private var version: Int { program.flatMap { Int($0.split(separator: " ").last ?? "") } ?? 0 }
     static let current = 3                  // the program in desk/burnbot_screen
 
@@ -123,6 +127,7 @@ final class DeskScreen {
         if fd >= 0 { close(fd) }
         fd = -1
         said = ""
+        sentPages = []
         pending = ""
         feelsKnocks = false
     }
@@ -158,8 +163,9 @@ final class DeskScreen {
 
     /// Call once a second with the line to show. Finds the board, sends, and notices when it is unplugged.
     /// `moment`: the M line, for a board that speaks. It goes when it changes and again every
-    /// few seconds, so a board that restarted, or missed it, catches up.
-    func send(_ line: String, moment: String? = nil) {
+    /// few seconds, so a board that restarted, or missed it, catches up. `pages`: the U and D
+    /// lines, for a board with pages, sent when they change and every 10 seconds.
+    func send(_ line: String, moment: String? = nil, pages: [String] = []) {
         let now = Date().timeIntervalSince1970
         if fd < 0 {
             if now - lookedAt < retryAfter { return }
@@ -199,6 +205,11 @@ final class DeskScreen {
             out += moment + "\n"
             said = moment
             saidAt = now
+        }
+        if hasPages, !pages.isEmpty, pages != sentPages || now - pagesAt >= 10 {
+            out += pages.filter { !$0.isEmpty }.map { $0 + "\n" }.joined()
+            sentPages = pages
+            pagesAt = now
         }
         if !write(fd, out) {
             disconnect()
@@ -268,6 +279,7 @@ func deskLine(_ state: [String: Any], names: [String: String], expr: String = ""
         "cp=\(level < 0 ? "OFF LADDER" : "LEVEL \(level) OF \(top)")",
         "rt=\(tokens((live["tokensPerHour"] as? NSNumber)?.doubleValue ?? 0))",
         String(format: "tm=%02d:%02d", clock.hour ?? 0, clock.minute ?? 0),
+        "wk=\(int(live["streakMin"]))",          // how long this stretch has run (the pad's Home)
     ].joined(separator: "|") + goal
         + (expr.isEmpty ? "" : "|ex=" + (deskFace(expr).isEmpty ? "-" : deskFace(expr)))
 }

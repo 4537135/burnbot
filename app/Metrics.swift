@@ -120,6 +120,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
     var familyToday = [Double](repeating: 0, count: modelFamilies.count), familyWeek = familyToday
     var projectWeek: [String: Double] = [:], projectToday: [String: Double] = [:], projectMonth: [String: Double] = [:]
     var projectOrder: [String] = []
+    var sessionsToday = Set<String>()                   // main sessions with any activity today
 
     for file in files {
         let recent = file.modified * 1000 >= weekStartMs
@@ -139,6 +140,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
             hands[i] += v[F.hands]
             wins[i] += v[F.greens] + v[F.commits] + v[F.prs] + v[F.plans]
             if file.side { agents[i] += 1 } else { sessions[i] += 1 }
+            if !file.side && i >= todayIdx { sessionsToday.insert(file.session.isEmpty ? file.path : file.session) }
             if projectMonth[name] == nil { projectOrder.append(name) }
             projectMonth[name, default: 0] += total
             if minute >= weekStartMin {
@@ -483,6 +485,7 @@ func analyze(files: [LogFile], lastCallMs: Double, lastPromptMs: Double, now: Do
     today["bins"] = ["start": today0, "step": step, "tokens": binTokens, "chars": binChars, "prompts": binPrompts, "tools": binTools, "state": binState] as [String: Any]
     today["models"] = family(familyToday)
     today["projects"] = top(projectToday)
+    today["sessions"] = sessionsToday.count
     today["winKinds"] = ["greens": winKinds[0], "commits": winKinds[1], "prs": winKinds[2], "plans": winKinds[3]]
 
     return [

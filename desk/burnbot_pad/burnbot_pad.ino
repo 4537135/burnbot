@@ -9,16 +9,21 @@
 // Between lines the board keeps the scene moving by itself. Only USB: the pad's Wi-Fi stays off.
 //
 // The keys, left to right, wired to GND (the kit's guide): 1 GPIO2, 2 GPIO3, 3 GPIO14, 4 GPIO21.
-// The Mac decides what they do and says so (the B line's ky=, or the S line's), so the labels on
-// the screen are always the Mac's. A tap on a label counts as that key, and so does a tap on a
-// question's answer.
+// Three pages, with dots at the bottom: Home (the robot), Usage (U line) and Today (D line).
+// With no labels on the screen, key 1 and key 4 (or a swipe) step back and forth between them
+// right here, with nothing sent; keys 2 and 3 go to the Mac. Two minutes after the last step, or
+// whenever the Mac shows something, it is back on Home.
+// When the Mac labels the keys (the B line's ky=, or the S line's), they do what the labels say:
+// the Mac decides, and a tap on a label counts as that key, as does a tap on a question's answer.
 //
 // Lines from the Mac (115200, each ends with a new line):
-//   V        answers "BURNBOT 5" (5: talks, listens and takes touch; 4 had keys; 3 felt knocks)
+//   V        answers "BURNBOT 6" (6: pages; 5 talks, listens and takes touch; 4 had keys)
 //   P        answers "OK"
 //   R        starts the display again, answers "OK"
 //   O0 / O2  answers "OK" (the keys are fixed under the screen, so it stays the right way up)
-//   B|...    what to show (render.h, and pad.h for ky=, pr=, pp=), answers "OK"
+//   B|...    what to show (render.h, and pad.h for ky=, pr=, pp=, wk=), answers "OK"
+//   U|...    the Usage page (pad.h: h=46|hr=IN 2H 10M|w=62|wr=TUE 09:00|x=28|xn=SHOP|ag=3), "OK"
+//   D|...    the Today page (pad.h: b=24 bars 0-99|fm=4H 20M|ss=8|pk=3.2X), answers "OK"
 //   M|...    what the robot is saying (render.h), answers "OK"
 //   S|...    a whole screen (pad.h: a question, your words to check, a reply...), answers "OK".
 //            With mc=1 in it, key 2 records while held.
@@ -101,6 +106,25 @@ char line[2048];
 size_t lineLength = 0;
 
 bool fresh(uint32_t now) { return screenAt && now - screenAt < QUIET_MS; }
+
+// The pages: what Usage and Today show, and which page is up.
+pd::Usage usage;
+pd::Today today;
+int page = pd::HOME;
+uint32_t pageAt = 0;                        // the last step between pages
+const uint32_t PAGE_MS = 2UL * 60 * 1000;   // then back to Home
+
+// True when the pages are up: nothing labels the keys, nothing else is on the screen.
+bool onPages(uint32_t now) {
+  if (waiting || pad.labelled() || pad.ask[0]) return false;
+  if (fresh(now) && screen.mode[0] && strcmp(screen.mode, "home")) return false;
+  return live.calStep < 0 && !au::recording;
+}
+
+void turnPage(int by, uint32_t now) {
+  page = (page + by + pd::PAGES) % pd::PAGES;
+  pageAt = now;
+}
 bool micOn(uint32_t now) { return audioOk && codecOk && !waiting && fresh(now) && screen.mic; }
 
 // ---------- kept across restarts ----------
@@ -270,6 +294,10 @@ void keyEvent(int i, bool down, uint32_t now) {
     if (i == 0) au::cancelRecording(Serial);
     return;
   }
+  if ((i == 0 || i == 3) && onPages(now)) { // key 1 / 4 with no labels: the previous / next page
+    turnPage(i == 0 ? -1 : 1, now);
+    return;
+  }
   if (i == 1 && micOn(now)) {               // key 2 on a screen that listens
     au::startRecording(Serial, ++recCount);
     live.seconds = 0;
@@ -298,6 +326,7 @@ bool checkKeys(uint32_t now) {
 // The touch screen, read every TOUCH_MS. True when what it shows changed.
 bool fingerWas = false;
 int fingerKey = 0;                          // the key the finger went down on (1 to 4), or 0
+int fromX = 0, fromY = 0, toX = 0, toY = 0;  // where the finger went down, and where it was last
 uint32_t touchAt = 0;
 
 bool checkTouch(uint32_t now) {
@@ -320,12 +349,18 @@ bool checkTouch(uint32_t now) {
     fingerWas = finger;
     return changed;
   }
+  int sx = 0, sy = 0;
+  if (finger) {
+    cal::apply(affine, rx, ry, sx, sy);
+    toX = sx;
+    toY = sy;
+  }
   if (finger && !fingerWas) {
+    fromX = sx;
+    fromY = sy;
     if (!lit) {
       wake();
     } else {
-      int sx, sy;
-      cal::apply(affine, rx, ry, sx, sy);
       int k = hits.at(sx, sy);
       if (k && !keyDown[k - 1]) {
         fingerKey = k;
@@ -340,6 +375,12 @@ bool checkTouch(uint32_t now) {
     touchDown[k - 1] = false;
     if (!keyDown[k - 1]) keyEvent(k - 1, false, now);
     changed = true;
+  } else if (!finger && fingerWas && lit && onPages(now)) {
+    int dx = toX - fromX, dy = toY - fromY;   // a swipe: well sideways, and more across than down
+    if (abs(dx) > 50 && abs(dx) * 2 > abs(dy) * 3) {
+      turnPage(dx < 0 ? 1 : -1, now);        // to the left: the next page
+      changed = true;
+    }
   }
   fingerWas = finger;
   return changed;
@@ -408,7 +449,7 @@ void status() {
 void handle(char *text) {
   if (!text[0]) return;
   const size_t len = strlen(text);
-  if (!strcmp(text, "V")) { Serial.println("BURNBOT 5"); return; }
+  if (!strcmp(text, "V")) { Serial.println("BURNBOT 6"); return; }
   if (!strcmp(text, "P")) { Serial.println("OK"); return; }
   if (!strcmp(text, "s")) { status(); return; }
   if (!strcmp(text, "R")) { startDisplay(); light(lit); Serial.println("OK"); return; }
@@ -467,6 +508,20 @@ void handle(char *text) {
     Serial.println("OK");
     return;
   }
+  if (!strncmp(text, "U|", 2)) {
+    pd::Usage next;
+    if (!pd::parseUsage(text, next)) { Serial.println("ERR"); return; }
+    usage = next;
+    Serial.println("OK");
+    return;
+  }
+  if (!strncmp(text, "D|", 2)) {
+    pd::Today next;
+    if (!pd::parseToday(text, next)) { Serial.println("ERR"); return; }
+    today = next;
+    Serial.println("OK");
+    return;
+  }
   if (!strncmp(text, "M|", 2)) {
     bb::Moment said;
     if (!bb::parseMoment(text, said)) { Serial.println("ERR"); return; }
@@ -521,6 +576,7 @@ void setup() {
     frame = (uint16_t *)malloc(pd::W * pd::H * sizeof(uint16_t));
     shown = (uint16_t *)malloc(pd::W * pd::H * sizeof(uint16_t));
   }
+  pd::homeScene(scene);                     // the big robot, alone, for Home
   delay(300);                               // the screen shares the chip's reset line: let it wake
   startDisplay();
   light(true);
@@ -559,6 +615,10 @@ void loop() {
   if (calDoneAt && now - calDoneAt > 2500) endCalibration(nullptr);
   if (live.calStep == cal::N && !calDoneAt) endCalibration(nullptr);
   if (lit && waiting && live.calStep < 0 && now - heardAt > DARK_MS) light(false);
+  if (page != pd::HOME && (!onPages(now) || now - pageAt > PAGE_MS)) {
+    page = pd::HOME;
+    pressed = true;
+  }
 
   const uint32_t every = au::recording ? 100 : FRAME_MS;   // while listening only the meter moves
   if (lit && frame && shown && (pressed || now - frameAt >= every)) {
@@ -570,7 +630,8 @@ void loop() {
     for (int i = 0; i < 4; i++) down[i] = keyDown[i] || touchDown[i];
     scene.step(dt, state, waiting);
     scene.draw({art, pd::AW, pd::AH}, state, waiting);
-    pd::draw(frame, art, state, waiting, moment, pad, scene.cx, down, fresh(now) ? &screen : nullptr, &live, &hits);
+    pd::draw(frame, art, state, waiting, moment, pad, scene.cx, down, fresh(now) ? &screen : nullptr, &live, &hits,
+             page, &usage, &today);
     show();
   }
   delay(1);

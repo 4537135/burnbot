@@ -123,15 +123,18 @@ final class ClaudeHooks {
     let settingsPath: String
     let script: String
     let askScript: String                   // waits for the desk pad's Approve or Deny (see PadAsks)
+    let statusScript: String                // Claude Code's status line: keeps the plan's usage for the pad (PadPages)
 
     init(dataFolder: String, settingsPath: String) {
         self.settingsPath = settingsPath
         script = dataFolder + "/hook.sh"
         askScript = dataFolder + "/ask.sh"
+        statusScript = dataFolder + "/status.sh"
     }
 
     private var command: String { "\"\(script)\" \(ClaudeHooks.marker)" }
     private var askCommand: String { "\"\(askScript)\" \(ClaudeHooks.marker)" }
+    private var statusCommand: String { "\"\(statusScript)\" \(ClaudeHooks.marker)" }
 
     /// The script the hooks run. Written at every launch so it is always this version's.
     func writeScript() {
@@ -180,14 +183,32 @@ final class ClaudeHooks {
 
         """
         FileManager.default.createFile(atPath: askScript, contents: Data(ask.utf8), attributes: [.posixPermissions: 0o755])
+        // Claude Code's status line: it hands this what it knows, the plan's usage among it. It
+        // prints nothing, so the status line stays empty.
+        let status = """
+        #!/bin/sh
+        # Burnbot: keeps what Claude Code's status line is told (plan usage, context) for the desk pad.
+        # Prints nothing. status.json is the latest; rates.json the latest that had the plan's usage.
+        d="$(dirname "$0")"
+        umask 077
+        t="$d/.status.$$"
+        cat > "$t" || { rm -f "$t"; exit 0; }
+        if grep -q '"rate_limits"' "$t"; then cp "$t" "$d/.rates.$$" && mv "$d/.rates.$$" "$d/rates.json"; fi
+        mv "$t" "$d/status.json"
+        exit 0
+
+        """
+        FileManager.default.createFile(atPath: statusScript, contents: Data(status.utf8), attributes: [.posixPermissions: 0o755])
     }
 
-    /// The hooks were added by a Burnbot from before the desk pad's keys: add them again, with ask.sh.
-    var lacksAsk: Bool {
+    /// The hooks were added by an older Burnbot: add them again, with ask.sh (the pad's keys) and,
+    /// when you have no status line of your own, status.sh (the pad's Usage page).
+    var outdated: Bool {
         guard installed, let settings = try? readSettings().settings, let hooks = settings["hooks"] as? [String: Any] else { return false }
-        return !((hooks["PermissionRequest"] as? [[String: Any]]) ?? []).contains {
+        let lacksAsk = !((hooks["PermissionRequest"] as? [[String: Any]]) ?? []).contains {
             (($0["hooks"] as? [Any]) ?? []).contains { ($0 as? [String: Any])?["command"] as? String == askCommand }
         }
+        return lacksAsk || settings["statusLine"] == nil
     }
 
     private func readSettings() throws -> (settings: [String: Any], original: Data?) {
@@ -204,6 +225,7 @@ final class ClaudeHooks {
     /// The settings with Burnbot's entries taken out, everything else untouched.
     private static func without(_ settings: [String: Any]) -> [String: Any] {
         var settings = settings
+        if let line = settings["statusLine"], isOurs(line) { settings["statusLine"] = nil }
         guard var hooks = settings["hooks"] as? [String: Any] else { return settings }
         for (event, value) in hooks {
             guard let groups = value as? [[String: Any]] else { continue }
@@ -236,7 +258,8 @@ final class ClaudeHooks {
         try (data + Data("\n".utf8)).write(to: URL(fileURLWithPath: settingsPath), options: .atomic)
     }
 
-    /// Adds Burnbot's hooks (replacing any it added before): hook.sh on three events, and ask.sh for the pad. Other hooks and settings are kept.
+    /// Adds Burnbot's hooks (replacing any it added before): hook.sh on three events, ask.sh for the
+    /// pad's keys, and status.sh as the status line unless you have one. Other hooks and settings are kept.
     func install() throws {
         writeScript()
         let (settings, original) = try readSettings()
@@ -252,6 +275,8 @@ final class ClaudeHooks {
             hooks[event] = groups
         }
         merged["hooks"] = hooks
+        // Your own status line is kept; then the pad's Usage page has nothing to show.
+        if merged["statusLine"] == nil { merged["statusLine"] = ["type": "command", "command": statusCommand] }
         try write(merged, replacing: original)
         log("Claude Code hooks added to \(settingsPath)")
     }

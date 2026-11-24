@@ -8,12 +8,8 @@
 // the project, or the full address), every letter of it one the pad draws, in four rows of 25. It
 // shows capitals only and runs of spaces as one. Anything else is handed back at once, so Claude
 // asks on the Mac with everything in view.
-//
-// Talk holds the Mac's dictation down: Wispr Flow's push-to-talk (fn held) when it is running, or
-// macOS Dictation's own shortcut pressed twice to start and twice to stop.
 
-import AppKit
-import ApplicationServices
+import Foundation
 
 /// A permission prompt waiting for the pad.
 struct PadAsk: Equatable {
@@ -165,103 +161,13 @@ func padRequest(_ raw: [String: Any]) -> (shown: String, whole: Bool) {
 /// What the pad's labels say now, left to right, and what it shows for a prompt (the B line's
 /// ky=, pr= and pp=). Its letters: capitals, digits and the marks the board draws; no "|", which
 /// ends a field.
-func padLine(ask: PadAsk?, card: Card?) -> String {
-    func clean(_ text: String, _ limit: Int) -> String {
-        let letters = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -.,!%/:+&\"()?=_*#;<>@$[]~")
-        var out = ""
-        for c in text.uppercased() {
-            let mapped: Character = c == "|" ? "/" : c == "'" || c == "`" ? "\"" : c == "{" ? "(" : c == "}" ? ")" : c
-            let next: Character = letters.contains(mapped) ? mapped : " "
-            if next == " " && out.last == " " { continue }
-            out.append(next)
-        }
-        return String(out.trimmingCharacters(in: .whitespaces).prefix(limit))
-    }
+func padLine(ask: PadAsk?, card: Card?, pages: Bool = false) -> String {
     if let ask, ask.whole {
         // Sent whole (pad.h shows it whole, as padFits checked); a "|" goes as 0x7F, since "|" ends a field.
         let what = ask.shown.split(separator: " ").joined(separator: " ").replacingOccurrences(of: "|", with: "\u{7F}")
-        return "|ky=DENY,TALK,SHOW,APPROVE|pr=" + what + "|pp=" + clean(ask.project, 18)
+        return "|ky=DENY,,SHOW,APPROVE|pr=" + what + "|pp=" + padText(ask.project, 18)
     }
-    return "|ky=" + (card == nil ? "" : "CLOSE") + ",TALK,SHOW,"
-}
-
-// MARK: - Talk
-
-/// Starts and stops the Mac's dictation as if you pressed its shortcut. Main thread.
-enum Dictation {
-    /// Burnbot may press keys for you (System Settings > Privacy & Security > Accessibility).
-    /// `ask`: show the system's request when it may not.
-    static func allowed(ask: Bool) -> Bool {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: ask] as CFDictionary
-        return AXIsProcessTrustedWithOptions(options)
-    }
-
-    /// Wispr Flow is running: its push-to-talk is fn held down.
-    static var wispr: Bool {
-        NSWorkspace.shared.runningApplications.contains { ($0.bundleIdentifier ?? "").lowercased().contains("wispr") }
-    }
-
-    private static var holding = false      // fn is down for Wispr Flow
-    private static var started = false      // macOS Dictation was started
-
-    /// The key down: start listening.
-    static func start() {
-        guard allowed(ask: true) else { return log("Talk: Burnbot is not allowed to press keys yet (Accessibility)") }
-        if wispr {
-            modifier(keyCode: 63, flag: .maskSecondaryFn, down: true)
-            holding = true
-            log("Talk: holding fn for Wispr Flow")
-        } else {
-            let (code, flag) = shortcut()
-            tapTwice(keyCode: code, flag: flag)
-            started = true
-            log("Talk: Dictation on")
-        }
-    }
-
-    /// The key up: stop, and the words land where the cursor is.
-    static func stop() {
-        if holding {
-            modifier(keyCode: 63, flag: .maskSecondaryFn, down: false)
-            holding = false
-        } else if started {
-            let (code, flag) = shortcut()
-            tapTwice(keyCode: code, flag: flag)
-            started = false
-            log("Talk: Dictation off")
-        }
-    }
-
-    /// macOS Dictation's shortcut, a modifier pressed twice (System Settings > Keyboard > Dictation):
-    /// fn when the fn (Globe) key is set to start dictation, else the one it names; Control if it says none.
-    private static func shortcut() -> (CGKeyCode, CGEventFlags) {
-        if UserDefaults(suiteName: "com.apple.HIToolbox")?.integer(forKey: "AppleFnUsageType") == 3 { return (63, .maskSecondaryFn) }
-        let hotkeys = UserDefaults(suiteName: "com.apple.symbolichotkeys")?.dictionary(forKey: "AppleSymbolicHotKeys")
-        let value = (hotkeys?["164"] as? [String: Any])?["value"] as? [String: Any]
-        let mask = ((value?["parameters"] as? [NSNumber])?.first?.uint64Value) ?? CGEventFlags.maskControl.rawValue
-        switch mask {
-        case CGEventFlags.maskCommand.rawValue: return (55, .maskCommand)
-        case CGEventFlags.maskAlternate.rawValue: return (58, .maskAlternate)
-        case CGEventFlags.maskShift.rawValue: return (56, .maskShift)
-        case CGEventFlags.maskSecondaryFn.rawValue: return (63, .maskSecondaryFn)
-        default: return (59, .maskControl)
-        }
-    }
-
-    private static func tapTwice(keyCode: CGKeyCode, flag: CGEventFlags) {
-        for _ in 0..<2 {
-            modifier(keyCode: keyCode, flag: flag, down: true)
-            usleep(30_000)
-            modifier(keyCode: keyCode, flag: flag, down: false)
-            usleep(70_000)
-        }
-    }
-
-    private static func modifier(keyCode: CGKeyCode, flag: CGEventFlags, down: Bool) {
-        let source = CGEventSource(stateID: .hidSystemState)
-        guard let event = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: down) else { return }
-        event.type = .flagsChanged
-        event.flags = down ? flag : []
-        event.post(tap: .cghidEventTap)
-    }
+    // A pad with pages needs no labels: keys 1 and 4 step through its pages, 3 goes to the session.
+    if pages { return "" }
+    return "|ky=" + (card == nil ? "" : "CLOSE") + ",,SHOW,"
 }

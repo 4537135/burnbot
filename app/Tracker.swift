@@ -342,6 +342,11 @@ final class Tracker {
         return info
     }
 
+    /// The main session whose log moved last: where the pad's Show key goes when nothing asks.
+    func latestSession() -> String? {
+        files.values.filter { !$0.side && !$0.gone && !$0.session.isEmpty }.max { $0.modified < $1.modified }?.session
+    }
+
     /// Where a session was started: Claude Code's entry point ("claude-vscode", "cli", ...) and the
     /// folder it was opened in, a worktree reported as its repo. Read from the head of its main log
     /// only when asked (a click on Go to it), so a log restored from the store needs no new field.
