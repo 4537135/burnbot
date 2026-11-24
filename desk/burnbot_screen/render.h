@@ -639,6 +639,7 @@ struct Scene {
   float flame = 0, t = 0, dropAcc = 0, emberAcc = 0, night = 0, fireAcc = 0;
   uint32_t seed = 0x2545F491;
   bool primed = false;
+  bool plain = false;                       // just the robot: no ladder, no goal lamps, no bench (the Claude Pad's Home)
 
   /** A scene of w x h art pixels with the robot's feet `lift` rows above the bottom. The colour
    *  screen's is 80 x 71 with the feet 17 up; the Perch's OLED has one of its own. */
@@ -807,7 +808,7 @@ struct Scene {
 
     // The ladder: one lamp per level, lit up to where you are. A tick marks
     // the level you usually reach at this hour.
-    for (int level = 0; level <= s.top && level <= 5; level++) {
+    for (int level = 0; !plain && level <= s.top && level <= 5; level++) {
       int y = 5 + (5 - level) * 8;
       bool lit = !waiting && s.level >= level;
       bool here = !waiting && s.level == level;
@@ -816,11 +817,11 @@ struct Scene {
       if (here) rect(fb, 5, y + 2, 3, 2, ground, 255);
       if (!waiting && s.usual == level) rect(fb, 12, y + 2, 3, 2, INK, 255);
     }
-    if (!waiting && s.level < 0) rect(fb, 3, 53, 7, 2, ACCENT[AUTOPILOT], 255);   // off the ladder
+    if (!plain && !waiting && s.level < 0) rect(fb, 3, 53, 7, 2, ACCENT[AUTOPILOT], 255);   // off the ladder
 
     // Today's goal, opposite the ladder: a lamp per win to go (five at most), lit green as
     // wins come in, and the streak of days that made it, above them.
-    if (!waiting && s.target > 0) {
+    if (!plain && !waiting && s.target > 0) {
       const uint16_t green = rgb(0x4fc9a4), off = rgb(0x232a36);
       int lamps = s.target < 5 ? s.target : 5;
       int lit = s.wins >= s.target ? lamps : s.wins * lamps / s.target;
@@ -842,11 +843,16 @@ struct Scene {
       }
     }
 
-    // platform
-    rect(fb, cx - 19, gy + 3, 3, ah - gy, rgb(0x10141b));
-    rect(fb, cx + 16, gy + 3, 3, ah - gy, rgb(0x10141b));
-    rect(fb, cx - 24, gy, 48, 3, rgb(0x1d232d));
-    rect(fb, cx - 24, gy, 48, 1, rgb(0x2f3846));
+    // platform (plain: only a shadow where it stands)
+    if (plain) {
+      rect(fb, cx - 15, gy, 30, 2, rgb(0x000000), 90);
+      rect(fb, cx - 11, gy + 2, 22, 1, rgb(0x000000), 60);
+    } else {
+      rect(fb, cx - 19, gy + 3, 3, ah - gy, rgb(0x10141b));
+      rect(fb, cx + 16, gy + 3, 3, ah - gy, rgb(0x10141b));
+      rect(fb, cx - 24, gy, 48, 3, rgb(0x1d232d));
+      rect(fb, cx - 24, gy, 48, 1, rgb(0x2f3846));
+    }
 
     robot(fb, cx, gy, look, t, waiting ? EX_NONE : s.expr);
 

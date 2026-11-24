@@ -5,6 +5,7 @@
 //   /tmp/burnbot-sim out.bmp 'B|s=4|lv=4|tp=5|u=3|i=81|f=78|nm=LOCKED IN|cp=LEVEL 4 OF 5|rt=71.2M|tm=17:29' [seconds] ['M|...']
 //   /tmp/burnbot-sim --perch out.bmp 'B|...' [seconds] ['M|...']
 //   /tmp/burnbot-sim --pad out.bmp 'B|...|ky=DENY,TALK,SHOW,APPROVE|pr=BASH: NPM TEST|pp=SHOP' [seconds] ['M|...']
+//   /tmp/burnbot-sim --pad out.bmp 'B|...|wk=42' --page=home|usage|today ['U|h=46|hr=IN 2H|...'] ['D|b=..|fm=..']
 //
 // The third argument is how long the scene has been running (default 6), so the
 // fire has had time to rise. Pass 'wait' as the line for "Waiting for the Mac".
@@ -72,7 +73,8 @@ int main(int argc, char **argv) {
     return 1;
   }
   float seconds = 6;
-  const char *held = nullptr, *screenLine = nullptr, *rec = nullptr, *cal = nullptr;
+  const char *held = nullptr, *screenLine = nullptr, *rec = nullptr, *cal = nullptr, *usageLine = nullptr,
+             *todayLine = nullptr, *pageName = "home";
   bool showHits = false;
   bb::Moment moment;
   for (int i = 3; i < argc; i++) {
@@ -83,6 +85,9 @@ int main(int argc, char **argv) {
         return 1;
       }
     } else if (!strncmp(a, "S|", 2)) screenLine = a;
+    else if (!strncmp(a, "U|", 2)) usageLine = a;
+    else if (!strncmp(a, "D|", 2)) todayLine = a;
+    else if (!strncmp(a, "--page=", 7)) pageName = a + 7;
     else if (!strncmp(a, "--rec=", 6)) rec = a + 6;
     else if (!strncmp(a, "--cal=", 6)) cal = a + 6;
     else if (!strcmp(a, "--hits")) showHits = true;
@@ -122,13 +127,23 @@ int main(int argc, char **argv) {
       const int t[5][2] = {{30, 30}, {290, 30}, {290, 210}, {30, 210}, {160, 120}};
       memcpy(live.targets, t, sizeof(t));
     }
+    // Version 6 pages: home, usage, today
+    int page = !strcmp(pageName, "usage") ? pd::USAGE : !strcmp(pageName, "today") ? pd::TODAY : pd::HOME;
+    static pd::Usage usage;
+    static pd::Today today;
+    if ((usageLine && !pd::parseUsage(usageLine, usage)) || (todayLine && !pd::parseToday(todayLine, today))) {
+      fprintf(stderr, "could not read the U or D line\n");
+      return 1;
+    }
     static pd::Hits hits;
     static bb::Scene scene(pd::AW, pd::AH, pd::LIFT);
+    pd::homeScene(scene);
     static uint16_t art[pd::AW * pd::AH];
     static uint16_t frame[pd::W * pd::H];
     for (float t = 0; t < seconds; t += 1 / 15.0f) scene.step(1 / 15.0f, state, waiting);
     scene.draw({art, pd::AW, pd::AH}, state, waiting);
-    pd::draw(frame, art, state, waiting, moment, keys, scene.cx, down, screenLine ? &screen : nullptr, &live, &hits);
+    pd::draw(frame, art, state, waiting, moment, keys, scene.cx, down, screenLine ? &screen : nullptr, &live, &hits,
+             page, &usage, &today);
     if (showHits)
       for (int i = 0; i < hits.n; i++) {
         const pd::Hits::Zone &z = hits.zone[i];
