@@ -12,6 +12,10 @@
 #   desk/board.sh perch                put Burnbot on the Desk Buddy Perch (ESP32 + 1.5" OLED + six keys)
 #   desk/board.sh pad                  put Burnbot on the Claude Pad (ESP32-S3 + 2.8" screen + four keys)
 #   desk/board.sh pad-test             the Claude Pad's screen and keys, without Burnbot
+#   desk/board.sh pad-hw-test          the Claude Pad's touch, speaker, microphone and battery
+#   desk/board.sh pad-rec FILE [SECS|hold]  record the pad's microphone into a .wav (pad-hw-test on it;
+#                                      hold: for as long as key 2 is held)
+#   desk/board.sh pad-play FILE        play a sound file on the pad's speaker (with pad-hw-test on it)
 #   desk/board.sh backup [FILE]        ESP32 or pad: save everything on it (to desk/backup/ unless FILE)
 #   desk/board.sh restore FILE         ESP32 or pad: put a saved FILE back, replacing everything on it
 #   desk/board.sh setup                install arduino-cli and what the boards need
@@ -148,6 +152,114 @@ elif mode == "listen":
                     watch.remove(0)      # nothing more to send (stdin closed); keep listening
     except KeyboardInterrupt:
         print(file=sys.stderr)
+
+elif mode in ("rec", "play"):
+    import base64, subprocess, tempfile, wave
+    pending = b""
+    def put(data):
+        """Writes all of data: the port is non-blocking, so wait while its buffer is full."""
+        while data:
+            try:
+                data = data[os.write(fd, data):]
+            except BlockingIOError:
+                select.select([], [fd], [], 0.5)
+    def lines(seconds):
+        """Whole lines from the pad, waiting up to `seconds` for the first."""
+        global pending
+        until = time.time() + seconds
+        while True:
+            if b"\n" in pending:
+                line, pending = pending.split(b"\n", 1)
+                yield line.decode("latin1").strip("\r")
+                continue
+            left = until - time.time()
+            if left <= 0:
+                return
+            if select.select([fd], [], [], min(left, 0.1))[0]:
+                got = take(fd)
+                if got is None:
+                    sys.exit("(the pad went away)")
+                pending += got
+
+if mode == "rec":
+    path, hold = sys.argv[3], sys.argv[4] == "hold"
+    frames, rid, ended, last = {}, None, None, time.time()
+    if hold:   # the person holds key 2 on the pad while they speak; it records for as long as it is held
+        print("Hold key 2 on the pad while you speak, and let go when you are done (waiting up to 2 minutes)…",
+              file=sys.stderr)
+        last = time.time() + 117          # a long wait for the first press
+    else:
+        seconds = float(sys.argv[4])
+        put(f"\nrec {seconds:g}\n".encode())
+        print(f"Recording {seconds:g} seconds on the pad…", file=sys.stderr)
+    while ended is None and time.time() - last < 3:
+        for line in lines(0.5):
+            last = time.time()
+            parts = line.split("|")
+            if parts[0] == "AS":
+                rid = parts[1]
+                if hold: print("Recording… (let go of key 2 to stop)", file=sys.stderr)
+            elif parts[0] == "A" and len(parts) == 4 and parts[1] == rid:
+                frames[int(parts[2])] = base64.b64decode(parts[3])
+            elif parts[0] == "AE" and parts[1] == rid:
+                ended = parts
+                break
+            elif line and not line.startswith("A"):
+                print("pad: " + line, file=sys.stderr)
+    if rid is None:
+        sys.exit("Nobody held key 2." if hold else
+                 "The pad did not start recording. Is pad-hw-test on it? (desk/board.sh pad-hw-test)")
+    count = max(frames) + 1 if frames else 0
+    missing = [i for i in range(count) if i not in frames]
+    pcm = b"".join(frames.get(i, b"\0" * 640) for i in range(count))
+    with wave.open(path, "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(pcm)
+    peak = max((abs(int.from_bytes(pcm[i:i + 2], "little", signed=True)) for i in range(0, len(pcm), 2)), default=0)
+    print(f"Wrote {path}: {len(pcm) / 32000:.1f} s, {count} frames, {len(missing)} lost on the way, "
+          f"pad says {ended[3] if ended else '?'} dropped, peak {peak} ({100 * peak / 32767:.0f}% of full).",
+          file=sys.stderr)
+    if ended is None:
+        print("(the pad never said it had finished)", file=sys.stderr)
+
+elif mode == "play":
+    path = sys.argv[3]
+    def open16(p):
+        w = wave.open(p, "rb")
+        if (w.getframerate(), w.getnchannels(), w.getsampwidth()) == (16000, 1, 2):
+            return w
+        w.close()
+        out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+        subprocess.run(["afconvert", "-f", "WAVE", "-d", "LEI16@16000", "-c", "1", p, out], check=True)
+        return wave.open(out, "rb")
+    try:
+        w = open16(path)
+    except (OSError, wave.Error, subprocess.CalledProcessError) as e:
+        sys.exit(f"Could not read {path}: {e}")
+    pcm = w.readframes(w.getnframes())
+    chunks = [pcm[i:i + 960] for i in range(0, len(pcm), 960)]
+    print(f"Playing {len(pcm) / 32000:.1f} s on the pad…", file=sys.stderr)
+    sent, acked, buffered, stalled = 0, -1, 0, time.time()
+    while acked < len(chunks) - 1:
+        # At most 6 lines (8 KB) unanswered: the pad's USB buffer is 16 KB and drops what overflows.
+        while sent < len(chunks) and sent - acked - 1 < 6 and buffered + (sent - acked - 1) * 30 < 800:
+            put(f"PL|{sent}|".encode() + base64.b64encode(chunks[sent]) + b"\n")
+            sent += 1
+        for line in lines(0.05):
+            parts = line.split("|")
+            if parts[0] == "PK":
+                acked, buffered, stalled = int(parts[1]), int(parts[2]), time.time()
+            elif parts[0] == "PD":
+                print("pad: " + line, file=sys.stderr)
+            elif line:
+                print("pad: " + line, file=sys.stderr)
+        if time.time() - stalled > 3:
+            put(b"PX\n")
+            sys.exit("The pad stopped taking sound (no PK| for 3 s). Is pad-hw-test on it?")
+    put(b"PE\n")
+    for line in lines(buffered / 1000 + 5):
+        if line.startswith("PD|"):
+            print("Done: " + line, file=sys.stderr)
+            break
 PY
 )
 serial() { "$PY" -I -c "$SERIAL_PY" "$@"; }
@@ -538,6 +650,31 @@ cmd_pad_test() {
   say "To see the key presses here:  $ME listen --pad"
 }
 
+cmd_pad_hw_test() {
+  if [ "$BUILD_ONLY" = 1 ]; then pick 0 pad; else pick 1 pad; fi
+  [ "$KIND" = pad ] || die "That is a $(label "$KIND"), not the Claude Pad. (Add --pad if several boards are plugged in.)"
+  ensure_core pad
+  ensure_screen_library
+  prepare_sketch "$DESK/pad_hw_test"
+  cp "$DESK"/pad_hw/*.h "$SKETCH"/        # the codec, touch and sound drivers it shares with burnbot_pad
+  build
+  if [ "$BUILD_ONLY" = 1 ]; then say "Built. Not uploaded."; return 0; fi
+  upload_esp32
+  say
+  say "Done: the pad shows a checklist (codec, touch, sound, battery)."
+  say "Talk to it:  $ME listen --pad      then type: s, scan, id, tone, mic 5, touch 20 …"
+  say "Record:      $ME pad-rec x.wav 5 && afplay x.wav"
+}
+
+cmd_pad_sound() {   # pad-rec FILE [SECONDS] | pad-play FILE
+  local what=$1 file=${2:-} seconds=${3:-5}
+  [ -n "$file" ] || die "Usage: $ME pad-rec FILE.wav [SECONDS|hold]   or   $ME pad-play FILE.wav"
+  pick 1 pad
+  [ "$KIND" = pad ] || die "That is a $(label "$KIND"), not the Claude Pad."
+  free_port "$PORT"
+  if [ "$what" = rec ]; then serial rec "$PORT" "$file" "$seconds"; else serial play "$PORT" "$file"; fi
+}
+
 cmd_pad() {
   local now
   if [ "$BUILD_ONLY" = 1 ]; then pick 0 pad; else pick 1 pad; fi
@@ -644,6 +781,9 @@ case "$COMMAND" in
   perch) cmd_perch ;;
   pad) cmd_pad ;;
   pad-test) cmd_pad_test ;;
+  pad-hw-test) cmd_pad_hw_test ;;
+  pad-rec) cmd_pad_sound rec "${REST[@]}" ;;
+  pad-play) cmd_pad_sound play "${REST[@]}" ;;
   backup) cmd_backup "${REST[@]}" ;;
   restore) cmd_restore "${REST[@]}" ;;
   setup) cmd_setup ;;
