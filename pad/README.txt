@@ -6,6 +6,9 @@ BURNBOT PAD - works with Claude Code on Windows and Mac
 2. Wait until it says Done (a few minutes the first time: it downloads the speech parts).
 3. That's it. From now on the pad shows your level, usage and today whenever it's plugged in.
 
+Wi-Fi: the installer offers to put the pad on your Wi-Fi, so it works without the cable (it pairs over USB first).
+       Later: run the installer with --wifi (or --wifi off). Updates and pairing always need the cable.
+
 Keys: 1 and 4 flip pages. When Claude asks to run something: 1 = Deny, 4 = Approve.
 Hold 2 to talk to your latest Claude session; its answer is read out on the pad.
 

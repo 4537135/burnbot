@@ -1,6 +1,7 @@
 """Burnbot Pad installer for Windows and macOS (from the Claude Pad kit's install.py).
 
   Double-click "START HERE - Install on Windows" or "... on Mac": they need no Python (uv brings it).
+  --wifi        puts the pad (on USB) on Wi-Fi again, or: --wifi off
   --uninstall   takes the hooks, the status line and the autostart out again
 
 It makes its own Python environment in ~/.claude/burnbot-pad, copies the bridge there, adds its hooks
@@ -116,6 +117,12 @@ def autostart():
     say("The bridge runs now and at every login (log: " + logf + ")")
 
 
+def wifi(*extra):
+    say("")
+    say("Wi-Fi: so the pad works without the cable (it pairs with this computer over USB first).")
+    subprocess.run([VPY, os.path.join(DATA, "bridge.py"), "--wifi", *extra])
+
+
 def install():
     if sys.version_info < (3, 9):
         sys.exit("Python 3.9 or newer is needed.")
@@ -129,6 +136,7 @@ def install():
     for f in FILES:
         shutil.copy2(os.path.join(HERE, f), os.path.join(DATA, f))
     install_hooks()
+    wifi()
     autostart()
     say("\nDone. Plug in the pad; it shows your level within a few seconds. New Claude sessions get the keys and voice.")
 
@@ -147,6 +155,10 @@ if __name__ == "__main__":
         d = {"hooks": {"Stop": [{"hooks": [{"command": "mine"}, {"command": cmd("event")}]}]}, "statusLine": {"command": cmd("status")}}
         assert without_ours(d) == {"hooks": {"Stop": [{"hooks": [{"command": "mine"}]}]}}
         print("ok")
+    elif "--wifi" in sys.argv:
+        stop_bridge()
+        wifi(*sys.argv[sys.argv.index("--wifi") + 1:])
+        autostart()
     elif "--uninstall" in sys.argv:
         uninstall()
     else:

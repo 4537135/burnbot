@@ -5,7 +5,7 @@ Once a second it sends the pad its B line (level), every 10 s the U (plan usage)
 Keys: Approve / Deny answer a permission prompt that hook.py hands over. Key 2 held: talk to your latest
 session (Whisper on this computer); its reply is read out on the pad's speaker.
 """
-import base64, glob, json, os, queue, re, socket, subprocess, sys, threading, time
+import base64, getpass, glob, hashlib, hmac, json, os, queue, re, secrets, socket, subprocess, sys, threading, time
 import serial
 from serial.tools import list_ports
 
@@ -189,6 +189,10 @@ def answer(ask, allow):
 def find_pad():
     if sys.platform == "darwin" and subprocess.run(["pgrep", "-x", "Burnbot"], capture_output=True).returncode == 0:
         return None                         # the Mac app is running and drives the pad itself
+    return find_usb() or find_wifi()
+
+
+def find_usb():
     for p in list_ports.comports():
         if p.vid != 0x303A:
             continue
@@ -210,6 +214,169 @@ def find_pad():
             pass
         s.close()
     return None
+
+
+# ---------------------------------------------------------------- the pad over Wi-Fi (desk/burnbot_pad/wifilink.h)
+WIFI_PORT = 4751
+
+
+def save_cfg(**changes):
+    c = voice.cfg()
+    c.update(changes)
+    path = os.path.join(DATA, "config.json")
+    with open(path + ".tmp", "w", encoding="utf-8") as f:
+        json.dump(c, f, indent=2)
+    os.replace(path + ".tmp", path)
+
+
+def proof(key, who, nonce):
+    return hmac.new(bytes.fromhex(key), f"{who}|{nonce}".encode(), hashlib.sha256).hexdigest()
+
+
+class WifiPort:
+    """The pad over Wi-Fi, with the few pyserial calls Pad uses. Every line both ways carries |#<tag>, signed
+    with this connection's key and counted (wifilink.h), so nothing in between can add, change or replay one."""
+    in_waiting = 0
+
+    def __init__(self, sock, session, rest):
+        self.s, self.k, self.sent, self.taken, self.buf = sock, session, 0, 0, rest
+        sock.settimeout(0.1)
+
+    def tag(self, who, n, data):
+        return hmac.new(self.k, f"{who}|{n}|".encode() + data, hashlib.sha256).hexdigest()[:16].encode()
+
+    def read(self, n):
+        try:
+            d = self.s.recv(4096)
+            if not d:
+                raise IOError("Wi-Fi link closed")
+            self.buf += d
+        except socket.timeout:
+            pass
+        *lines, self.buf = self.buf.split(b"\n")
+        out = b""
+        for l in lines:
+            l = l.rstrip(b"\r")
+            if not l:
+                continue
+            body, mark, t = l.rpartition(b"|#")
+            if not mark or not hmac.compare_digest(t, self.tag("p", self.taken, body)):
+                raise IOError("a line from the pad was not signed right; link dropped")
+            self.taken += 1
+            out += body + b"\n"
+        return out
+
+    def write(self, b):
+        out = b""
+        for l in b.split(b"\n"):
+            if l:
+                out += l + b"|#" + self.tag("b", self.sent, l) + b"\n"
+                self.sent += 1
+        self.s.sendall(out)
+
+    def close(self):
+        self.s.close()
+
+
+def read_line(s, buf, end):
+    """One short line from a socket, before `end` (a time), or OSError."""
+    while b"\n" not in buf[0]:
+        if time.time() > end or len(buf[0]) > 200:
+            raise OSError("no proper answer")
+        s.settimeout(max(0.1, end - time.time()))
+        d = s.recv(256)
+        if not d:
+            raise OSError("closed")
+        buf[0] += d
+    line, _, buf[0] = buf[0].partition(b"\n")
+    return line.decode(errors="replace").strip()
+
+
+def find_wifi():
+    """The paired pad on the network, after both sides prove they hold the key set over USB."""
+    c = voice.cfg()
+    key = c.get("pad_key")
+    hosts = [h for h in (c.get("pad_ip"), c.get("pad_host") and c["pad_host"] + ".local") if h] if key else []
+    for host in hosts:
+        try:
+            s = socket.create_connection((host, WIFI_PORT), timeout=2)
+            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)   # send each line at once: sound must not wait
+            buf, end = [b""], time.time() + 5
+            hello = read_line(s, buf, end)
+            if not (hello.startswith("AU|") and len(hello) == 35):
+                s.close()
+                continue
+            mine = secrets.token_hex(16)
+            s.sendall(f"AU|{proof(key, 'bridge', hello[3:])}|{mine}\n".encode())
+            if not hmac.compare_digest(read_line(s, buf, end), "AU|" + proof(key, "pad", mine)):
+                s.close()
+                log("a device at", host, "did not prove it is your pad; ignored")
+                continue
+            session = hmac.new(bytes.fromhex(key), f"session|{hello[3:]}|{mine}".encode(), hashlib.sha256).digest()
+            ip = s.getpeername()[0]
+            if ip != c.get("pad_ip"):
+                save_cfg(pad_ip=ip)
+            log("pad found over Wi-Fi at", ip)
+            return WifiPort(s, session, buf[0])
+        except (OSError, ValueError):
+            pass
+    return None
+
+
+def this_wifi():
+    """This computer's Wi-Fi name and saved password (either may be None)."""
+    def run(*a):
+        try:
+            return subprocess.run(a, capture_output=True, text=True, timeout=30).stdout
+        except Exception:
+            return ""
+    if os.name == "nt":
+        name = re.search(r"^\s*SSID\s*:\s*(.+)$", run("netsh", "wlan", "show", "interfaces"), re.M)
+        name = name and name.group(1).strip()
+        pw = name and re.search(r"Key Content\s*: (.*)", run("netsh", "wlan", "show", "profile", f"name={name}", "key=clear"))
+        return name, pw and pw.group(1).rstrip("\r")   # shortcut: English Windows only; others are asked to type it
+    name = re.search(r"^\s*SSID\s*:\s*(.+)$", run("ipconfig", "getsummary", "en0"), re.M) \
+        or re.search(r"Network:\s*(.+)", run("networksetup", "-getairportnetwork", "en0"))
+    name = name and name.group(1).strip()
+    if name and name != "<redacted>":       # macOS asks you before it shows the saved password
+        return name, run("security", "find-generic-password", "-wa", name).rstrip("\n") or None
+    return None, None
+
+
+def wifi_setup():
+    """Pairs the pad over USB and puts it on Wi-Fi: bridge.py --wifi (bridge.py --wifi off: forget it)."""
+    usb = find_usb()
+    if not usb:
+        return print("Plug the pad in with a USB cable first (and close anything else using it).")
+    if sys.argv[2:] == ["off"]:
+        usb.write(b"\nWF|off\n")
+        save_cfg(pad_key=None, pad_host=None, pad_ip=None)
+        return print("The pad forgot its Wi-Fi.")
+    name, pw = this_wifi()
+    if name and input(f'Put the pad on this computer\'s Wi-Fi "{name}"? [Y/n] ').strip().lower() not in ("", "y", "yes"):
+        name = pw = None
+    name = name or input("Wi-Fi name (empty: skip): ").strip()
+    if not name:
+        return print("Skipped: the pad works over USB. Run this again any time for Wi-Fi.")
+    pw = pw if pw is not None else getpass.getpass(f'Password for "{name}": ')
+    key = voice.cfg().get("pad_key") or secrets.token_hex(32)
+    usb.write(f"\nWF|{name.encode().hex()}|{pw.encode().hex()}|{key}\n".encode())
+    host, ip, end, buf = None, None, time.time() + 25, b""
+    while time.time() < end and not ip:
+        buf += usb.read(4096)
+        for l in buf.decode(errors="replace").splitlines():
+            if l.startswith("WF|ok|"):
+                host = l[6:].strip()
+            elif l.startswith("WI|1|") and host:
+                ip = l.split("|")[2]
+        if host and not ip:
+            usb.write(b"WI\n")
+            time.sleep(1)
+    if not host:
+        return print("The pad did not take the Wi-Fi settings. Is the newest firmware on it?")
+    save_cfg(pad_key=key, pad_host=host, pad_ip=ip)
+    print(f"The pad is on Wi-Fi at {ip} ({host}.local). You can unplug the USB cable." if ip else
+          f'The pad saved "{name}" but has not joined it yet. Check the password, then run this again.')
 
 
 def screen(**f):
@@ -238,7 +405,8 @@ def latest_session():
 
 class Pad:
     def __init__(self, port):
-        self.port, self.buf = port, b""
+        self.port, self.buf, self.sending = port, b"", threading.Lock()
+        self.ask_id, self.ask_since = None, 0
         self.stage, self.s_line = None, ""   # voice: None (home), stt, rev, sent, say, err
         self.pcm, self.text, self.target, self.awaiting = bytearray(), "", None, None
         self.play, self.seq, self.unanswered, self.buffered, self.more = b"", 0, 0, 0, False
@@ -262,7 +430,8 @@ class Pad:
             self.inbox.put(ex)
 
     def send(self, line):
-        self.port.write((line + "\n").encode("utf-8", "replace"))
+        with self.sending:                  # the main loop and the speech threads both send
+            self.port.write((line + "\n").encode("utf-8", "replace"))
 
     def lines(self):
         out = []
@@ -292,6 +461,7 @@ class Pad:
         elif parts[0] == "A" and len(parts) == 4:
             self.pcm += base64.b64decode(parts[3])
         elif parts[0] == "AE" and parts[-1] in ("up", "max"):
+            self.target = self.target or latest_session()   # the start line can be lost while the link changes
             if not self.target:
                 return self.show("err", m="err", t="NO SESSION", x="Send your Claude session one prompt first.", ky="OK,,,")
             self.show("stt", m="stt", t="TO " + self.target["title"])
@@ -301,7 +471,9 @@ class Pad:
         elif parts[0] == "PD" and self.stage == "say":
             self.home()
         elif line in ("K1d", "K4d"):
-            if ask:
+            if ask and self.stage is None:
+                if time.time() - self.ask_since < 1.5:
+                    return                  # it may not be on the screen yet: a press must answer what you saw
                 answer(ask, line == "K4d")
                 log("prompt", "approved" if line == "K4d" else "denied", "on the pad:", ask["shown"][:60])
             elif self.stage == "rev" and line == "K4d":
@@ -363,7 +535,9 @@ class Pad:
     def stream(self):
         """Sound to the speaker, 30 ms a line, paced like desk/board.sh pad-play: at most 6 lines unanswered
         and 800 ms ahead, since the pad drops sound that does not fit its 2 s buffer."""
-        while self.unanswered < 6 and self.buffered - (time.time() - getattr(self, "pk_at", 0)) * 1000 + self.unanswered * 30 < 800:
+        # Over Wi-Fi sound reaches the pad in bursts (its radio naps), so more is kept on the way; USB's 16 KB buffer takes 6.
+        most = 6 if isinstance(self.port, serial.Serial) else 24
+        while self.unanswered < most and self.buffered - (time.time() - getattr(self, "pk_at", 0)) * 1000 + self.unanswered * 30 < 800:
             with self.lock:
                 if not self.play:
                     if self.seq and not self.more:
@@ -400,6 +574,8 @@ def run_pad(port, logs):
             if ask and not ask["whole"]:
                 answer(ask, None)
                 ask = None
+            if (ask or {}).get("id") != pad.ask_id:
+                pad.ask_id, pad.ask_since = (ask or {}).get("id"), now
             pad.send(b_line(a, ask))
             pad.send(pad.s_line)
             if now - slow >= 10:
@@ -445,12 +621,26 @@ def main():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--check"]:         # self-check of the text rules
+    if sys.argv[1:2] == ["--wifi"]:
+        wifi_setup()
+    elif sys.argv[1:] == ["--check"]:       # self-check of the text rules
         assert pad_text("shop's  {x}|y", 18) == 'SHOP"S (X)/Y'
         assert request({"tool_name": "Bash", "tool_input": {"command": "npm test"}}) == ("BASH: NPM TEST", True)
         assert not request({"tool_name": "Bash", "tool_input": {"command": "a\nb"}})[1]
         assert not request({"tool_name": "Write", "tool_input": {"file_path": "/etc/x"}, "cwd": "/home/me"})[1]
         assert rate(28674264) == "28.7M" and rate(950) == "950" and fits("A " * 40) is True
+        assert proof("00" * 32, "pad", "ab") == hmac.new(bytes(32), b"pad|ab", hashlib.sha256).hexdigest()
+        a, b = socket.socketpair()          # a signed line goes through; a changed one ends the link
+        pa, pb = WifiPort(a, b"k" * 32, b""), WifiPort(b, b"k" * 32, b"")
+        pa.write(b"K4d\n")
+        pb.tag = lambda who, n, d: hmac.new(b"k" * 32, f"{'b' if who == 'p' else 'p'}|{n}|".encode() + d, hashlib.sha256).hexdigest()[:16].encode()
+        assert pb.read(1) == b"K4d\n"
+        a.sendall(b"K4d|#0000000000000000\n")
+        try:
+            pb.read(1)
+            raise AssertionError("forged line accepted")
+        except IOError:
+            pass
         print("ok")
     else:
         main()
