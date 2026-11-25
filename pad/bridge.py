@@ -520,6 +520,7 @@ class Pad:
             return
         self.awaiting = None
         text = voice.speakable(voice.last_reply(a["transcript"], a["offset"]), int(voice.cfg().get("voice_reply_max", 600)))
+        log(f"voice: {a['title']} answered, {len(text)} chars to speak")
         if not text:
             return
 

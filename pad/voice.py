@@ -87,7 +87,7 @@ def tts(text):
             async for c in edge_tts.Communicate(text, cfg().get("voice_name", "en-US-AndrewMultilingualNeural")).stream():
                 if c["type"] == "audio":
                     mp3.write(c["data"])
-        asyncio.run(get())
+        asyncio.run(asyncio.wait_for(get(), 8))   # the service can stall: then the system voice speaks
         mp3.seek(0)
         out = bytearray()
         rs = av.AudioResampler(format="s16", layout="mono", rate=RATE)
