@@ -19,6 +19,7 @@
 // Lines from the Mac (115200, each ends with a new line):
 //   V        answers "BURNBOT 6" (6: pages; 5 talks, listens and takes touch; 4 had keys)
 //   P        answers "OK"
+//   DL       restarts into flashing mode (the chip's own USB port), for updates without the BOOT button
 //   R        starts the display again, answers "OK"
 //   O0 / O2  answers "OK" (the keys are fixed under the screen, so it stays the right way up)
 //   B|...    what to show (render.h, and pad.h for ky=, pr=, pp=, wk=), answers "OK"
@@ -58,12 +59,42 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <Preferences.h>
+#include "soc/rtc_cntl_reg.h"
 
 #include "pad.h"
 #include "es8311.h"
 #include "ft6336.h"
 #include "padaudio.h"
 #include "calib.h"
+
+// The pad's USB drive "BURNBOT": the Mac and Windows installers (drive.h, made by desk/tools/make_drive.py),
+// read-only. Needs USB in OTG mode (USBMode=default), which board.sh's PAD_FQBN sets.
+#if ARDUINO_USB_MODE == 0
+#include "USB.h"
+#include "USBMSC.h"
+#include "drive.h"
+USBMSC drive;
+static int32_t driveRead(uint32_t lba, uint32_t offset, void *buffer, uint32_t size) {
+  uint32_t at = lba * 512 + offset, n = at < DRIVE_USED ? min(size, DRIVE_USED - at) : 0;
+  memcpy(buffer, DRIVE + at, n);
+  memset((uint8_t *)buffer + n, 0, size - n);
+  return size;
+}
+static int32_t driveWrite(uint32_t, uint32_t, uint8_t *, uint32_t) { return -1; }
+// Before USB starts (the core starts it before setup()), so the drive is in the USB descriptor.
+static struct DriveAtBoot {
+  DriveAtBoot() {
+    drive.vendorID("Burnbot");
+    drive.productID("Pad installers");
+    drive.productRevision("6");
+    drive.onRead(driveRead);
+    drive.onWrite(driveWrite);
+    drive.isWritable(false);
+    drive.mediaPresent(true);
+    drive.begin(DRIVE_SECTORS, 512);
+  }
+} driveAtBoot;
+#endif
 
 // The board's wiring (lcdwiki.com, 2.8inch ESP32-S3 Display)
 const int LCD_CS = 10, LCD_DC = 46, LCD_SCK = 12, LCD_MOSI = 11, LCD_MISO = 13, LCD_BL = 45;
@@ -451,6 +482,13 @@ void handle(char *text) {
   const size_t len = strlen(text);
   if (!strcmp(text, "V")) { Serial.println("BURNBOT 6"); return; }
   if (!strcmp(text, "P")) { Serial.println("OK"); return; }
+  if (!strcmp(text, "DL")) {                 // restart into the chip's own flashing mode: updates need no BOOT button
+    Serial.println("OK");
+    Serial.flush();
+    delay(100);
+    REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+    esp_restart();
+  }
   if (!strcmp(text, "s")) { status(); return; }
   if (!strcmp(text, "R")) { startDisplay(); light(lit); Serial.println("OK"); return; }
   if (!strcmp(text, "Q")) {
@@ -564,7 +602,9 @@ void readMac() {
 
 void setup() {
   Serial.setRxBufferSize(16384);            // sound comes in at about 43 KB a second
-  Serial.setTxBufferSize(16384);            // and goes out at about the same
+#if ARDUINO_USB_MODE == 1
+  Serial.setTxBufferSize(16384);            // and goes out at about the same (HW CDC only)
+#endif
   Serial.setTxTimeoutMs(0);                 // with nobody listening, drop what it says rather than wait
   Serial.begin(115200);
   pinMode(LCD_BL, OUTPUT);
