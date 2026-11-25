@@ -150,7 +150,7 @@ class Whisper:
         def run():
             try:
                 from faster_whisper import WhisperModel
-                self.model = WhisperModel(cfg().get("voice_model", "small"), device="cpu", compute_type="int8")
+                self.model = WhisperModel(cfg().get("voice_model", "base"), device="cpu", compute_type="int8")
                 print(time.strftime("%H:%M:%S"), "voice: speech model loaded", flush=True)
             except Exception as ex:
                 self.model_err = str(ex)[:120]

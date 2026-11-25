@@ -5,7 +5,7 @@ Once a second it sends the pad its B line (level), every 10 s the U (plan usage)
 Keys: Approve / Deny answer a permission prompt that hook.py hands over. Key 2 held: talk to your latest
 session (Whisper on this computer); its reply is read out on the pad's speaker.
 """
-import base64, glob, json, os, socket, subprocess, sys, threading, time
+import base64, glob, json, os, queue, re, socket, subprocess, sys, threading, time
 import serial
 from serial.tools import list_ports
 
@@ -232,7 +232,7 @@ def latest_session():
             best = d
     if best:
         best["title"] = best.get("project") or "Claude"
-        best["id"] = best["session_id"]
+        best["id"], best["sock"], best["token"] = best["session_id"], best["msg_socket"], best.get("msg_token", "")   # voice.deliver's names
     return best
 
 
@@ -241,16 +241,37 @@ class Pad:
         self.port, self.buf = port, b""
         self.stage, self.s_line = None, ""   # voice: None (home), stt, rev, sent, say, err
         self.pcm, self.text, self.target, self.awaiting = bytearray(), "", None, None
-        self.play, self.seq, self.unanswered = b"", 0, 0
+        self.play, self.seq, self.unanswered, self.buffered, self.more = b"", 0, 0, 0, False
+        self.lock = threading.Lock()        # the speech thread adds sound while the main loop sends it
         self.whisper = voice.Whisper()
+        self.whisper.load_model()           # warm up now: first use otherwise waits ~4 s (Whisper) + ~8 s (voice)
+        threading.Thread(target=voice.tts, args=("ok",), daemon=True).start()
+        self.inbox = queue.Queue()
+        # Read all the time: in USB OTG mode the pad's send buffer is tiny and drops what is not read at once.
+        threading.Thread(target=self.reader, daemon=True).start()
+
+    def reader(self):
+        buf = b""
+        try:
+            while True:
+                buf += self.port.read(self.port.in_waiting or 1)
+                *done, buf = buf.split(b"\n")
+                for l in done:
+                    self.inbox.put(l.decode("utf-8", "replace").strip())
+        except Exception as ex:
+            self.inbox.put(ex)
 
     def send(self, line):
         self.port.write((line + "\n").encode("utf-8", "replace"))
 
     def lines(self):
-        self.buf += self.port.read(self.port.in_waiting or 1)
-        *done, self.buf = self.buf.split(b"\n")
-        return [l.decode("utf-8", "replace").strip() for l in done]
+        out = []
+        while not self.inbox.empty():
+            l = self.inbox.get()
+            if isinstance(l, Exception):
+                raise l
+            out.append(l)
+        return out
 
     def home(self):
         self.stage, self.s_line = None, screen(m="home", mc=1, to=(self.target or {}).get("title"))
@@ -275,8 +296,8 @@ class Pad:
                 return self.show("err", m="err", t="NO SESSION", x="Send your Claude session one prompt first.", ky="OK,,,")
             self.show("stt", m="stt", t="TO " + self.target["title"])
             threading.Thread(target=self.transcribe, daemon=True).start()
-        elif parts[0] == "PK":
-            self.unanswered = max(0, self.unanswered - 1)
+        elif parts[0] == "PK" and len(parts) == 3:
+            self.unanswered, self.buffered, self.pk_at = max(0, self.unanswered - 1), int(parts[2]), time.time()
         elif parts[0] == "PD" and self.stage == "say":
             self.home()
         elif line in ("K1d", "K4d"):
@@ -296,6 +317,8 @@ class Pad:
                                  "transcript": self.target.get("transcript", ""), "title": self.target["title"]}
                 self.show("sent", m="sent", t="SENT TO " + self.target["title"])
             elif self.stage == "say" and line == "K1d":
+                with self.lock:
+                    self.play, self.more = b"", False
                 self.send("PX")
             elif self.stage in ("rev", "err") and line == "K1d":
                 self.home()
@@ -328,28 +351,36 @@ class Pad:
         if not text:
             return
 
-        def run():
+        def run():                          # the whole reply in one go: splitting it left a pause at the join
+            t = time.time()
             pcm = voice.tts(text)
-            if pcm:
-                self.play, self.seq, self.unanswered = pcm, 0, 0
-                self.show("say", m="say", t=a["title"], x=text, ky="STOP,,,")
+            with self.lock:
+                self.play, self.seq, self.unanswered, self.buffered, self.more = pcm, 0, 0, 0, False
+            log(f"voice: reply {len(text)} chars, speaking after {time.time() - t:.1f}s")
+            self.show("say", m="say", t=a["title"], x=text, ky="STOP,,,")
         threading.Thread(target=run, daemon=True).start()
 
     def stream(self):
-        """Sound to the speaker, 30 ms a line, at most 6 lines unanswered (the pad's USB buffer is 16 KB)."""
-        while self.play and self.unanswered < 6:
-            chunk, self.play = self.play[:960], self.play[960:]
-            self.send(f"PL|{self.seq}|" + base64.b64encode(chunk).decode())
+        """Sound to the speaker, 30 ms a line, paced like desk/board.sh pad-play: at most 6 lines unanswered
+        and 800 ms ahead, since the pad drops sound that does not fit its 2 s buffer."""
+        while self.unanswered < 6 and self.buffered - (time.time() - getattr(self, "pk_at", 0)) * 1000 + self.unanswered * 30 < 800:
+            with self.lock:
+                if not self.play:
+                    if self.seq and not self.more:
+                        self.send("PE")
+                        self.seq = 0
+                    return
+                chunk, self.play = self.play[:960], self.play[960:]
+            self.send(f"PL|{self.seq + 1}|" + base64.b64encode(chunk).decode())
             self.seq += 1
             self.unanswered += 1
-            if not self.play:
-                self.send("PE")
 
 
 def run_pad(port, logs):
     pad = Pad(port)
     pad.home()
     pad.send("Q")
+    pad.send(f"VL|{int(voice.cfg().get('pad_volume', 78))}")   # speaker volume 0-100
     a, ask, analyzed, slow, alive = None, None, 0, 0, os.path.join(DATA, "pad-alive")
     heard = time.time()
     while True:
@@ -385,6 +416,8 @@ def run_pad(port, logs):
 
 
 def main():
+    if sys.stdout is None:                  # pythonw on Windows: no window, so the log goes to its file
+        sys.stdout = sys.stderr = open(os.path.join(DATA, "bridge.log"), "w", encoding="utf-8", buffering=1)
     try:                                    # one bridge at a time
         lock = socket.socket()
         lock.bind(("127.0.0.1", 47391))

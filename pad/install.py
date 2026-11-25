@@ -17,7 +17,8 @@ WIN, MAC = os.name == "nt", sys.platform == "darwin"
 VPY = os.path.join(VENV, "Scripts", "python.exe") if WIN else os.path.join(VENV, "bin", "python")
 VPYW = os.path.join(VENV, "Scripts", "pythonw.exe") if WIN else VPY
 STARTUP_DIR = os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-STARTUP = os.path.join(STARTUP_DIR, "Burnbot Pad.cmd")
+STARTUP = os.path.join(STARTUP_DIR, "Burnbot Pad.lnk")
+STARTUP_OLD = os.path.join(STARTUP_DIR, "Burnbot Pad.cmd")   # before 2026-11-25: showed a window
 PLIST = os.path.join(HOME, "Library", "LaunchAgents", "com.burnbot.pad.plist")
 FILES = ["bridge.py", "metrics.py", "voice.py", "hook.py"]
 PACKAGES = ["pyserial", "numpy", "faster-whisper", "edge-tts"]
@@ -92,10 +93,13 @@ def autostart():
     bridge, logf = os.path.join(DATA, "bridge.py"), os.path.join(DATA, "bridge.log")
     if WIN:
         os.makedirs(STARTUP_DIR, exist_ok=True)
-        with open(STARTUP, "w", encoding="utf-8") as fh:
-            fh.write("@echo off\r\nrem Burnbot Pad bridge. Delete this file to stop it starting at login.\r\n"
-                     f'start "" /min cmd /c ""{VPY}" -u "{bridge}" > "{logf}" 2>&1"\r\n')
-        subprocess.Popen(["cmd", "/c", STARTUP], creationflags=0x08000000)
+        if os.path.exists(STARTUP_OLD):
+            os.remove(STARTUP_OLD)
+        # A shortcut to pythonw: no window at login, nothing to close by accident
+        ps = (f"$s = (New-Object -ComObject WScript.Shell).CreateShortcut('{STARTUP}'); $s.TargetPath = '{VPYW}'; "
+              f"$s.Arguments = '\"{bridge}\"'; $s.WorkingDirectory = '{DATA}'; $s.Description = 'Burnbot Pad bridge'; $s.Save()")
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True)
+        subprocess.Popen([VPYW, bridge], cwd=DATA, creationflags=0x00000008 | 0x00000200)   # detached
     elif MAC:
         os.makedirs(os.path.dirname(PLIST), exist_ok=True)
         with open(PLIST, "w", encoding="utf-8") as fh:
@@ -132,7 +136,7 @@ def install():
 def uninstall():
     stop_bridge()
     save(without_ours(settings()))
-    for p in (STARTUP, PLIST):
+    for p in (STARTUP, STARTUP_OLD, PLIST):
         if os.path.exists(p):
             os.remove(p)
     say("Burnbot Pad's hooks and autostart were removed. Its folder stays: " + DATA)

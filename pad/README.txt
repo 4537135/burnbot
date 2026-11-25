@@ -11,4 +11,6 @@ Hold 2 to talk to your latest Claude session; its answer is read out on the pad.
 
 Remove:  run the installer with --uninstall  (py install.py --uninstall  /  python3 install.py --uninstall)
 Log:     ~/.claude/burnbot-pad/bridge.log
+Speech:  "voice_model": "base" (fast, default) or "small" (better for Lithuanian), in the same config.json
+Volume:  "pad_volume" (0-100, default 78) in ~/.claude/burnbot-pad/config.json
 Voice:   set "voice_name" in ~/.claude/burnbot-pad/config.json (e.g. "en-GB-SoniaNeural", "lt-LT-LeonasNeural")

@@ -606,6 +606,11 @@ void setup() {
   Serial.setTxBufferSize(16384);            // and goes out at about the same (HW CDC only)
 #endif
   Serial.setTxTimeoutMs(0);                 // with nobody listening, drop what it says rather than wait
+#if ARDUINO_USB_MODE == 0
+  // OTG mode: TinyUSB's send buffer is 64 bytes, so a sound line (~870) needs to wait for the computer to read.
+  // Safe: with no program holding the port open (DTR off), the core sends nothing and does not wait.
+  Serial.setTxTimeoutMs(100);
+#endif
   Serial.begin(115200);
   pinMode(LCD_BL, OUTPUT);
   startKeys();
